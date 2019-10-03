@@ -28,9 +28,16 @@
     font-style: normal
 }
 
+@font-face {
+    font-family: pc98;
+    src: url(fonts/PC9800S.ttf) format('truetype');
+    font-weight: 400;
+    font-style: normal
+}
+
 * {
     font-size: 24px !important;
-    font-family: VGA_SquarePx, monospace !important;
+    font-family: VGA_SquarePx, pc98, monospace !important;
     -webkit-font-smoothing: none;
     -webkit-tap-highlight-color: rgba(0,0,0,0);
     line-height: var(--charH);
