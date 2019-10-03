@@ -11,7 +11,8 @@ const catalogRoot = 'catalog/';
 const outputPath = 'public/catalog.json';
 const trieOutputPath = 'public/catalog-trie.json';
 const dirDictOutputPath = 'public/directories.json';
-const formats = 'spc,vgm,vgz,nsf,nsfe,mid,s3m,it,mod,xm,ay,sgc,kss,v2m,s98';
+const formats = 'spc,vgm,vgz,nsf,nsfe,mid,s3m,it,mod,xm,ay,sgc,kss,v2m,gbs,s98';
+
 const formatsRegex = new RegExp(`\\.(${formats.split(',').join('|')})$`);
 
 if(!fs.existsSync(catalogRoot)) {
