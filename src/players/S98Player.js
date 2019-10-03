@@ -56,7 +56,8 @@ class S98LibWrapper {
     return this.s98Lib.ccall('s98_get_device_count', 'number');
   }
   getDeviceName(deviceIndex) {
-    return this.s98Lib.ccall('s98_get_device_name', 'string', ['number'], [deviceIndex]);
+    const tokens = this.s98Lib.ccall('s98_get_device_name', 'string', ['number'], [deviceIndex]).split('_');
+    return tokens[tokens.length - 1];
   }
   setChannelMask(deviceIndex, mask) {
     this.s98Lib.ccall('s98_set_channel_mask', null, ['number', 'number'], [deviceIndex, mask]);
@@ -506,7 +507,7 @@ export default class S98Player extends Player {
   }
 
   getAvailableChannelsOf(deviceIndex) {
-    const deviceName = this.s98lib.getDeviceName(deviceIndex).split('_')[1];
+    const deviceName = this.s98lib.getDeviceName(deviceIndex);
     return CHANNELS[deviceName];
   }
 
@@ -530,7 +531,11 @@ export default class S98Player extends Player {
     let shift = 0;
     for (let deviceIndex = 0; deviceIndex < this.s98lib.getDeviceCount(); deviceIndex ++) {
       const availableChannels = this.getAvailableChannelsOf(deviceIndex).length;
-      const voicesOfDevice = voices.slice(shift, shift + availableChannels);
+      let voicesOfDevice = voices.slice(shift, shift + availableChannels);
+      if (this.s98lib.getDeviceName(deviceIndex) === 'OPN') {
+        // seem to require a padding only for OPN, according to opna.cpp
+        Array.prototype.splice.apply(voicesOfDevice, [3, 0].concat([true, true, true]));
+      }
       let mask = 0;
       voicesOfDevice.forEach((isEnabled, j) => {
         if (!isEnabled) {
