@@ -1,0 +1,67 @@
+m_s98.kpi   S98/CYM/MYM/X1F/VGM/VGZ plugin for KbMediaPlayer  v1.0r10
+
+What'sNew:
+
+  [1.0r10]
+   fmgenを0.08改に更新
+   X1Fのクロックを調整しようと考えるもデータが無いため御指摘通りX68互換で強行
+
+Introduction:
+
+  S98/CYM/MYM/X1F/VGM/VGZ フォーマットを再生するためのプラグインです。
+
+  対応拡張子は S98 CYM MYM X1F VGM VGZ です。
+
+  PDX付きCYMはOPMD互換ではないそうです。
+
+  MYMはMYMC追加ヘッダでOPMクロックを補正可能です。
+  ただしこれはm_s98.kpiのみの追加仕様なので注意して下さい。
+    00-0F   : .MYMと同じ
+    10-13   : 'MYMC'
+    14-1B   : 'M', (c1), 'M', (c2), 'M', (c3), 'M', (c4)
+    1C-     : .CYMと同じ
+      ##  clock = c1 * 0x1000000 + c2 * 0x10000 + c3 * 0x100 + c4;
+
+  X1Fはファイル先頭にX1Fと埋め込まれているもののみ正常に認識します。
+
+  MSX-YM(拡張子MYM)はCYMと誤認識します。
+
+  リズム音源の WAVE データ 
+
+  ・2608_BD.WAV
+  ・2608_HH.WAV
+  ・2608_RIM.WAV
+  ・2608_SD.WAV
+  ・2608_TOM.WAV
+  ・2608_TOP.WAV
+
+  を持っている人は、m_s98.kpiと同じディレクトリに置いて下さい。そのうち置き場所を指定できるようになると思います。
+
+
+Contact:
+
+  Mamiya(mamiya@usres.sourceforge.net)
+    ソースは以下のサイトから入手可能です。
+    http://www.proc.org.tohoku.ac.jp/befis/
+
+
+Copyright:
+
+  このプログラムは 以下のプログラム を元に作成しているため、
+  それぞれのライセンス に従ってください。
+  私が書いた部分については自由に扱ってください。
+
+
+  FM Sound Generator with OPN/OPM interface
+    Copyright (C) by cisc 1998, 2001.
+
+    ciscさんのfmgenをベースにバグ修正とOPN2向けの改造を行っています。
+    改変者 Mamiya(mamiya@usres.sourceforge.net)
+
+  emu2413 -- YM2413 emulator written by Mitsutaka Okazaki 2001
+
+    このプログラムはopllの再現にemu2413を使用しています。
+
+  zlib 1.1.4    (C) 1995-1998 Jean-loup Gailly and Mark Adler
+
+    このプログラムはdeflateの展開にzlibを使用しています。

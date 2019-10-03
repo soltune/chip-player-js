@@ -19,6 +19,7 @@ import GMEPlayer from './players/GMEPlayer';
 import XMPPlayer from './players/XMPPlayer';
 import MIDIPlayer from './players/MIDIPlayer';
 import V2MPlayer from './players/V2MPlayer';
+import S98Player from "./players/S98Player";
 
 import PlayerParams from './PlayerParams';
 import Search from './Search';
@@ -185,6 +186,7 @@ class App extends React.Component {
             new XMPPlayer(audioCtx, playerNode, chipCore),
             new MIDIPlayer(audioCtx, playerNode, chipCore),
             new V2MPlayer(audioCtx, playerNode, chipCore),
+            new S98Player(audioCtx, playerNode, chipCore),
           ]);
           this.setState({loading: false});
 
@@ -530,7 +532,7 @@ class App extends React.Component {
     if (!path) return null;
 
     path = path
-      .replace(/^https?:\/\/[a-z0-9\-.:]+\/(music|catalog)\//, '/')
+        .replace(/.*?\/(music|catalog)\//, '/')
       .split('/').slice(0, -1).join('/') + '/';
     return <DirectoryLink dim to={'/browse' + path}>{decodeURI(path)}</DirectoryLink>;
   }

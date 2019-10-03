@@ -169,6 +169,9 @@ source_files.push('fluidlite/build/libfluidlite.a');
 source_files.push('tinysoundfont/tinyplayer.c');
 source_files.push('tinysoundfont/showcqtbar.c');
 
+// Complete S98 build:
+source_files.push('s98/emscripten/build/m_s98.bc');
+
 var js_file = 'src/chip-core.js';
 var wasm_file = 'src/chip-core.wasm';
 var wasm_dir = paths.appPublic;
