@@ -16,6 +16,7 @@ export const FORMATS =  [
   'spc',
   'kss',
   's3m',
+  's98',
   'vgm',
   'vgz',
   'xm',
