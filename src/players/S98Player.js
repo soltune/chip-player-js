@@ -99,6 +99,10 @@ class S98LibWrapper {
     this.currentFile = null;
   }
 
+  isClosed() {
+    return this.currentFile === null;
+  }
+
   getDelegate() {
     return this.s98Lib;
   }
@@ -508,14 +512,16 @@ export default class S98Player extends Player {
 
   getParamDefs() {
     let px98fix = {};
-    if (['OPN', 'OPNA'].indexOf(this.s98lib.getDeviceName()) > -1 && this.metadata.system.indexOf('9801') === -1) {
-      px98fix = {
-        id: 'pc98fix',
-        label: 'PC-9801 Volume Balance Fix',
-        hint: 'Fix volume balance for PC-9801.',
-        type: 'toggle',
-        defaultValue: false,
-      };
+    if (! this.s98lib.isClosed()) { // avoid illegal memory access because this method is also called on end of list
+      if (['OPN', 'OPNA'].indexOf(this.s98lib.getDeviceName()) > -1 && this.metadata.system.indexOf('9801') === -1) {
+        px98fix = {
+          id: 'pc98fix',
+          label: 'PC-9801 Volume Balance Fix',
+          hint: 'Fix volume balance for PC-9801.',
+          type: 'toggle',
+          defaultValue: false,
+        };
+      }
     }
     return [
       px98fix,
