@@ -2313,10 +2313,10 @@ static void OPL3ResetChip(OPL3 *chip)
 	OPL3_STATUS_RESET(chip,0x60);
 
 	/* reset with register write */
-	OPL3WriteReg(chip,0x01,0); /* test register */
-	OPL3WriteReg(chip,0x02,0); /* Timer1 */
-	OPL3WriteReg(chip,0x03,0); /* Timer2 */
-	OPL3WriteReg(chip,0x04,0); /* IRQ mask clear */
+	OPL3WriteReg((OPL3*) chip,0x01,0); /* test register */
+	OPL3WriteReg((OPL3*) chip,0x02,0); /* Timer1 */
+	OPL3WriteReg((OPL3*) chip,0x03,0); /* Timer2 */
+	OPL3WriteReg((OPL3*) chip,0x04,0); /* IRQ mask clear */
 
 
 //FIX IT  registers 101, 104 and 105
@@ -2324,10 +2324,10 @@ static void OPL3ResetChip(OPL3 *chip)
 
 //FIX IT (dont change CH.D, CH.C, CH.B and CH.A in C0-C8 registers)
 	for(c = 0xff ; c >= 0x20 ; c-- )
-		OPL3WriteReg(chip,c,0);
+		OPL3WriteReg((OPL3*) chip,c,0);
 //FIX IT (dont change CH.D, CH.C, CH.B and CH.A in C0-C8 registers)
 	for(c = 0x1ff ; c >= 0x120 ; c-- )
-		OPL3WriteReg(chip,c,0);
+		OPL3WriteReg((OPL3*) chip,c,0);
 
 
 
@@ -2369,7 +2369,7 @@ static OPL3 *OPL3Create(int type, int clock, int rate)
 	OPL3_initalize(chip);
 
 	/* reset chip */
-	OPL3ResetChip(chip);
+	OPL3ResetChip((OPL3 *) chip);
 	return chip;
 }
 
@@ -2414,7 +2414,7 @@ static int OPL3Write(OPL3 *chip, int a, int v)
 	case 1:	/* data port - ignore A1 */
 	case 3:	/* data port - ignore A1 */
 		if(chip->UpdateHandler) chip->UpdateHandler(chip->UpdateParam,0);
-		OPL3WriteReg(chip,chip->address,v);
+		OPL3WriteReg((OPL3 *) chip,chip->address,v);
 	break;
 
 	case 2:	/* address port 1 (register set #2) */
@@ -2487,16 +2487,16 @@ void * YMF262Init(int clock, int rate)
 
 void YMF262Shutdown(void *chip)
 {
-	OPL3Destroy(chip);
+	OPL3Destroy((OPL3*) chip);
 }
 void YMF262ResetChip(void *chip)
 {
-	OPL3ResetChip(chip);
+	OPL3ResetChip((OPL3*) chip);
 }
 
 int YMF262Write(void *chip, int a, int v)
 {
-	return OPL3Write(chip, a, v);
+	return OPL3Write((OPL3*) chip, a, v);
 }
 
 unsigned char YMF262Read(void *chip, int a)
@@ -2510,24 +2510,24 @@ unsigned char YMF262Read(void *chip, int a)
 
 	/* YMF278(OPL4) returns bit2 in LOW and bit1 in HIGH state ??? info from manual - not verified */
 
-	return OPL3Read(chip, a);
+	return OPL3Read((OPL3*) chip, a);
 }
 int YMF262TimerOver(void *chip, int c)
 {
-	return OPL3TimerOver(chip, c);
+	return OPL3TimerOver((OPL3*) chip, c);
 }
 
 void YMF262SetTimerHandler(void *chip, OPL3_TIMERHANDLER TimerHandler, void *param)
 {
-	OPL3SetTimerHandler(chip, TimerHandler, param);
+	OPL3SetTimerHandler((OPL3*) chip, TimerHandler, param);
 }
 void YMF262SetIRQHandler(void *chip,OPL3_IRQHANDLER IRQHandler,void *param)
 {
-	OPL3SetIRQHandler(chip, IRQHandler, param);
+	OPL3SetIRQHandler((OPL3*) chip, IRQHandler, param);
 }
 void YMF262SetUpdateHandler(void *chip,OPL3_UPDATEHANDLER UpdateHandler,void *param)
 {
-	OPL3SetUpdateHandler(chip, UpdateHandler, param);
+	OPL3SetUpdateHandler((OPL3*) chip, UpdateHandler, param);
 }
 
 
@@ -2540,7 +2540,7 @@ void YMF262SetUpdateHandler(void *chip,OPL3_UPDATEHANDLER UpdateHandler,void *pa
 */
 void YMF262UpdateOne(void *_chip, OPL3SAMPLE **buffers, int length)
 {
-	OPL3		*chip  = _chip;
+	OPL3		*chip  = (OPL3*) _chip;
 	UINT8		rhythm = chip->rhythm&0x20;
 
 	OPL3SAMPLE	*ch_a = buffers[0];

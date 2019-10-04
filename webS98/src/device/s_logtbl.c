@@ -71,7 +71,7 @@ KMIF_LOGTABLE *LogTableAddRef(void)
 	}
 	if (!log_tables_refcount)
 	{
-		log_tables = XMALLOC(sizeof(KMIF_LOGTABLE));
+		log_tables = (KMIF_LOGTABLE *) XMALLOC(sizeof(KMIF_LOGTABLE));
 		if (log_tables)
 		{
 			log_tables->ctx = log_tables;
