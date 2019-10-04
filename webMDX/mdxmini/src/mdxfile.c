@@ -18,7 +18,7 @@
 
 /* ------------------------------------------------------------------ */
 
-static void*
+static MDX_DATA*
 __alloc_mdxwork(void)
 {
   MDX_DATA* mdx = NULL;

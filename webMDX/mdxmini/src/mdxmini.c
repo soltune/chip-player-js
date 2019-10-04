@@ -93,7 +93,7 @@ int mdx_open( t_mdxmini *data, char *filename , char *pcmdir )
 {
   data->nlg_tempo = -1;
 
-  data->songdata = malloc(sizeof(songdata));
+  data->songdata = (songdata*) malloc(sizeof(songdata));
 
   MDX_DATA *mdx = NULL;
   PDX_DATA *pdx = NULL;
