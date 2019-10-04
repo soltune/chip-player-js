@@ -1,8 +1,8 @@
-extern "C" {
+//extern "C" {
 #include "mame/driver.h"
 #include "mame/fmopl.h"
 #include "mame/ymf262.h"
-}
+//}
 #include "s98device.h"
 
 class S98DEVICE_OPL2 : public S98DEVICEIF {
