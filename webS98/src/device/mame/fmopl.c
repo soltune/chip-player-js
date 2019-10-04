@@ -1848,7 +1848,7 @@ static FM_OPL *OPLCreate(int type, int clock, int rate)
 #endif
 
 	/* allocate memory block */
-	ptr = malloc(state_size);
+	ptr = (char *) malloc(state_size);
 
 	if (ptr==NULL)
 		return NULL;
@@ -2036,48 +2036,48 @@ void * YM3812Init(int clock, int rate)
 
 void YM3812Shutdown(void *chip)
 {
-	FM_OPL *YM3812 = chip;
+	FM_OPL *YM3812 = (FM_OPL *) chip;
 
 	/* emulator shutdown */
 	OPLDestroy(YM3812);
 }
 void YM3812ResetChip(void *chip)
 {
-	FM_OPL *YM3812 = chip;
+	FM_OPL *YM3812 = (FM_OPL *) chip;
 	OPLResetChip(YM3812);
 }
 
 int YM3812Write(void *chip, int a, int v)
 {
-	FM_OPL *YM3812 = chip;
+	FM_OPL *YM3812 = (FM_OPL *) chip;
 	return OPLWrite(YM3812, a, v);
 }
 
 unsigned char YM3812Read(void *chip, int a)
 {
-	FM_OPL *YM3812 = chip;
+	FM_OPL *YM3812 = (FM_OPL *) chip;
 	/* YM3812 always returns bit2 and bit1 in HIGH state */
 	return OPLRead(YM3812, a) | 0x06 ;
 }
 int YM3812TimerOver(void *chip, int c)
 {
-	FM_OPL *YM3812 = chip;
+	FM_OPL *YM3812 = (FM_OPL *) chip;
 	return OPLTimerOver(YM3812, c);
 }
 
 void YM3812SetTimerHandler(void *chip, OPL_TIMERHANDLER TimerHandler, void *param)
 {
-	FM_OPL *YM3812 = chip;
+	FM_OPL *YM3812 = (FM_OPL *) chip;
 	OPLSetTimerHandler(YM3812, TimerHandler, param);
 }
 void YM3812SetIRQHandler(void *chip,OPL_IRQHANDLER IRQHandler,void *param)
 {
-	FM_OPL *YM3812 = chip;
+	FM_OPL *YM3812 = (FM_OPL *) chip;
 	OPLSetIRQHandler(YM3812, IRQHandler, param);
 }
 void YM3812SetUpdateHandler(void *chip,OPL_UPDATEHANDLER UpdateHandler,void *param)
 {
-	FM_OPL *YM3812 = chip;
+	FM_OPL *YM3812 = (FM_OPL *) chip;
 	OPLSetUpdateHandler(YM3812, UpdateHandler, param);
 }
 
@@ -2091,7 +2091,7 @@ void YM3812SetUpdateHandler(void *chip,OPL_UPDATEHANDLER UpdateHandler,void *par
 */
 void YM3812UpdateOne(void *chip, OPLSAMPLE *buffer, int length)
 {
-	FM_OPL		*OPL = chip;
+	FM_OPL		*OPL = (FM_OPL *) chip;
 	UINT8		rhythm = OPL->rhythm&0x20;
 	OPLSAMPLE	*buf = buffer;
 	int i;
