@@ -169,8 +169,28 @@ source_files.push('fluidlite/build/libfluidlite.a');
 source_files.push('tinysoundfont/tinyplayer.c');
 source_files.push('tinysoundfont/showcqtbar.c');
 
-// Complete S98 build:
-source_files.push('s98/emscripten/build/m_s98.bc');
+const s98_files = [
+  'mame/fmopl.c',
+  'mame/ymf262.c',
+  'emu2413/emu2413.c',
+  'fmgen/file.cpp',
+  'fmgen/fmgen.cpp',
+  'fmgen/fmtimer.cpp',
+  'fmgen/opm.cpp',
+  'fmgen/opna.cpp',
+  'fmgen/psg.cpp',
+
+  's98mame.cpp',
+  's98fmgen.cpp',
+  's98opll.cpp',
+  's98sng.cpp',
+  's_logtbl.c',
+  's_sng.c',
+].map(file => 'webS98/src/device/' + file);
+
+source_files = source_files.concat(s98_files);
+source_files.push('webS98/src/m_s98.cpp');
+source_files.push('webS98/emscripten/adapter.cpp');
 
 var js_file = 'src/chip-core.js';
 var wasm_file = 'src/chip-core.wasm';
@@ -265,6 +285,21 @@ var exported_functions = [
   '_v2m_set_speed',
   '_v2m_close',
 
+  '_s98_load_file',
+  '_s98_teardown',
+  '_s98_get_current_position',
+  '_s98_seek_position',
+  '_s98_get_max_position',
+  '_s98_get_track_info',
+  '_s98_get_sample_rate',
+  '_s98_get_audio_buffer',
+  '_s98_get_audio_buffer_length',
+  '_s98_compute_audio_samples',
+  '_s98_get_device_count',
+  '_s98_get_device_name',
+  '_s98_set_channel_mask',
+  '_s98_set_volumes',
+
   // From showcqtbar.c
   '_cqt_init',
   '_cqt_calc',
@@ -305,6 +340,7 @@ var flags = [
   // '-DVGM_YM2612_GENS=1',  // very fast but inaccurate
   '-DHAVE_ZLIB_H',
   '-DHAVE_STDINT_H',
+  '-DHAVE_LIMITS_H',
 
   '-IlibADLMIDI/include',
   '-DBWMIDI_DISABLE_XMI_SUPPORT',
@@ -321,6 +357,10 @@ var flags = [
   '-Wno-c++11-extensions',
   '-Wno-inconsistent-missing-override',
   '-Wno-c++11-narrowing',
+  '-Wno-pointer-sign',
+  '-Wno-narrowing',
+  '-Wcast-align',
+  '-fno-strict-aliasing',
   '-std=c++11',
 
   // V2M
@@ -331,6 +371,11 @@ var flags = [
   '-fdata-sections',
   '-DRONAN',
   '-s', 'SAFE_HEAP=0',
+
+  // webS98
+  '-DEMSCRIPTEN',
+  '-IwebS98/src/',
+  '-IwebS98/src/device',
 ];
 var args = [].concat(flags, source_files);
 

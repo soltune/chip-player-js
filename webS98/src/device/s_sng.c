@@ -191,16 +191,16 @@ static void setinst(void *ctx, Uint32 n, void *p, Uint32 l){}
 KMIF_SOUND_DEVICE *SNGSoundAlloc(Uint32 sng_type)
 {
 	SNGSOUND *sndp;
-	sndp = XMALLOC(sizeof(SNGSOUND));
+	sndp = (SNGSOUND *) XMALLOC(sizeof(SNGSOUND));
 	if (!sndp) return 0;
 	sndp->type = sng_type;
 	sndp->kmif.ctx = sndp;
-	sndp->kmif.release = sndrelease;
-	sndp->kmif.reset = sndreset;
-	sndp->kmif.synth = sndsynth;
-	sndp->kmif.volume = sndvolume;
-	sndp->kmif.write = sndwrite;
-	sndp->kmif.read = sndread;
+	sndp->kmif.release = (void (*)(void *))sndrelease;
+	sndp->kmif.reset = (void (*)(void *, Uint32, Uint32))sndreset;
+	sndp->kmif.synth = (void (*)(void *, Int32 *))sndsynth;
+	sndp->kmif.volume = (void (*)(void *, Int32))sndvolume;
+	sndp->kmif.write = (void (*)(void *, Uint32, Uint32))sndwrite;
+	sndp->kmif.read = (Uint32 (*)(void *, Uint32))sndread;
 	sndp->kmif.setinst = setinst;
 	sndp->logtbl = LogTableAddRef();
 	if (!sndp->logtbl)

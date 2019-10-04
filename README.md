@@ -107,17 +107,6 @@ emcmake cmake -DDISABLE_SF3=1 .. # Cmake will generate a Makefile by default
 emmake make fluidlite-static
 ```
 
-#### Subproject: webS98
-Our goal is to produce **s98/emscripten/build/m_s98.bc**.
-Build webS98:
-
-```sh
-cd chip-player-js/s98/           # navigate to s98 root
-source ~/src/emsdk/emsdk_env.sh  # load the emscripten environment variables
-mkdir build                      # create a build folder                       
-sh build.sh                      # m_s98.bc will be generated to build directory
-```
-
 Once these are in place we can build the parent project.
 Our goal is to produce **public/chip-core.wasm**.
 
