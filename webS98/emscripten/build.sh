@@ -1,3 +1,5 @@
+#!/bin/sh
+
 OPT="-s WASM=0 -s ASSERTIONS=1 -s VERBOSE=0 -s FORCE_FILESYSTEM=1 -DEMSCRIPTEN -DNO_DEBUG_LOGS -DHAVE_LIMITS_H -DHAVE_STDINT_H -Wcast-align -fno-strict-aliasing -s SAFE_HEAP=1 -s DISABLE_EXCEPTION_CATCHING=0 -Wno-pointer-sign -Wno-narrowing -I. -I.. -I../zlib -I../src -I../src/zlib -I../src/device -Os -O3"
 
 echo "building zlib..."
