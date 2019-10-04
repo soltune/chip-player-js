@@ -1,5 +1,20 @@
 # Chip Player JS
 
+## About this fork
+Chip Player JS is web-based chip tune player written by Matt Montag.  
+This fork is to share my fixes like;  
+
+- Improve Japanese text support on the file selector, using an extra font
+- additional file formats support
+    - gbs
+    - s98 (from webS98)
+        - supports rhythm samples for OPNA
+        - corrects volume balance for PC-9801
+            - the player reduces the volume of PSG ch if there's `9801` in 'system' tag.
+- and more. (coming soon)
+
+---
+
 ```
                                             _
                                 ________   (_)
