@@ -36,10 +36,10 @@
 #include <iostream>
 #include <fstream>
 
-extern "C" {
+//extern "C" {
 #include "mdxmini.h"
 #include "../pmdmini/src/pmdmini.h"
-}
+//}
 
 
 #ifdef EMSCRIPTEN
@@ -52,7 +52,7 @@ extern "C" {
 // hack to pass all those japaneese info texts safely to the JavaScript side:
 static const std::string chars = 
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-std::string base64_encode(unsigned char* input, unsigned int len) {
+std::string mdx_base64_encode(unsigned char* input, unsigned int len) {
   int i, j = 0;
   unsigned char arr3[3];
   unsigned char arr4[4];
@@ -95,22 +95,22 @@ std::string base64_encode(unsigned char* input, unsigned int len) {
 #define SAMPLE_BUF_SIZE	1024
 #define SAMPLE_FREQ	44100
 
-int16_t sample_buffer[SAMPLE_BUF_SIZE * CHANNELS];
-int samples_available= 0;
+int16_t mdx_sample_buffer[SAMPLE_BUF_SIZE * CHANNELS];
+int mdx_samples_available= 0;
 
-char* info_texts[2];
+char* mdx_info_texts[2];
 
 #define TEXT_MAX	1024
-char title_str[TEXT_MAX];
-char artist_str[TEXT_MAX];
+char mdx_title_str[TEXT_MAX];
+char mdx_artist_str[TEXT_MAX];
 
 #define RAW_INFO_MAX	1024
-char raw_info_buffer[RAW_INFO_MAX];
+char mdx_raw_info_buffer[RAW_INFO_MAX];
 
 struct StaticBlock {
     StaticBlock(){
-		info_texts[0]= title_str;
-		info_texts[1]= artist_str;
+		mdx_info_texts[0]= mdx_title_str;
+		mdx_info_texts[1]= mdx_artist_str;
     }
 };
 
@@ -140,20 +140,20 @@ static void do_song_init(int len) {
 			len = mdx_get_length(&mdxmini);	// len in secs: use to stop playback
 
 		mdx_set_max_loop(&mdxmini, 0);
-		mdx_get_title(&mdxmini, raw_info_buffer);
+		mdx_get_title(&mdxmini, mdx_raw_info_buffer);
 
 	} else {
 		if (len<0)
 			len= pmd_length_sec ( );
 		
-		pmd_get_compo(raw_info_buffer);
-		std::string encArtist= base64_encode((unsigned char*)raw_info_buffer, strlen(raw_info_buffer));
-		snprintf(artist_str, TEXT_MAX, "%s", encArtist.c_str());
+		pmd_get_compo(mdx_raw_info_buffer);
+		std::string encArtist= mdx_base64_encode((unsigned char*)mdx_raw_info_buffer, strlen(mdx_raw_info_buffer));
+		snprintf(mdx_artist_str, TEXT_MAX, "%s", encArtist.c_str());
 
-		pmd_get_title( raw_info_buffer );
+		pmd_get_title( mdx_raw_info_buffer );
 	}
-	std::string encTitle= base64_encode((unsigned char*)raw_info_buffer, strlen(raw_info_buffer));
-	snprintf(title_str, TEXT_MAX, "%s", encTitle.c_str());
+	std::string encTitle= mdx_base64_encode((unsigned char*)mdx_raw_info_buffer, strlen(mdx_raw_info_buffer));
+	snprintf(mdx_title_str, TEXT_MAX, "%s", encTitle.c_str());
 
 	max_play_len= len;
 }
@@ -162,12 +162,12 @@ static int mdx_compute_samples() {
 	if ((max_play_len > 0) && (play_len >= max_play_len)) return 1;	// stop song
 
 	if (mdx_mode) {	
-		mdx_calc_sample(&mdxmini, sample_buffer, SAMPLE_BUF_SIZE);
+		mdx_calc_sample(&mdxmini, mdx_sample_buffer, SAMPLE_BUF_SIZE);
 	} else {
-		pmd_renderer ( sample_buffer, SAMPLE_BUF_SIZE );		
+		pmd_renderer ( mdx_sample_buffer, SAMPLE_BUF_SIZE );
 	}
-	samples_available= SAMPLE_BUF_SIZE;
-	play_len += ((double)samples_available)/SAMPLE_FREQ;
+	mdx_samples_available= SAMPLE_BUF_SIZE;
+	play_len += ((double)mdx_samples_available)/SAMPLE_FREQ;
 	return 0;
 }
 
@@ -203,7 +203,7 @@ static int file_open(const char *filename) {
 
 extern "C" void emu_teardown (void)  __attribute__((noinline));
 extern "C" void EMSCRIPTEN_KEEPALIVE emu_teardown (void) {				
-	title_str[0]= artist_str[0]= 0;
+	mdx_title_str[0]= mdx_artist_str[0]= 0;
 		
 	do_teardown();
 }
@@ -243,17 +243,17 @@ extern "C" int EMSCRIPTEN_KEEPALIVE emu_set_subsong(int track, unsigned char boo
 
 extern "C" const char** emu_get_track_info() __attribute__((noinline));
 extern "C" const char** EMSCRIPTEN_KEEPALIVE emu_get_track_info() {
-	return (const char**)info_texts;
+	return (const char**)mdx_info_texts;
 }
 
 extern "C" char* EMSCRIPTEN_KEEPALIVE emu_get_audio_buffer(void) __attribute__((noinline));
 extern "C" char* EMSCRIPTEN_KEEPALIVE emu_get_audio_buffer(void) {
-	return (char*)sample_buffer;
+	return (char*)mdx_sample_buffer;
 }
 
 extern "C" long EMSCRIPTEN_KEEPALIVE emu_get_audio_buffer_length(void) __attribute__((noinline));
 extern "C" long EMSCRIPTEN_KEEPALIVE emu_get_audio_buffer_length(void) {
-	return samples_available;
+	return mdx_samples_available;
 }
 
 extern "C" int emu_compute_audio_samples() __attribute__((noinline));

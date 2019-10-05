@@ -21,7 +21,7 @@ static int pmd_split_dir( const char *file , char *dir )
 	char *p;
 	int len = 0;
 	
-	p = strrchr( file , '/' );
+	p = (char*) strrchr( file , '/' );
 
 	if ( p )
 	{

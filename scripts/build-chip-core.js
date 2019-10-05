@@ -192,6 +192,38 @@ source_files = source_files.concat(s98_files);
 source_files.push('webS98/src/m_s98.cpp');
 source_files.push('webS98/emscripten/adapter.cpp');
 
+const pmdmini_files = [
+  // 'fmgen/file.cpp',  // same as webS98
+  // 'fmgen/fmgen.cpp',
+  // 'fmgen/fmtimer.cpp',
+  // 'fmgen/opm.cpp',
+  // 'fmgen/opna.cpp',
+  // 'fmgen/psg.cpp',
+  'pmdwin/opnaw.cpp',
+  'pmdwin/p86drv.cpp',
+  'pmdwin/pmdwin.cpp',
+  'pmdwin/ppsdrv.cpp',
+  'pmdwin/ppz8l.cpp ',
+  'pmdwin/table.cpp',
+  'pmdwin/util.cpp',
+  'pmdmini.c',
+].map(file => 'webMDX/pmdmini/src/' + file);
+
+source_files = source_files.concat(pmdmini_files);
+
+const mdxmini_files = [
+  'mdx2151.c',
+  'mdxfile.c',
+  'mdxmini.c',
+  'mdxmml_ym2151.c',
+  'pcm8.c',
+  'pdxfile.c',
+  'ym2151.c'
+].map(file => 'webMDX/mdxmini/src/' + file);
+
+source_files = source_files.concat(mdxmini_files);
+source_files.push('webMDX/emscripten/adapter.cpp');
+
 var js_file = 'src/chip-core.js';
 var wasm_file = 'src/chip-core.wasm';
 var wasm_dir = paths.appPublic;
@@ -376,6 +408,10 @@ var flags = [
   '-DEMSCRIPTEN',
   '-IwebS98/src/',
   '-IwebS98/src/device',
+
+  // webMDX
+  '-IwebS98/src/device/fmgen',
+  '-IwebMDX/mdxmini/src/ ',
 ];
 var args = [].concat(flags, source_files);
 
