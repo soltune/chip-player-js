@@ -44,7 +44,7 @@
 #define EMSCRIPTEN_KEEPALIVE
 #endif
 
-std::string trim(const std::string& str) {
+std::string s98_trim(const std::string& str) {
     size_t first = str.find_first_not_of(' ');
     if (std::string::npos == first) {
         return str;
@@ -55,7 +55,7 @@ std::string trim(const std::string& str) {
 
 static const std::string chars = 
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-std::string base64_encode(unsigned char* input, unsigned int len) {
+std::string s98_base64_encode(unsigned char* input, unsigned int len) {
   int i, j = 0;
   unsigned char arr3[3];
   unsigned char arr4[4];
@@ -106,36 +106,36 @@ const char *getEmscriptenRhythmPath() {
 
 
 Int16 sample_buffer[SAMPLE_BUF_SIZE * CHANNELS];
-int samples_available= 0;
+int s98_samples_available= 0;
 
-char* info_texts[9];
+char* s98_info_texts[9];
 
 
 #define TEXT_MAX	255
-char title_str[TEXT_MAX];
-char artist_str[TEXT_MAX];
-char game_str[TEXT_MAX];
-char year_str[TEXT_MAX];
-char genre_str[TEXT_MAX];
-char comment_str[TEXT_MAX];
-char copyright_str[TEXT_MAX];
-char s98by_str[TEXT_MAX];
-char system_str[TEXT_MAX];
+char s98_title_str[TEXT_MAX];
+char s98_artist_str[TEXT_MAX];
+char s98_game_str[TEXT_MAX];
+char s98_year_str[TEXT_MAX];
+char s98_genre_str[TEXT_MAX];
+char s98_comment_str[TEXT_MAX];
+char s98_copyright_str[TEXT_MAX];
+char s98_s98by_str[TEXT_MAX];
+char s98_system_str[TEXT_MAX];
 
 #define RAW_INFO_MAX	1024
 char raw_info_buffer[RAW_INFO_MAX];
 
 struct StaticBlock {
     StaticBlock(){
-		info_texts[0]= title_str;
-		info_texts[1]= artist_str;
-		info_texts[2]= game_str;
-		info_texts[3]= year_str;
-		info_texts[4]= genre_str;
-		info_texts[5]= comment_str;
-		info_texts[6]= copyright_str;
-		info_texts[7]= s98by_str;
-		info_texts[8]= system_str;
+		s98_info_texts[0]= s98_title_str;
+		s98_info_texts[1]= s98_artist_str;
+		s98_info_texts[2]= s98_game_str;
+		s98_info_texts[3]= s98_year_str;
+		s98_info_texts[4]= s98_genre_str;
+		s98_info_texts[5]= s98_comment_str;
+		s98_info_texts[6]= s98_copyright_str;
+		s98_info_texts[7]= s98_s98by_str;
+		s98_info_texts[8]= s98_system_str;
     }
 };
 
@@ -170,9 +170,9 @@ extern "C" void EMSCRIPTEN_KEEPALIVE s98_teardown (void) {
 			
 	memset(&g_soundinfo, 0, sizeof(SOUNDINFO));
 	
-	title_str[0]= artist_str[0]= game_str[0]= year_str[0]= 
-		genre_str[0]= comment_str[0]= copyright_str[0]= 
-		s98by_str[0]= system_str[0] = 0;
+	s98_title_str[0]= s98_artist_str[0]= s98_game_str[0]= s98_year_str[0]=
+		s98_genre_str[0]= s98_comment_str[0]= s98_copyright_str[0]=
+		s98_s98by_str[0]= s98_system_str[0] = 0;
 	
 	g_loop_detected= 0;
 	
@@ -211,26 +211,26 @@ void extractFromInfoLine(std::string line) {
 		// seems the "garbage" is actually unicode chars.. 
 		// unless everthing is encoded there is no chance of
 		// getting it uncorrupted to the rendering...
-		value = base64_encode((unsigned char*)value.c_str(), value.length());
+		value = s98_base64_encode((unsigned char*)value.c_str(), value.length());
 		
 		if (!key.compare("TITLE")) {
-			snprintf(title_str, TEXT_MAX, "%s", value.c_str());	
+			snprintf(s98_title_str, TEXT_MAX, "%s", value.c_str());
 		} else if (!key.compare("ARTIST")) {
-			snprintf(artist_str, TEXT_MAX, "%s", value.c_str());	
+			snprintf(s98_artist_str, TEXT_MAX, "%s", value.c_str());
 		} else if (!key.compare("GAME")) {
-			snprintf(game_str, TEXT_MAX, "%s", value.c_str());	
+			snprintf(s98_game_str, TEXT_MAX, "%s", value.c_str());
 		} else if (!key.compare("YEAR")) {
-			snprintf(year_str, TEXT_MAX, "%s", value.c_str());	
+			snprintf(s98_year_str, TEXT_MAX, "%s", value.c_str());
 		} else if (!key.compare("GENRE")) {
-			snprintf(genre_str, TEXT_MAX, "%s", value.c_str());	
+			snprintf(s98_genre_str, TEXT_MAX, "%s", value.c_str());
 		} else if (!key.compare("COMMENT")) {
-			snprintf(comment_str, TEXT_MAX, "%s", value.c_str());	
+			snprintf(s98_comment_str, TEXT_MAX, "%s", value.c_str());
 		} else if (!key.compare("COPYRIGHT")) {
-			snprintf(copyright_str, TEXT_MAX, "%s", value.c_str());	
+			snprintf(s98_copyright_str, TEXT_MAX, "%s", value.c_str());
 		} else if (!key.compare("S98BY")) {
-			snprintf(s98by_str, TEXT_MAX, "%s", value.c_str());	
+			snprintf(s98_s98by_str, TEXT_MAX, "%s", value.c_str());
 		} else if (!key.compare("SYSTEM")) {
-			snprintf(system_str, TEXT_MAX, "%s", value.c_str());	
+			snprintf(s98_system_str, TEXT_MAX, "%s", value.c_str());
 		}  
 	} else {
 		fprintf(stderr, "garbage info: [%s]\n", line.c_str());
@@ -243,7 +243,7 @@ void extractStructFileInfo(char *filename) {
 		// fallback: just use the filename
 		std::string title= filename;
 		title.erase( title.find_last_of( '.' ) );	// remove ext
-		snprintf(title_str, TEXT_MAX, "%s", title.c_str());	
+		snprintf(s98_title_str, TEXT_MAX, "%s", title.c_str());
 	} else {
 		/*
 		note: V3 files contain tagged info, e.g.
@@ -280,19 +280,19 @@ void extractStructFileInfo(char *filename) {
 			
 			if (p == std::string::npos) {
 				// give up
-				in = base64_encode((unsigned char*)in.c_str(), in.length());				
-				snprintf(title_str, TEXT_MAX, "%s", in.c_str());	
+				in = s98_base64_encode((unsigned char*)in.c_str(), in.length());
+				snprintf(s98_title_str, TEXT_MAX, "%s", in.c_str());
 			} else {
 				// just split 2 sections
 				const char *str= in.c_str();
 				
 				std::string encTitle = in.substr (0, p);
-				encTitle= base64_encode((unsigned char*)encTitle.c_str(), encTitle.length());
-				snprintf(title_str, TEXT_MAX, "%s", encTitle.c_str());
+				encTitle= s98_base64_encode((unsigned char*)encTitle.c_str(), encTitle.length());
+				snprintf(s98_title_str, TEXT_MAX, "%s", encTitle.c_str());
 
 				std::string encCopRigt = std::string(str + p);
-				encCopRigt= base64_encode((unsigned char*)encCopRigt.c_str(), encCopRigt.length());
-				snprintf(copyright_str, TEXT_MAX, "%s", encCopRigt.c_str());	
+				encCopRigt= s98_base64_encode((unsigned char*)encCopRigt.c_str(), encCopRigt.length());
+				snprintf(s98_copyright_str, TEXT_MAX, "%s", encCopRigt.c_str());
 			}			
 		}		
 	}
@@ -301,7 +301,7 @@ void extractStructFileInfo(char *filename) {
 int computeSamples() {
 	if (g_loop_detected) return 1;  // the position goes over the end of tune
 	
-	samples_available = g_s98->Write((Int16 *)sample_buffer, SAMPLE_BUF_SIZE / 4) ;	
+	s98_samples_available = g_s98->Write((Int16 *)sample_buffer, SAMPLE_BUF_SIZE / 4) ;
 	return 0;
 }
 
@@ -333,7 +333,7 @@ extern "C" EMSCRIPTEN_KEEPALIVE int s98_get_sample_rate()
 
 extern "C" const char** s98_get_track_info() __attribute__((noinline));
 extern "C" const char** EMSCRIPTEN_KEEPALIVE s98_get_track_info() {
-	return (const char**)info_texts;
+	return (const char**)s98_info_texts;
 }
 
 extern "C" char* EMSCRIPTEN_KEEPALIVE s98_get_audio_buffer(void) __attribute__((noinline));
@@ -343,7 +343,7 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE s98_get_audio_buffer(void) {
 
 extern "C" long EMSCRIPTEN_KEEPALIVE s98_get_audio_buffer_length(void) __attribute__((noinline));
 extern "C" long EMSCRIPTEN_KEEPALIVE s98_get_audio_buffer_length(void) {
-	return samples_available;
+	return s98_samples_available;
 }
 
 
