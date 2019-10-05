@@ -357,10 +357,6 @@ var flags = [
   '-Wno-c++11-extensions',
   '-Wno-inconsistent-missing-override',
   '-Wno-c++11-narrowing',
-  '-Wno-pointer-sign',
-  '-Wno-narrowing',
-  '-Wcast-align',
-  '-fno-strict-aliasing',
   '-std=c++11',
 
   // V2M
