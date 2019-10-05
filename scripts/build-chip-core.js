@@ -332,6 +332,21 @@ var exported_functions = [
   '_s98_set_channel_mask',
   '_s98_set_volumes',
 
+  '_mdx_load_file',
+  '_mdx_teardown',
+  '_mdx_get_current_position',
+  // '_mdx_seek_position',
+  '_mdx_get_max_position',
+  '_mdx_get_track_info',
+  '_mdx_get_sample_rate',
+  '_mdx_get_audio_buffer',
+  '_mdx_get_audio_buffer_length',
+  '_mdx_compute_audio_samples',
+  // '_mdx_get_device_count',
+  // '_mdx_get_device_name',
+  // '_mdx_set_channel_mask',
+  // '_mdx_set_volumes',
+
   // From showcqtbar.c
   '_cqt_init',
   '_cqt_calc',
@@ -389,10 +404,10 @@ var flags = [
   '-Wno-c++11-extensions',
   '-Wno-inconsistent-missing-override',
   '-Wno-c++11-narrowing',
-  '-Wno-pointer-sign',
-  '-Wno-narrowing',
-  '-Wcast-align',
-  '-fno-strict-aliasing',
+  // '-Wno-pointer-sign',
+  // '-Wno-narrowing',
+  // '-Wcast-align',
+  // '-fno-strict-aliasing',
   '-std=c++11',
 
   // V2M

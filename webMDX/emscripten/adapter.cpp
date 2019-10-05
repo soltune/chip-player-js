@@ -201,8 +201,8 @@ static int file_open(const char *filename) {
 	return 1;
 }
 
-extern "C" void emu_teardown (void)  __attribute__((noinline));
-extern "C" void EMSCRIPTEN_KEEPALIVE emu_teardown (void) {				
+extern "C" void mdx_teardown (void)  __attribute__((noinline));
+extern "C" void EMSCRIPTEN_KEEPALIVE mdx_teardown (void) {
 	mdx_title_str[0]= mdx_artist_str[0]= 0;
 		
 	do_teardown();
@@ -213,9 +213,9 @@ static int ends_with(std::string const & value, std::string const & ending) {
     return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
 
-extern "C"  int emu_load_file(char *filename, void * inBuffer, uint32_t inBufSize)  __attribute__((noinline));
-extern "C"  int EMSCRIPTEN_KEEPALIVE emu_load_file(char *filename, void * inBuffer, uint32_t inBufSize) {
-	emu_teardown();
+extern "C"  int mdx_load_file(char *filename, void * inBuffer, uint32_t inBufSize)  __attribute__((noinline));
+extern "C"  int EMSCRIPTEN_KEEPALIVE mdx_load_file(char *filename, void * inBuffer, uint32_t inBufSize) {
+	mdx_teardown();
 	do_init();
 
 	mdx_mode= ends_with(std::string(filename), std::string(".mdx"));
@@ -231,47 +231,49 @@ extern "C"  int EMSCRIPTEN_KEEPALIVE emu_load_file(char *filename, void * inBuff
 	}
 }
 
-extern "C" int emu_get_sample_rate() __attribute__((noinline));
-extern "C" EMSCRIPTEN_KEEPALIVE int emu_get_sample_rate() {
+extern "C" int mdx_get_sample_rate() __attribute__((noinline));
+extern "C" EMSCRIPTEN_KEEPALIVE int mdx_get_sample_rate() {
 	return SAMPLE_FREQ;
 }
- 
-extern "C" int emu_set_subsong(int subsong, unsigned char boost) __attribute__((noinline));
-extern "C" int EMSCRIPTEN_KEEPALIVE emu_set_subsong(int track, unsigned char boost) {
+
+extern "C" int mdx_set_subsong(int subsong, unsigned char boost) __attribute__((noinline));
+extern "C" int EMSCRIPTEN_KEEPALIVE mdx_set_subsong(int track, unsigned char boost) {
 	return 0;	// there are no subsongs...
 }
 
-extern "C" const char** emu_get_track_info() __attribute__((noinline));
-extern "C" const char** EMSCRIPTEN_KEEPALIVE emu_get_track_info() {
+extern "C" const char** mdx_get_track_info() __attribute__((noinline));
+extern "C" const char** EMSCRIPTEN_KEEPALIVE mdx_get_track_info() {
 	return (const char**)mdx_info_texts;
 }
 
-extern "C" char* EMSCRIPTEN_KEEPALIVE emu_get_audio_buffer(void) __attribute__((noinline));
-extern "C" char* EMSCRIPTEN_KEEPALIVE emu_get_audio_buffer(void) {
+extern "C" char* EMSCRIPTEN_KEEPALIVE mdx_get_audio_buffer(void) __attribute__((noinline));
+extern "C" char* EMSCRIPTEN_KEEPALIVE mdx_get_audio_buffer(void) {
 	return (char*)mdx_sample_buffer;
 }
 
-extern "C" long EMSCRIPTEN_KEEPALIVE emu_get_audio_buffer_length(void) __attribute__((noinline));
-extern "C" long EMSCRIPTEN_KEEPALIVE emu_get_audio_buffer_length(void) {
+extern "C" long EMSCRIPTEN_KEEPALIVE mdx_get_audio_buffer_length(void) __attribute__((noinline));
+extern "C" long EMSCRIPTEN_KEEPALIVE mdx_get_audio_buffer_length(void) {
 	return mdx_samples_available;
 }
 
-extern "C" int emu_compute_audio_samples() __attribute__((noinline));
-extern "C" int EMSCRIPTEN_KEEPALIVE emu_compute_audio_samples() {
+extern "C" int mdx_compute_audio_samples() __attribute__((noinline));
+extern "C" int EMSCRIPTEN_KEEPALIVE mdx_compute_audio_samples() {
 	return mdx_compute_samples();
 }
 
-extern "C" int emu_get_current_position() __attribute__((noinline));
-extern "C" int EMSCRIPTEN_KEEPALIVE emu_get_current_position() {
-	return -1;
+extern "C" int mdx_get_current_position() __attribute__((noinline));
+extern "C" int EMSCRIPTEN_KEEPALIVE mdx_get_current_position() {
+//	return -1;
+	return play_len;
 }
 
-extern "C" void emu_seek_position(int pos) __attribute__((noinline));
-extern "C" void EMSCRIPTEN_KEEPALIVE emu_seek_position(int frames) {
+extern "C" void mdx_seek_position(int pos) __attribute__((noinline));
+extern "C" void EMSCRIPTEN_KEEPALIVE mdx_seek_position(int frames) {
 }
 
-extern "C" int emu_get_max_position() __attribute__((noinline));
-extern "C" int EMSCRIPTEN_KEEPALIVE emu_get_max_position() {
-	return -1;	// not implemented
+extern "C" int mdx_get_max_position() __attribute__((noinline));
+extern "C" int EMSCRIPTEN_KEEPALIVE mdx_get_max_position() {
+//	return -1;
+	return max_play_len;
 }
 
