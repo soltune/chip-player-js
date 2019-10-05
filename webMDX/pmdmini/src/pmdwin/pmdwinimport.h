@@ -21,36 +21,36 @@
 # define _MAX_PATH FILENAME_MAX
 #endif
 
-#define	InterfaceVersion	117		// ¾å£±·å¡§major, ²¼£²·å¡§minor version
+#define	InterfaceVersion	117		// ä¸Šï¼‘æ¡ï¼šmajor, ä¸‹ï¼’æ¡ï¼šminor version
 
-//	DLL ¤Î Ìá¤êÃÍ
-#define	PMDWIN_OK				 	  0		// Àµ¾ï½ªÎ»
-#define	ERR_OPEN_MUSIC_FILE			  1		// ¶Ê ¥Ç¡¼¥¿¤ò³«¤±¤Ê¤«¤Ã¤¿
-#define	ERR_WRONG_MUSIC_FILE		  2		// PMD ¤Î¶Ê¥Ç¡¼¥¿¤Ç¤Ï¤Ê¤«¤Ã¤¿
-#define	ERR_OPEN_PPC_FILE		 	  3		// PPC ¤ò³«¤±¤Ê¤«¤Ã¤¿
-#define	ERR_OPEN_P86_FILE		 	  4		// P86 ¤ò³«¤±¤Ê¤«¤Ã¤¿
-#define	ERR_OPEN_PPS_FILE		 	  5		// PPS ¤ò³«¤±¤Ê¤«¤Ã¤¿
-#define	ERR_OPEN_PPZ1_FILE		 	  6		// PPZ1 ¤ò³«¤±¤Ê¤«¤Ã¤¿
-#define	ERR_OPEN_PPZ2_FILE		 	  7		// PPZ2 ¤ò³«¤±¤Ê¤«¤Ã¤¿
-#define	ERR_WRONG_PPC_FILE		 	  8		// PPC/PVI ¤Ç¤Ï¤Ê¤«¤Ã¤¿c
-#define	ERR_WRONG_P86_FILE		 	  9		// P86 ¤Ç¤Ï¤Ê¤«¤Ã¤¿
-#define	ERR_WRONG_PPS_FILE		 	 10		// PPS ¤Ç¤Ï¤Ê¤«¤Ã¤¿
-#define	ERR_WRONG_PPZ1_FILE		 	 11		// PVI/PZI ¤Ç¤Ï¤Ê¤«¤Ã¤¿(PPZ1)
-#define	ERR_WRONG_PPZ2_FILE		 	 12		// PVI/PZI ¤Ç¤Ï¤Ê¤«¤Ã¤¿(PPZ2)
-#define	WARNING_PPC_ALREADY_LOAD	 13		// PPC ¤Ï¤¹¤Ç¤ËÆÉ¤ß¹ş¤Ş¤ì¤Æ¤¤¤ë
-#define	WARNING_P86_ALREADY_LOAD	 14		// P86 ¤Ï¤¹¤Ç¤ËÆÉ¤ß¹ş¤Ş¤ì¤Æ¤¤¤ë
-#define	WARNING_PPS_ALREADY_LOAD	 15		// PPS ¤Ï¤¹¤Ç¤ËÆÉ¤ß¹ş¤Ş¤ì¤Æ¤¤¤ë
-#define	WARNING_PPZ1_ALREADY_LOAD	 16		// PPZ1 ¤Ï¤¹¤Ç¤ËÆÉ¤ß¹ş¤Ş¤ì¤Æ¤¤¤ë
-#define	WARNING_PPZ2_ALREADY_LOAD	 17		// PPZ2 ¤Ï¤¹¤Ç¤ËÆÉ¤ß¹ş¤Ş¤ì¤Æ¤¤¤ë
+//	DLL ã® æˆ»ã‚Šå€¤
+#define	PMDWIN_OK				 	  0		// æ­£å¸¸çµ‚äº†
+#define	ERR_OPEN_MUSIC_FILE			  1		// æ›² ãƒ‡ãƒ¼ã‚¿ã‚’é–‹ã‘ãªã‹ã£ãŸ
+#define	ERR_WRONG_MUSIC_FILE		  2		// PMD ã®æ›²ãƒ‡ãƒ¼ã‚¿ã§ã¯ãªã‹ã£ãŸ
+#define	ERR_OPEN_PPC_FILE		 	  3		// PPC ã‚’é–‹ã‘ãªã‹ã£ãŸ
+#define	ERR_OPEN_P86_FILE		 	  4		// P86 ã‚’é–‹ã‘ãªã‹ã£ãŸ
+#define	ERR_OPEN_PPS_FILE		 	  5		// PPS ã‚’é–‹ã‘ãªã‹ã£ãŸ
+#define	ERR_OPEN_PPZ1_FILE		 	  6		// PPZ1 ã‚’é–‹ã‘ãªã‹ã£ãŸ
+#define	ERR_OPEN_PPZ2_FILE		 	  7		// PPZ2 ã‚’é–‹ã‘ãªã‹ã£ãŸ
+#define	ERR_WRONG_PPC_FILE		 	  8		// PPC/PVI ã§ã¯ãªã‹ã£ãŸc
+#define	ERR_WRONG_P86_FILE		 	  9		// P86 ã§ã¯ãªã‹ã£ãŸ
+#define	ERR_WRONG_PPS_FILE		 	 10		// PPS ã§ã¯ãªã‹ã£ãŸ
+#define	ERR_WRONG_PPZ1_FILE		 	 11		// PVI/PZI ã§ã¯ãªã‹ã£ãŸ(PPZ1)
+#define	ERR_WRONG_PPZ2_FILE		 	 12		// PVI/PZI ã§ã¯ãªã‹ã£ãŸ(PPZ2)
+#define	WARNING_PPC_ALREADY_LOAD	 13		// PPC ã¯ã™ã§ã«èª­ã¿è¾¼ã¾ã‚Œã¦ã„ã‚‹
+#define	WARNING_P86_ALREADY_LOAD	 14		// P86 ã¯ã™ã§ã«èª­ã¿è¾¼ã¾ã‚Œã¦ã„ã‚‹
+#define	WARNING_PPS_ALREADY_LOAD	 15		// PPS ã¯ã™ã§ã«èª­ã¿è¾¼ã¾ã‚Œã¦ã„ã‚‹
+#define	WARNING_PPZ1_ALREADY_LOAD	 16		// PPZ1 ã¯ã™ã§ã«èª­ã¿è¾¼ã¾ã‚Œã¦ã„ã‚‹
+#define	WARNING_PPZ2_ALREADY_LOAD	 17		// PPZ2 ã¯ã™ã§ã«èª­ã¿è¾¼ã¾ã‚Œã¦ã„ã‚‹
 
-#define	ERR_WRONG_PARTNO			 30		// ¥Ñ¡¼¥ÈÈÖ¹æ¤¬ÉÔÅ¬
-//#define	ERR_ALREADY_MASKED			 31		// »ØÄê¥Ñ¡¼¥È¤Ï¤¹¤Ç¤Ë¥Ş¥¹¥¯¤µ¤ì¤Æ¤¤¤ë
-#define	ERR_NOT_MASKED				 32		// »ØÄê¥Ñ¡¼¥È¤Ï¥Ş¥¹¥¯¤µ¤ì¤Æ¤¤¤Ê¤¤
-#define	ERR_MUSIC_STOPPED			 33		// ¶Ê¤¬»ß¤Ş¤Ã¤Æ¤¤¤ë¤Î¤Ë¥Ş¥¹¥¯Áàºî¤ò¤·¤¿
-#define	ERR_EFFECT_USED				 34		// ¸ú²Ì²»¤Ç»ÈÍÑÃæ¤Ê¤Î¤Ç¥Ş¥¹¥¯¤òÁàºî¤Ç¤­¤Ê¤¤
+#define	ERR_WRONG_PARTNO			 30		// ãƒ‘ãƒ¼ãƒˆç•ªå·ãŒä¸é©
+//#define	ERR_ALREADY_MASKED			 31		// æŒ‡å®šãƒ‘ãƒ¼ãƒˆã¯ã™ã§ã«ãƒã‚¹ã‚¯ã•ã‚Œã¦ã„ã‚‹
+#define	ERR_NOT_MASKED				 32		// æŒ‡å®šãƒ‘ãƒ¼ãƒˆã¯ãƒã‚¹ã‚¯ã•ã‚Œã¦ã„ãªã„
+#define	ERR_MUSIC_STOPPED			 33		// æ›²ãŒæ­¢ã¾ã£ã¦ã„ã‚‹ã®ã«ãƒã‚¹ã‚¯æ“ä½œã‚’ã—ãŸ
+#define	ERR_EFFECT_USED				 34		// åŠ¹æœéŸ³ã§ä½¿ç”¨ä¸­ãªã®ã§ãƒã‚¹ã‚¯ã‚’æ“ä½œã§ããªã„
 
-#define	ERR_OUT_OF_MEMORY			 99		// ¥á¥â¥ê¤ò³ÎÊİ¤Ç¤­¤Ê¤«¤Ã¤¿
-#define	ERR_OTHER					999		// ¤½¤ÎÂ¾¤Î¥¨¥é¡¼
+#define	ERR_OUT_OF_MEMORY			 99		// ãƒ¡ãƒ¢ãƒªã‚’ç¢ºä¿ã§ããªã‹ã£ãŸ
+#define	ERR_OTHER					999		// ãã®ä»–ã®ã‚¨ãƒ©ãƒ¼
 
 
 #define	SOUND_55K			  55555
@@ -96,20 +96,20 @@ typedef unsigned char bool;
 ******************************************************************************/
 
 
-//	±éÁÕÃæ¤Î¥Ç¡¼¥¿¥¨¥ê¥¢
+//	æ¼”å¥ä¸­ã®ãƒ‡ãƒ¼ã‚¿ã‚¨ãƒªã‚¢
 typedef struct qqtag {
-	uchar	*address;			//	2 ¥¨¥ó¥½¥¦¥Á¥å¥¦ ¥Î ¥¢¥É¥ì¥¹
-	uchar	*partloop;			//	2 ¥¨¥ó¥½¥¦ ¥¬ ¥ª¥ï¥Ã¥¿¥È¥­ ¥Î ¥â¥É¥ê¥µ¥­
-	int		leng;				//	1 ¥Î¥³¥ê LENGTH
-	int		qdat;				//	1 gatetime (q/QÃÍ¤ò·×»»¤·¤¿ÃÍ)
-	uint	fnum;				//	2 ¥¨¥ó¥½¥¦¥Á¥å¥¦ ¥Î BLOCK/FNUM
-	int		detune;				//	2 ¥Ç¥Á¥å¡¼¥ó
+	uchar	*address;			//	2 ã‚¨ãƒ³ã‚½ã‚¦ãƒãƒ¥ã‚¦ ãƒ ã‚¢ãƒ‰ãƒ¬ã‚¹
+	uchar	*partloop;			//	2 ã‚¨ãƒ³ã‚½ã‚¦ ã‚¬ ã‚ªãƒ¯ãƒƒã‚¿ãƒˆã‚­ ãƒ ãƒ¢ãƒ‰ãƒªã‚µã‚­
+	int		leng;				//	1 ãƒã‚³ãƒª LENGTH
+	int		qdat;				//	1 gatetime (q/Qå€¤ã‚’è¨ˆç®—ã—ãŸå€¤)
+	uint	fnum;				//	2 ã‚¨ãƒ³ã‚½ã‚¦ãƒãƒ¥ã‚¦ ãƒ BLOCK/FNUM
+	int		detune;				//	2 ãƒ‡ãƒãƒ¥ãƒ¼ãƒ³
 	int		lfodat;				//	2 LFO DATA
-	int		porta_num;			//	2 ¥İ¥ë¥¿¥á¥ó¥È¤Î²Ã¸ºÃÍ¡ÊÁ´ÂÎ¡Ë
-	int		porta_num2;			//	2 ¥İ¥ë¥¿¥á¥ó¥È¤Î²Ã¸ºÃÍ¡Ê°ì²ó¡Ë
-	int		porta_num3;			//	2 ¥İ¥ë¥¿¥á¥ó¥È¤Î²Ã¸ºÃÍ¡ÊÍ¾¤ê¡Ë
+	int		porta_num;			//	2 ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆã®åŠ æ¸›å€¤ï¼ˆå…¨ä½“ï¼‰
+	int		porta_num2;			//	2 ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆã®åŠ æ¸›å€¤ï¼ˆä¸€å›ï¼‰
+	int		porta_num3;			//	2 ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆã®åŠ æ¸›å€¤ï¼ˆä½™ã‚Šï¼‰
 	int		volume;				//	1 VOLUME
-	int		shift;				//	1 ¥ª¥ó¥«¥¤ ¥·¥Õ¥È ¥Î ¥¢¥¿¥¤
+	int		shift;				//	1 ã‚ªãƒ³ã‚«ã‚¤ ã‚·ãƒ•ãƒˆ ãƒ ã‚¢ã‚¿ã‚¤
 	int		delay;				//	1 LFO	[DELAY] 
 	int		speed;				//	1	[SPEED]
 	int		step;				//	1	[STEP]
@@ -118,44 +118,44 @@ typedef struct qqtag {
 	int		speed2;				//	1	[SPEED_2]
 	int		step2;				//	1	[STEP_2]
 	int		time2;				//	1	[TIME_2]
-	int		lfoswi;				//	1 LFOSW. B0/tone B1/vol B2/Æ±´ü B3/porta
-								//	         B4/tone B5/vol B6/Æ±´ü
+	int		lfoswi;				//	1 LFOSW. B0/tone B1/vol B2/åŒæœŸ B3/porta
+								//	         B4/tone B5/vol B6/åŒæœŸ
 	int		volpush;			//	1 Volume PUSHarea
 	int		mdepth;				//	1 M depth
 	int		mdspd;				//	1 M speed
 	int		mdspd2;				//	1 M speed_2
-	int		envf;				//	1 PSG ENV. [START_FLAG] / -1¤Çextend
+	int		envf;				//	1 PSG ENV. [START_FLAG] / -1ã§extend
 	int		eenv_count;			//	1 ExtendPSGenv/No=0 AR=1 DR=2 SR=3 RR=4
-	int		eenv_ar;			//	1 	/AR		/µìpat
-	int		eenv_dr;			//	1	/DR		/µìpv2
-	int		eenv_sr;			//	1	/SR		/µìpr1
-	int		eenv_rr;			//	1	/RR		/µìpr2
+	int		eenv_ar;			//	1 	/AR		/æ—§pat
+	int		eenv_dr;			//	1	/DR		/æ—§pv2
+	int		eenv_sr;			//	1	/SR		/æ—§pr1
+	int		eenv_rr;			//	1	/RR		/æ—§pr2
 	int		eenv_sl;			//	1	/SL
 	int		eenv_al;			//	1	/AL
-	int		eenv_arc;			//	1	/AR¤Î¥«¥¦¥ó¥¿	/µìpatb
-	int		eenv_drc;			//	1	/DR¤Î¥«¥¦¥ó¥¿
-	int		eenv_src;			//	1	/SR¤Î¥«¥¦¥ó¥¿	/µìpr1b
-	int		eenv_rrc;			//	1	/RR¤Î¥«¥¦¥ó¥¿	/µìpr2b
-	int		eenv_volume;		//	1	/VolumeÃÍ(0¡Á15)/µìpenv
+	int		eenv_arc;			//	1	/ARã®ã‚«ã‚¦ãƒ³ã‚¿	/æ—§patb
+	int		eenv_drc;			//	1	/DRã®ã‚«ã‚¦ãƒ³ã‚¿
+	int		eenv_src;			//	1	/SRã®ã‚«ã‚¦ãƒ³ã‚¿	/æ—§pr1b
+	int		eenv_rrc;			//	1	/RRã®ã‚«ã‚¦ãƒ³ã‚¿	/æ—§pr2b
+	int		eenv_volume;		//	1	/Volumeå€¤(0ã€œ15)/æ—§penv
 	int		extendmode;			//	1 B1/Detune B2/LFO B3/Env Normal/Extend
 	int		fmpan;				//	1 FM Panning + AMD + PMD
 	int		psgpat;				//	1 PSG PATTERN [TONE/NOISE/MIX]
-	int		voicenum;			//	1 ²»¿§ÈÖ¹æ
-	int		loopcheck;			//	1 ¥ë¡¼¥×¤·¤¿¤é£± ½ªÎ»¤·¤¿¤é£³
+	int		voicenum;			//	1 éŸ³è‰²ç•ªå·
+	int		loopcheck;			//	1 ãƒ«ãƒ¼ãƒ—ã—ãŸã‚‰ï¼‘ çµ‚äº†ã—ãŸã‚‰ï¼“
 	int		carrier;			//	1 FM Carrier
-	int		slot1;				//	1 SLOT 1 ¥Î TL
-	int		slot3;				//	1 SLOT 3 ¥Î TL
-	int		slot2;				//	1 SLOT 2 ¥Î TL
-	int		slot4;				//	1 SLOT 4 ¥Î TL
+	int		slot1;				//	1 SLOT 1 ãƒ TL
+	int		slot3;				//	1 SLOT 3 ãƒ TL
+	int		slot2;				//	1 SLOT 2 ãƒ TL
+	int		slot4;				//	1 SLOT 4 ãƒ TL
 	int		slotmask;			//	1 FM slotmask
-	int		neiromask;			//	1 FM ²»¿§ÄêµÁÍÑmaskdata
-	int		lfo_wave;			//	1 LFO¤ÎÇÈ·Á
-	int		partmask;			//	1 PartMask b0:ÄÌ¾ï b1:¸ú²Ì²» b2:NECPCMÍÑ
-								//	   b3:none b4:PPZ/ADEÍÑ b5:s0»ş b6:m b7:°ì»ş
-	int		keyoff_flag;		//	1 Keyoff¤·¤¿¤«¤É¤¦¤«¤ÎFlag
-	int		volmask;			//	1 ²»ÎÌLFO¤Î¥Ş¥¹¥¯
-	int		qdata;				//	1 q¤ÎÃÍ
-	int		qdatb;				//	1 Q¤ÎÃÍ
+	int		neiromask;			//	1 FM éŸ³è‰²å®šç¾©ç”¨maskdata
+	int		lfo_wave;			//	1 LFOã®æ³¢å½¢
+	int		partmask;			//	1 PartMask b0:é€šå¸¸ b1:åŠ¹æœéŸ³ b2:NECPCMç”¨
+								//	   b3:none b4:PPZ/ADEç”¨ b5:s0æ™‚ b6:m b7:ä¸€æ™‚
+	int		keyoff_flag;		//	1 Keyoffã—ãŸã‹ã©ã†ã‹ã®Flag
+	int		volmask;			//	1 éŸ³é‡LFOã®ãƒã‚¹ã‚¯
+	int		qdata;				//	1 qã®å€¤
+	int		qdatb;				//	1 Qã®å€¤
 	int		hldelay;			//	1 HardLFO delay
 	int		hldelay_c;			//	1 HardLFO delay Counter
 	int		_lfodat;			//	2 LFO DATA
@@ -170,112 +170,112 @@ typedef struct qqtag {
 	int		_mdepth;			//	1 M depth
 	int		_mdspd;				//	1 M speed
 	int		_mdspd2;			//	1 M speed_2
-	int		_lfo_wave;			//	1 LFO¤ÎÇÈ·Á
-	int		_volmask;			//	1 ²»ÎÌLFO¤Î¥Ş¥¹¥¯
-	int		mdc;				//	1 M depth Counter (ÊÑÆ°ÃÍ)
+	int		_lfo_wave;			//	1 LFOã®æ³¢å½¢
+	int		_volmask;			//	1 éŸ³é‡LFOã®ãƒã‚¹ã‚¯
+	int		mdc;				//	1 M depth Counter (å¤‰å‹•å€¤)
 	int		mdc2;				//	1 M depth Counter
-	int		_mdc;				//	1 M depth Counter (ÊÑÆ°ÃÍ)
+	int		_mdc;				//	1 M depth Counter (å¤‰å‹•å€¤)
 	int		_mdc2;				//	1 M depth Counter
-	int		onkai;				//	1 ±éÁÕÃæ¤Î²»³¬¥Ç¡¼¥¿ (0ffh:rest)
+	int		onkai;				//	1 æ¼”å¥ä¸­ã®éŸ³éšãƒ‡ãƒ¼ã‚¿ (0ffh:rest)
 	int		sdelay;				//	1 Slot delay
 	int		sdelay_c;			//	1 Slot delay counter
 	int		sdelay_m;			//	1 Slot delay Mask
-	int		alg_fb;				//	1 ²»¿§¤Îalg/fb
-	int		keyon_flag;			//	1 ¿·²»³¬/µÙÉä¥Ç¡¼¥¿¤ò½èÍı¤·¤¿¤éinc
-	int		qdat2;				//	1 q ºÇÄãÊİ¾ÚÃÍ
-	int		onkai_def;			//	1 ±éÁÕÃæ¤Î²»³¬¥Ç¡¼¥¿ (Å¾Ä´½èÍıÁ° / ?fh:rest)
-	int		shift_def;			//	1 ¥Ş¥¹¥¿¡¼Å¾Ä´ÃÍ
+	int		alg_fb;				//	1 éŸ³è‰²ã®alg/fb
+	int		keyon_flag;			//	1 æ–°éŸ³éš/ä¼‘ç¬¦ãƒ‡ãƒ¼ã‚¿ã‚’å‡¦ç†ã—ãŸã‚‰inc
+	int		qdat2;				//	1 q æœ€ä½ä¿è¨¼å€¤
+	int		onkai_def;			//	1 æ¼”å¥ä¸­ã®éŸ³éšãƒ‡ãƒ¼ã‚¿ (è»¢èª¿å‡¦ç†å‰ / ?fh:rest)
+	int		shift_def;			//	1 ãƒã‚¹ã‚¿ãƒ¼è»¢èª¿å€¤
 	int		qdat3;				//	1 q Random
 } QQ;
 
 
 typedef struct OpenWorktag {
-	QQ *MusPart[NumOfAllPart];	// ¥Ñ¡¼¥È¥ï¡¼¥¯¤Î¥İ¥¤¥ó¥¿
-	uchar	*mmlbuf;			//	Musicdata¤Îaddress+1
-	uchar	*tondat;			//	Voicedata¤Îaddress
-	uchar	*efcdat;			//	FM  Effecdata¤Îaddress
-	uchar	*prgdat_adr;		//	¶Ê¥Ç¡¼¥¿Ãæ²»¿§¥Ç¡¼¥¿ÀèÆ¬ÈÖÃÏ
-	ushort	*radtbl;			//	R part offset table ÀèÆ¬ÈÖÃÏ
-	uchar	*rhyadr;			//	R part ±éÁÕÃæÈÖÃÏ
-	int		rhythmmask;			//	Rhythm²»¸»¤Î¥Ş¥¹¥¯ x8c/10h¤Îbit¤ËÂĞ±ş
-	int		fm_voldown;			//	FM voldown ¿ôÃÍ
-	int		ssg_voldown;		//	PSG voldown ¿ôÃÍ
-	int		pcm_voldown;		//	ADPCM voldown ¿ôÃÍ
-	int		rhythm_voldown;		//	RHYTHM voldown ¿ôÃÍ
-	int		prg_flg;			//	¶Ê¥Ç¡¼¥¿¤Ë²»¿§¤¬´Ş¤Ş¤ì¤Æ¤¤¤ë¤«flag
+	QQ *MusPart[NumOfAllPart];	// ãƒ‘ãƒ¼ãƒˆãƒ¯ãƒ¼ã‚¯ã®ãƒã‚¤ãƒ³ã‚¿
+	uchar	*mmlbuf;			//	Musicdataã®address+1
+	uchar	*tondat;			//	Voicedataã®address
+	uchar	*efcdat;			//	FM  Effecdataã®address
+	uchar	*prgdat_adr;		//	æ›²ãƒ‡ãƒ¼ã‚¿ä¸­éŸ³è‰²ãƒ‡ãƒ¼ã‚¿å…ˆé ­ç•ªåœ°
+	ushort	*radtbl;			//	R part offset table å…ˆé ­ç•ªåœ°
+	uchar	*rhyadr;			//	R part æ¼”å¥ä¸­ç•ªåœ°
+	int		rhythmmask;			//	RhythméŸ³æºã®ãƒã‚¹ã‚¯ x8c/10hã®bitã«å¯¾å¿œ
+	int		fm_voldown;			//	FM voldown æ•°å€¤
+	int		ssg_voldown;		//	PSG voldown æ•°å€¤
+	int		pcm_voldown;		//	ADPCM voldown æ•°å€¤
+	int		rhythm_voldown;		//	RHYTHM voldown æ•°å€¤
+	int		prg_flg;			//	æ›²ãƒ‡ãƒ¼ã‚¿ã«éŸ³è‰²ãŒå«ã¾ã‚Œã¦ã„ã‚‹ã‹flag
 	int		x68_flg;			//	OPM flag
 	int		status;				//	status1
 	int		status2;			//	status2
 	int		tempo_d;			//	tempo (TIMER-B)
-	int		fadeout_speed;		//	FadeoutÂ®ÅÙ
-	int		fadeout_volume;		//	Fadeout²»ÎÌ
-	int		tempo_d_push;		//	tempo (TIMER-B) / ÊİÂ¸ÍÑ
-	int		syousetu_lng;		//	¾®Àá¤ÎÄ¹¤µ
-	int		opncount;			//	ºÇÃ»²»Éä¥«¥¦¥ó¥¿
-	int		TimerAtime;			//	TimerA¥«¥¦¥ó¥¿
-	int		effflag;			//	PSG¸ú²Ì²»È¯À¼on/off flag(¥æ¡¼¥¶¡¼¤¬ÂåÆş)
-	int		psnoi;				//	PSG noise¼şÇÈ¿ô
-	int		psnoi_last;			//	PSG noise¼şÇÈ¿ô(ºÇ¸å¤ËÄêµÁ¤·¤¿¿ôÃÍ)
-	int		pcmstart;			//	PCM²»¿§¤ÎstartÃÍ
-	int		pcmstop;			//	PCM²»¿§¤ÎstopÃÍ
-	int		rshot_dat;			//	¥ê¥º¥à²»¸» shot flag
-	int		rdat[6];			//	¥ê¥º¥à²»¸» ²»ÎÌ/¥Ñ¥ó¥Ç¡¼¥¿
-	int		rhyvol;				//	¥ê¥º¥à¥È¡¼¥¿¥ë¥ì¥Ù¥ë
-	int		kshot_dat;			//	£Ó£Ó£Ç¥ê¥º¥à shot flag
+	int		fadeout_speed;		//	Fadeouté€Ÿåº¦
+	int		fadeout_volume;		//	FadeoutéŸ³é‡
+	int		tempo_d_push;		//	tempo (TIMER-B) / ä¿å­˜ç”¨
+	int		syousetu_lng;		//	å°ç¯€ã®é•·ã•
+	int		opncount;			//	æœ€çŸ­éŸ³ç¬¦ã‚«ã‚¦ãƒ³ã‚¿
+	int		TimerAtime;			//	TimerAã‚«ã‚¦ãƒ³ã‚¿
+	int		effflag;			//	PSGåŠ¹æœéŸ³ç™ºå£°on/off flag(ãƒ¦ãƒ¼ã‚¶ãƒ¼ãŒä»£å…¥)
+	int		psnoi;				//	PSG noiseå‘¨æ³¢æ•°
+	int		psnoi_last;			//	PSG noiseå‘¨æ³¢æ•°(æœ€å¾Œã«å®šç¾©ã—ãŸæ•°å€¤)
+	int		pcmstart;			//	PCMéŸ³è‰²ã®startå€¤
+	int		pcmstop;			//	PCMéŸ³è‰²ã®stopå€¤
+	int		rshot_dat;			//	ãƒªã‚ºãƒ éŸ³æº shot flag
+	int		rdat[6];			//	ãƒªã‚ºãƒ éŸ³æº éŸ³é‡/ãƒ‘ãƒ³ãƒ‡ãƒ¼ã‚¿
+	int		rhyvol;				//	ãƒªã‚ºãƒ ãƒˆãƒ¼ã‚¿ãƒ«ãƒ¬ãƒ™ãƒ«
+	int		kshot_dat;			//	ï¼³ï¼³ï¼§ãƒªã‚ºãƒ  shot flag
 	int		play_flag;			//	play flag
-	int		fade_stop_flag;		//	Fadeout¸å MSTOP¤¹¤ë¤«¤É¤¦¤«¤Î¥Õ¥é¥°
-	bool	kp_rhythm_flag;		//	K/Rpart¤ÇRhythm²»¸»¤òÌÄ¤é¤¹¤«flag
-	int		pcm_gs_flag;		//	ADPCM»ÈÍÑ µö²Ä¥Õ¥é¥° (0¤Çµö²Ä)
-	int		slot_detune1;		//	FM3 Slot DetuneÃÍ slot1
-	int		slot_detune2;		//	FM3 Slot DetuneÃÍ slot2
-	int		slot_detune3;		//	FM3 Slot DetuneÃÍ slot3
-	int		slot_detune4;		//	FM3 Slot DetuneÃÍ slot4
-	int		TimerB_speed;		//	TimerB¤Î¸½ºßÃÍ(=ff_tempo¤Ê¤éffÃæ)
-	int		fadeout_flag;		//	ÆâÉô¤«¤éfout¤ò¸Æ¤Ó½Ğ¤·¤¿»ş1
-	int		revpan;				//	PCM86µÕÁêflag
-	int		pcm86_vol;			//	PCM86¤Î²»ÎÌ¤òSPB¤Ë¹ç¤ï¤»¤ë¤«?
-	int		syousetu;			//	¾®Àá¥«¥¦¥ó¥¿
-	int		port22h;			//	OPN-PORT 22H ¤ËºÇ¸å¤Ë½ĞÎÏ¤·¤¿ÃÍ(hlfo)
-	int		tempo_48;			//	¸½ºß¤Î¥Æ¥ó¥İ(clock=48 t¤ÎÃÍ)
-	int		tempo_48_push;		//	¸½ºß¤Î¥Æ¥ó¥İ(Æ±¾å/ÊİÂ¸ÍÑ)
-	int		_fm_voldown;		//	FM voldown ¿ôÃÍ (ÊİÂ¸ÍÑ)
-	int		_ssg_voldown;		//	PSG voldown ¿ôÃÍ (ÊİÂ¸ÍÑ)
-	int		_pcm_voldown;		//	PCM voldown ¿ôÃÍ (ÊİÂ¸ÍÑ)
-	int		_rhythm_voldown;	//	RHYTHM voldown ¿ôÃÍ (ÊİÂ¸ÍÑ)
-	int		_pcm86_vol;			//	PCM86¤Î²»ÎÌ¤òSPB¤Ë¹ç¤ï¤»¤ë¤«? (ÊİÂ¸ÍÑ)
-	int		rshot_bd;			//	¥ê¥º¥à²»¸» shot inc flag (BD)
-	int		rshot_sd;			//	¥ê¥º¥à²»¸» shot inc flag (SD)
-	int		rshot_sym;			//	¥ê¥º¥à²»¸» shot inc flag (CYM)
-	int		rshot_hh;			//	¥ê¥º¥à²»¸» shot inc flag (HH)
-	int		rshot_tom;			//	¥ê¥º¥à²»¸» shot inc flag (TOM)
-	int		rshot_rim;			//	¥ê¥º¥à²»¸» shot inc flag (RIM)
-	int		rdump_bd;			//	¥ê¥º¥à²»¸» dump inc flag (BD)
-	int		rdump_sd;			//	¥ê¥º¥à²»¸» dump inc flag (SD)
-	int		rdump_sym;			//	¥ê¥º¥à²»¸» dump inc flag (CYM)
-	int		rdump_hh;			//	¥ê¥º¥à²»¸» dump inc flag (HH)
-	int		rdump_tom;			//	¥ê¥º¥à²»¸» dump inc flag (TOM)
-	int		rdump_rim;			//	¥ê¥º¥à²»¸» dump inc flag (RIM)
+	int		fade_stop_flag;		//	Fadeoutå¾Œ MSTOPã™ã‚‹ã‹ã©ã†ã‹ã®ãƒ•ãƒ©ã‚°
+	bool	kp_rhythm_flag;		//	K/Rpartã§RhythméŸ³æºã‚’é³´ã‚‰ã™ã‹flag
+	int		pcm_gs_flag;		//	ADPCMä½¿ç”¨ è¨±å¯ãƒ•ãƒ©ã‚° (0ã§è¨±å¯)
+	int		slot_detune1;		//	FM3 Slot Detuneå€¤ slot1
+	int		slot_detune2;		//	FM3 Slot Detuneå€¤ slot2
+	int		slot_detune3;		//	FM3 Slot Detuneå€¤ slot3
+	int		slot_detune4;		//	FM3 Slot Detuneå€¤ slot4
+	int		TimerB_speed;		//	TimerBã®ç¾åœ¨å€¤(=ff_tempoãªã‚‰ffä¸­)
+	int		fadeout_flag;		//	å†…éƒ¨ã‹ã‚‰foutã‚’å‘¼ã³å‡ºã—ãŸæ™‚1
+	int		revpan;				//	PCM86é€†ç›¸flag
+	int		pcm86_vol;			//	PCM86ã®éŸ³é‡ã‚’SPBã«åˆã‚ã›ã‚‹ã‹?
+	int		syousetu;			//	å°ç¯€ã‚«ã‚¦ãƒ³ã‚¿
+	int		port22h;			//	OPN-PORT 22H ã«æœ€å¾Œã«å‡ºåŠ›ã—ãŸå€¤(hlfo)
+	int		tempo_48;			//	ç¾åœ¨ã®ãƒ†ãƒ³ãƒ(clock=48 tã®å€¤)
+	int		tempo_48_push;		//	ç¾åœ¨ã®ãƒ†ãƒ³ãƒ(åŒä¸Š/ä¿å­˜ç”¨)
+	int		_fm_voldown;		//	FM voldown æ•°å€¤ (ä¿å­˜ç”¨)
+	int		_ssg_voldown;		//	PSG voldown æ•°å€¤ (ä¿å­˜ç”¨)
+	int		_pcm_voldown;		//	PCM voldown æ•°å€¤ (ä¿å­˜ç”¨)
+	int		_rhythm_voldown;	//	RHYTHM voldown æ•°å€¤ (ä¿å­˜ç”¨)
+	int		_pcm86_vol;			//	PCM86ã®éŸ³é‡ã‚’SPBã«åˆã‚ã›ã‚‹ã‹? (ä¿å­˜ç”¨)
+	int		rshot_bd;			//	ãƒªã‚ºãƒ éŸ³æº shot inc flag (BD)
+	int		rshot_sd;			//	ãƒªã‚ºãƒ éŸ³æº shot inc flag (SD)
+	int		rshot_sym;			//	ãƒªã‚ºãƒ éŸ³æº shot inc flag (CYM)
+	int		rshot_hh;			//	ãƒªã‚ºãƒ éŸ³æº shot inc flag (HH)
+	int		rshot_tom;			//	ãƒªã‚ºãƒ éŸ³æº shot inc flag (TOM)
+	int		rshot_rim;			//	ãƒªã‚ºãƒ éŸ³æº shot inc flag (RIM)
+	int		rdump_bd;			//	ãƒªã‚ºãƒ éŸ³æº dump inc flag (BD)
+	int		rdump_sd;			//	ãƒªã‚ºãƒ éŸ³æº dump inc flag (SD)
+	int		rdump_sym;			//	ãƒªã‚ºãƒ éŸ³æº dump inc flag (CYM)
+	int		rdump_hh;			//	ãƒªã‚ºãƒ éŸ³æº dump inc flag (HH)
+	int		rdump_tom;			//	ãƒªã‚ºãƒ éŸ³æº dump inc flag (TOM)
+	int		rdump_rim;			//	ãƒªã‚ºãƒ éŸ³æº dump inc flag (RIM)
 	int		ch3mode;			//	ch3 Mode
-	int		ppz_voldown;		//	PPZ8 voldown ¿ôÃÍ
-	int		_ppz_voldown;		//	PPZ8 voldown ¿ôÃÍ (ÊİÂ¸ÍÑ)
-	int		TimerAflag;			//	TimerA³ä¤ê¹ş¤ßÃæ¡©¥Õ¥é¥°¡Ê¡÷ÉÔÍ×¡©¡Ë
-	int		TimerBflag;			//	TimerB³ä¤ê¹ş¤ßÃæ¡©¥Õ¥é¥°¡Ê¡÷ÉÔÍ×¡©¡Ë
+	int		ppz_voldown;		//	PPZ8 voldown æ•°å€¤
+	int		_ppz_voldown;		//	PPZ8 voldown æ•°å€¤ (ä¿å­˜ç”¨)
+	int		TimerAflag;			//	TimerAå‰²ã‚Šè¾¼ã¿ä¸­ï¼Ÿãƒ•ãƒ©ã‚°ï¼ˆï¼ ä¸è¦ï¼Ÿï¼‰
+	int		TimerBflag;			//	TimerBå‰²ã‚Šè¾¼ã¿ä¸­ï¼Ÿãƒ•ãƒ©ã‚°ï¼ˆï¼ ä¸è¦ï¼Ÿï¼‰
 
 	// for PMDWin
-	int		rate;				//	PCM ½ĞÎÏ¼şÇÈ¿ô(11k, 22k, 44k, 55k)
-	bool	ppz8ip;								//	PPZ8 ¤ÇÊä´°¤¹¤ë¤«
-	bool	ppsip;								//	PPS  ¤ÇÊä´°¤¹¤ë¤«
-	bool	p86ip;								//	P86  ¤ÇÊä´°¤¹¤ë¤«
-	bool	use_p86;							//	P86  ¤ò»ÈÍÑ¤·¤Æ¤¤¤ë¤«
-	int		fadeout2_speed;						//	fadeout(¹â²»¼Á)speed(>0¤Ç fadeout)
-	char	mus_filename[_MAX_PATH];			//	¶Ê¤ÎFILEÌ¾¥Ğ¥Ã¥Õ¥¡
-	char	ppcfilename[_MAX_PATH];				//	PPC ¤ÎFILEÌ¾¥Ğ¥Ã¥Õ¥¡
-	char	pcmdir[MAX_PCMDIR+1][_MAX_PATH];	//	PCM ¸¡º÷¥Ç¥£¥ì¥¯¥È¥ê
+	int		rate;				//	PCM å‡ºåŠ›å‘¨æ³¢æ•°(11k, 22k, 44k, 55k)
+	bool	ppz8ip;								//	PPZ8 ã§è£œå®Œã™ã‚‹ã‹
+	bool	ppsip;								//	PPS  ã§è£œå®Œã™ã‚‹ã‹
+	bool	p86ip;								//	P86  ã§è£œå®Œã™ã‚‹ã‹
+	bool	use_p86;							//	P86  ã‚’ä½¿ç”¨ã—ã¦ã„ã‚‹ã‹
+	int		fadeout2_speed;						//	fadeout(é«˜éŸ³è³ª)speed(>0ã§ fadeout)
+	char	mus_filename[_MAX_PATH];			//	æ›²ã®FILEåãƒãƒƒãƒ•ã‚¡
+	char	ppcfilename[_MAX_PATH];				//	PPC ã®FILEåãƒãƒƒãƒ•ã‚¡
+	char	pcmdir[MAX_PCMDIR+1][_MAX_PATH];	//	PCM æ¤œç´¢ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒª
 } OPEN_WORK;
 
 
 //=============================================================================
-//	COM É÷ interface class
+//	COM é¢¨ interface class
 //=============================================================================
 #ifdef ENABLE_COM_INTERFACE
 interface IPMDWIN : public IFMPMD {

@@ -335,7 +335,7 @@ var exported_functions = [
   '_mdx_load_file',
   '_mdx_teardown',
   '_mdx_get_current_position',
-  // '_mdx_seek_position',
+  '_mdx_seek_position',
   '_mdx_get_max_position',
   '_mdx_get_track_info',
   '_mdx_get_sample_rate',

@@ -13,15 +13,15 @@
 #endif
 
 // ---------------------------------------------------------------------------
-//	½ĞÎÏ¥µ¥ó¥×¥ë¤Î·¿
+//	å‡ºåŠ›ã‚µãƒ³ãƒ—ãƒ«ã®å‹
 //
 #define FM_SAMPLETYPE	int32				// int16 or int32
 
 // ---------------------------------------------------------------------------
-//	Äê¿ô¤½¤Î£±
-//	ÀÅÅª¥Æ¡¼¥Ö¥ë¤Î¥µ¥¤¥º
+//	å®šæ•°ãã®ï¼‘
+//	é™çš„ãƒ†ãƒ¼ãƒ–ãƒ«ã®ã‚µã‚¤ã‚º
 
-#define FM_LFOBITS		8					// ÊÑ¹¹ÉÔ²Ä
+#define FM_LFOBITS		8					// å¤‰æ›´ä¸å¯
 #define FM_TLBITS		7
 
 // ---------------------------------------------------------------------------
@@ -40,7 +40,7 @@ namespace FM
 
 	enum OpType { typeN=0, typeM=1 };
 	
-	//	Tables (¥°¥í¡¼¥Ğ¥ë¤Ê¤â¤Î¤ä asm ¤«¤é»²¾È¤µ¤ì¤ë¤â¤ÎÅù) -----------------
+	//	Tables (ã‚°ãƒ­ãƒ¼ãƒãƒ«ãªã‚‚ã®ã‚„ asm ã‹ã‚‰å‚ç…§ã•ã‚Œã‚‹ã‚‚ã®ç­‰) -----------------
 	void MakeTable();
 	void MakeTimeTable(uint ratio);
 	extern uint32 tltable[];
@@ -49,7 +49,7 @@ namespace FM
 	extern int    pmtable[2][8][FM_LFOENTS];
 	extern uint   amtable[2][4][FM_LFOENTS];
 	extern uint   aml, pml;
-	extern int    pmv;		// LFO ÊÑ²½¥ì¥Ù¥ë
+	extern int    pmv;		// LFO å¤‰åŒ–ãƒ¬ãƒ™ãƒ«
 
 	void StoreSample(ISample& dest, int data);
 
@@ -103,13 +103,13 @@ namespace FM
 		uint32	PGCalc();
 		uint32	PGCalcL();
 
-		uint	dp;			// ¦¤P
+		uint	dp;			// Î”P
 		uint	detune;		// Detune
 		uint	detune2;	// DT2
 		uint	multiple;	// Multiple
-		uint32	pgcount;	// Phase ¸½ºßÃÍ
-		uint32	pgdcount;	// Phase º¹Ê¬ÃÍ
-		int32	pgdcountl;	// Phase º¹Ê¬ÃÍ >> x
+		uint32	pgcount;	// Phase ç¾åœ¨å€¤
+		uint32	pgdcount;	// Phase å·®åˆ†å€¤
+		int32	pgdcountl;	// Phase å·®åˆ†å€¤ >> x
 
 	//	Envelope Generator ---------------------------------------------------
 		enum	EGPhase { next, attack, decay, sustain, release, off };
@@ -120,16 +120,16 @@ namespace FM
 		void	SetEGRate(uint);
 		void	EGUpdate();
 		
-		OpType	type;		// OP ¤Î¼ïÎà (M, N...)
+		OpType	type;		// OP ã®ç¨®é¡ (M, N...)
 		uint	bn;			// Block/Note
-		int		eglevel;	// EG ¤Î½ĞÎÏÃÍ
-		int		eglvnext;	// ¼¡¤Î phase ¤Ë°Ü¤ëÃÍ
-		int32	egstep;		// EG ¤Î¼¡¤ÎÊÑ°Ü¤Ş¤Ç¤Î»ş´Ö
-		int32	egstepd;	// egstep ¤Î»ş´Öº¹Ê¬
-		int		egtransa;	// EG ÊÑ²½¤Î³ä¹ç (for attack)
-		int		egtransd;	// EG ÊÑ²½¤Î³ä¹ç (for decay)
-		int		egout;		// EG+TL ¤ò¹ç¤ï¤»¤¿½ĞÎÏÃÍ
-		int		tlout;		// TL Ê¬¤Î½ĞÎÏÃÍ
+		int		eglevel;	// EG ã®å‡ºåŠ›å€¤
+		int		eglvnext;	// æ¬¡ã® phase ã«ç§»ã‚‹å€¤
+		int32	egstep;		// EG ã®æ¬¡ã®å¤‰ç§»ã¾ã§ã®æ™‚é–“
+		int32	egstepd;	// egstep ã®æ™‚é–“å·®åˆ†
+		int		egtransa;	// EG å¤‰åŒ–ã®å‰²åˆ (for attack)
+		int		egtransd;	// EG å¤‰åŒ–ã®å‰²åˆ (for decay)
+		int		egout;		// EG+TL ã‚’åˆã‚ã›ãŸå‡ºåŠ›å€¤
+		int		tlout;		// TL åˆ†ã®å‡ºåŠ›å€¤
 		int		pmd;		// PM depth
 		int		amd;		// AM depth
 
@@ -151,7 +151,7 @@ namespace FM
 		uint8	ssgtype;	// SSG-Type Envelop Control
 
 		bool	amon;		// enable Amplitude Modulation
-		bool	paramchanged;	// ¥Ñ¥é¥á¡¼¥¿¤¬¹¹¿·¤µ¤ì¤¿
+		bool	paramchanged;	// ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ãŒæ›´æ–°ã•ã‚ŒãŸ
 		bool	mute;
 		
 	//	Tables ---------------------------------------------------------------
@@ -191,8 +191,8 @@ namespace FM
 		static const uint8 fbtable[8];
 		uint	fb;
 		int		buf[4];
-		int*	in[3];			// ³Æ OP ¤ÎÆşÎÏ¥İ¥¤¥ó¥¿
-		int*	out[3];			// ³Æ OP ¤Î½ĞÎÏ¥İ¥¤¥ó¥¿
+		int*	in[3];			// å„ OP ã®å…¥åŠ›ãƒã‚¤ãƒ³ã‚¿
+		int*	out[3];			// å„ OP ã®å‡ºåŠ›ãƒã‚¤ãƒ³ã‚¿
 		int*	pms;
 
 	public:

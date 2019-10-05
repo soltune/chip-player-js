@@ -42,7 +42,7 @@ static void _splitpath (const char *path, char *drive, char *dir, char *fname,
 		slash = strrchr(path, '/');
 	dot = strrchr(path, '.');
 	if (dot && slash && dot < slash)
-		// a:/home/kaoru-k/.xxx/foo ¤Î¤è¤¦¤Ê¾ì¹ç
+		// a:/home/kaoru-k/.xxx/foo ã®ã‚ˆã†ãªå ´åˆ
 		dot = NULL;
 
 	if (!slash) {
@@ -91,7 +91,7 @@ static void _makepath (char *path, const char *drive, const char *dir,
 #endif
 
 //-----------------------------------------------------------------------------
-//	¥³¥ó¥¹¥È¥é¥¯¥¿¡¦¥Ç¥¹¥È¥é¥¯¥¿
+//	ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿ãƒ»ãƒ‡ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 //-----------------------------------------------------------------------------
 PMDWIN::PMDWIN()
 {
@@ -103,7 +103,7 @@ PMDWIN::PMDWIN()
 	us2 = 0;
 	upos = 0;
 
-	uRefCount = 0;								// »²¾È¥«¥¦¥ó¥¿
+	uRefCount = 0;								// å‚ç…§ã‚«ã‚¦ãƒ³ã‚¿
 }
 
 
@@ -113,7 +113,7 @@ PMDWIN::~PMDWIN()
 
 
 //=============================================================================
-//	TimerA¤Î½èÍı[¥á¥¤¥ó]
+//	TimerAã®å‡¦ç†[ãƒ¡ã‚¤ãƒ³]
 //=============================================================================
 void PMDWIN::TimerA_main(void)
 {
@@ -121,11 +121,11 @@ void PMDWIN::TimerA_main(void)
 	open_work.TimerAtime++;
 
 	if((open_work.TimerAtime & 7) == 0) {
-		fout();		//	Fadeout½èÍı
+		fout();		//	Fadeoutå‡¦ç†
 	}
 	if(effwork.effon) {
 		if(pmdwork.ppsdrv_flag == false || effwork.psgefcnum == 0x80) {
-			effplay();		//		SSG¸ú²Ì²»½èÍı
+			effplay();		//		SSGåŠ¹æœéŸ³å‡¦ç†
 		}
 	}
 	
@@ -134,7 +134,7 @@ void PMDWIN::TimerA_main(void)
 
 
 //=============================================================================
-//	TimerB¤Î½èÍı[¥á¥¤¥ó]
+//	TimerBã®å‡¦ç†[ãƒ¡ã‚¤ãƒ³]
 //=============================================================================
 void PMDWIN::TimerB_main(void)
 {
@@ -234,7 +234,7 @@ void PMDWIN::mmain(void)
 }
 
 //=============================================================================
-//	£Æ£Í²»¸»±éÁÕ¥á¥¤¥ó
+//	ï¼¦ï¼­éŸ³æºæ¼”å¥ãƒ¡ã‚¤ãƒ³
 //=============================================================================
 void PMDWIN::fmmain(QQ *qq)
 {
@@ -250,7 +250,7 @@ void PMDWIN::fmmain(QQ *qq)
 		qq->keyoff_flag = -1;
 	} else {
 		// KEYOFF CHECK & Keyoff
-		if((qq->keyoff_flag & 3) == 0) {		// ´û¤Ëkeyoff¤·¤¿¤«¡©
+		if((qq->keyoff_flag & 3) == 0) {		// æ—¢ã«keyoffã—ãŸã‹ï¼Ÿ
 			if(qq->leng <= qq->qdat) {
 				keyoff(qq);
 				qq->keyoff_flag = -1;
@@ -279,11 +279,11 @@ void PMDWIN::fmmain(QQ *qq)
 						break;
 					}
 				}
-				// "L"¤¬¤¢¤Ã¤¿»ş
+				// "L"ãŒã‚ã£ãŸæ™‚
 				si = qq->partloop;
 				qq->loopcheck = 1;
 			} else {
-				if(*si == 0xda) {		// ¥İ¥ë¥¿¥á¥ó¥È
+				if(*si == 0xda) {		// ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆ
 					si = porta(qq, ++si);
 					pmdwork.loop_work &= qq->loopcheck;
 					return;
@@ -313,7 +313,7 @@ void PMDWIN::fmmain(QQ *qq)
 					pmdwork.tieflag = 0;
 					pmdwork.volpush_flag = 0;
 					
-					if(*si == 0xfb) {		// '&'¤¬Ä¾¸å¤Ë¤¢¤Ã¤¿¤ékeyoff¤·¤Ê¤¤
+					if(*si == 0xfb) {		// '&'ãŒç›´å¾Œã«ã‚ã£ãŸã‚‰keyoffã—ãªã„
 						qq->keyoff_flag = 2;
 					} else {
 						qq->keyoff_flag = 0;
@@ -322,7 +322,7 @@ void PMDWIN::fmmain(QQ *qq)
 					return;
 				} else {
 					si++;
-					qq->fnum = 0;		//µÙÉä¤ËÀßÄê
+					qq->fnum = 0;		//ä¼‘ç¬¦ã«è¨­å®š
 					qq->onkai = 255;
 					qq->onkai_def = 255;
 					qq->leng = *si++;
@@ -343,7 +343,7 @@ void PMDWIN::fmmain(QQ *qq)
 	
 	if(qq->partmask == 0) {
 	
-		// LFO & Portament & Fadeout ½èÍı ¤ò¤·¤Æ½ªÎ»
+		// LFO & Portament & Fadeout å‡¦ç† ã‚’ã—ã¦çµ‚äº†
 		if(qq->hldelay_c) {
 			if(--qq->hldelay_c == 0) {
 				opna.SetReg(pmdwork.fmsel +
@@ -353,7 +353,7 @@ void PMDWIN::fmmain(QQ *qq)
 		
 		if(qq->sdelay_c) {
 			if(--qq->sdelay_c == 0) {
-				if((qq->keyoff_flag & 1) == 0) {	// ´û¤Ëkeyoff¤·¤¿¤«¡©
+				if((qq->keyoff_flag & 1) == 0) {	// æ—¢ã«keyoffã—ãŸã‹ï¼Ÿ
 					keyon(qq);
 				}
 			}
@@ -426,13 +426,13 @@ void PMDWIN::kof1(QQ *qq)
 
 
 //=============================================================================
-//	£Æ£Í¡¡£Ë£Å£Ù£Ï£Î
+//	ï¼¦ï¼­ã€€ï¼«ï¼¥ï¼¹ï¼¯ï¼®
 //=============================================================================
 void PMDWIN::keyon(QQ *qq)
 {
 	int	al;
 	
-	if(qq->onkai == 255) return;		// ¥­¥å¥¦¥Õ ¥Î ¥È¥­
+	if(qq->onkai == 255) return;		// ã‚­ãƒ¥ã‚¦ãƒ• ãƒ ãƒˆã‚­
 	
 	if(pmdwork.fmsel == 0) {
 		al = pmdwork.omote_key[pmdwork.partb-1] | qq->slotmask;
@@ -494,7 +494,7 @@ void PMDWIN::otodasi(QQ *qq)
 
 
 //=============================================================================
-//	FM²»¸»¤Îdetune¤Ç¥ª¥¯¥¿¡¼¥Ö¤¬ÊÑ¤ï¤ë»ş¤Î½¤Àµ
+//	FMéŸ³æºã®detuneã§ã‚ªã‚¯ã‚¿ãƒ¼ãƒ–ãŒå¤‰ã‚ã‚‹æ™‚ã®ä¿®æ­£
 //		input	CX:block / AX:fnum+detune
 //		output	CX:block / AX:fnum
 //=============================================================================
@@ -506,7 +506,7 @@ void PMDWIN::fm_block_calc(int *cx, int *ax)
 		*cx += 0x800;			// oct.up
 		if(*cx != 0x4000) {
 			*ax -= 0x26a;		// 4d2h-26ah
-		} else {				// ¥â¥¦ ¥³¥ì¥¤¥¸¥ç¥¦ ¥¢¥¬¥ó¥Ê¥¤¥è¥ó
+		} else {				// ãƒ¢ã‚¦ ã‚³ãƒ¬ã‚¤ã‚¸ãƒ§ã‚¦ ã‚¢ã‚¬ãƒ³ãƒŠã‚¤ãƒ¨ãƒ³
 			*cx = 0x3800;
 			if(*ax >= 0x800) 
 				*ax = 0x7ff;	// 4d2h
@@ -518,7 +518,7 @@ void PMDWIN::fm_block_calc(int *cx, int *ax)
 		*cx -= 0x800;			// oct.down
 		if(*cx >= 0) {
 			*ax += 0x26a;		// 4d2h-26ah
-		} else {				// ¥â¥¦ ¥³¥ì¥¤¥¸¥ç¥¦ ¥µ¥¬¥ó¥Ê¥¤¥è¥ó
+		} else {				// ãƒ¢ã‚¦ ã‚³ãƒ¬ã‚¤ã‚¸ãƒ§ã‚¦ ã‚µã‚¬ãƒ³ãƒŠã‚¤ãƒ¨ãƒ³
 			*cx = 0;
 			if(*ax < 8) {
 				*ax = 8;
@@ -530,7 +530,7 @@ void PMDWIN::fm_block_calc(int *cx, int *ax)
 
 
 //=============================================================================
-//	¥Ñ¡¼¥È¤òÈ½ÊÌ¤·¤Æch3¤Ê¤émodeÀßÄê
+//	ãƒ‘ãƒ¼ãƒˆã‚’åˆ¤åˆ¥ã—ã¦ch3ãªã‚‰modeè¨­å®š
 //=============================================================================
 int PMDWIN::ch3_setting(QQ *qq)
 {
@@ -559,7 +559,7 @@ void PMDWIN::cm_clear(int *ah, int *al)
 
 
 //=============================================================================
-//	FM3¤Îmode¤òÀßÄê¤¹¤ë
+//	FM3ã®modeã‚’è¨­å®šã™ã‚‹
 //=============================================================================
 void PMDWIN::ch3mode_set(QQ *qq)
 {
@@ -594,11 +594,11 @@ void PMDWIN::ch3mode_set(QQ *qq)
 		cm_clear(&ah, &al);
 	}
 	
-	if(ah == open_work.ch3mode) return;		// °ÊÁ°¤ÈÊÑ¹¹Ìµ¤·¤Ê¤é²¿¤â¤·¤Ê¤¤
+	if(ah == open_work.ch3mode) return;		// ä»¥å‰ã¨å¤‰æ›´ç„¡ã—ãªã‚‰ä½•ã‚‚ã—ãªã„
 	open_work.ch3mode = ah;
-	opna.SetReg(0x27, ah & 0xcf);			// Reset¤Ï¤·¤Ê¤¤
+	opna.SetReg(0x27, ah & 0xcf);			// Resetã¯ã—ãªã„
 	
-	//	¸ú²Ì²»¥â¡¼¥É¤Ë°Ü¤Ã¤¿¾ì¹ç¤Ï¤½¤ì°ÊÁ°¤ÎFM3¥Ñ¡¼¥È¤Ç²»Äø½ñ¤­´¹¤¨
+	//	åŠ¹æœéŸ³ãƒ¢ãƒ¼ãƒ‰ã«ç§»ã£ãŸå ´åˆã¯ãã‚Œä»¥å‰ã®FM3ãƒ‘ãƒ¼ãƒˆã§éŸ³ç¨‹æ›¸ãæ›ãˆ
 	if(ah == 0x3f || qq == &FMPart[2]) return;
 	
 	if(FMPart[2].partmask == 0) otodasi(&FMPart[2]);
@@ -610,7 +610,7 @@ void PMDWIN::ch3mode_set(QQ *qq)
 
 
 //=============================================================================
-//	ch3=¸ú²Ì²»¥â¡¼¥É ¤ò»ÈÍÑ¤¹¤ë¾ì¹ç¤Î²»ÄøÀßÄê
+//	ch3=åŠ¹æœéŸ³ãƒ¢ãƒ¼ãƒ‰ ã‚’ä½¿ç”¨ã™ã‚‹å ´åˆã®éŸ³ç¨‹è¨­å®š
 //			input CX:block AX:fnum
 //=============================================================================
 void PMDWIN::ch3_special(QQ *qq, int ax, int cx)
@@ -719,14 +719,14 @@ void PMDWIN::panset_main(QQ *qq, int al)
 	qq->fmpan = (qq->fmpan & 0x3f) | (al << 6) & 0xc0;
 	
 	if(pmdwork.partb == 3 && pmdwork.fmsel == 0) {
-		//	FM3¤Î¾ì¹ç¤Ï 4¤Ä¤Î¥Ñ¡¼¥ÈÁí¤ÆÀßÄê
+		//	FM3ã®å ´åˆã¯ 4ã¤ã®ãƒ‘ãƒ¼ãƒˆç·ã¦è¨­å®š
 		FMPart[2].fmpan = qq->fmpan;
 		ExtPart[0].fmpan = qq->fmpan;
 		ExtPart[1].fmpan = qq->fmpan;
 		ExtPart[2].fmpan = qq->fmpan;
 	}
 	
-	if(qq->partmask == 0) {		// ¥Ñ¡¼¥È¥Ş¥¹¥¯¤µ¤ì¤Æ¤¤¤ë¤«¡©
+	if(qq->partmask == 0) {		// ãƒ‘ãƒ¼ãƒˆãƒã‚¹ã‚¯ã•ã‚Œã¦ã„ã‚‹ã‹ï¼Ÿ
 		// dl = al;
 		opna.SetReg(pmdwork.fmsel + pmdwork.partb+0xb4-1,
 													calc_panout(qq));
@@ -735,14 +735,14 @@ void PMDWIN::panset_main(QQ *qq, int al)
 
 
 //=============================================================================
-//	0b4h¡Á¤ËÀßÄê¤¹¤ë¥Ç¡¼¥¿¤ò¼èÆÀ out.dl
+//	0b4hã€œã«è¨­å®šã™ã‚‹ãƒ‡ãƒ¼ã‚¿ã‚’å–å¾— out.dl
 //=============================================================================
 uchar PMDWIN::calc_panout(QQ *qq)
 {
 	int	dl;
 	
 	dl = qq->fmpan;
-	if(qq->hldelay_c) dl &= 0xc0;	// HLFO Delay¤¬»Ä¤Ã¤Æ¤ë¾ì¹ç¤Ï¥Ñ¥ó¤Î¤ßÀßÄê
+	if(qq->hldelay_c) dl &= 0xc0;	// HLFO DelayãŒæ®‹ã£ã¦ã‚‹å ´åˆã¯ãƒ‘ãƒ³ã®ã¿è¨­å®š
 	return dl;
 }
 
@@ -755,7 +755,7 @@ uchar * PMDWIN::panset_ex(QQ *qq, uchar *si)
 	int		al;
 	
 	al = read_char(si++);
-	si++;		// µÕÁöflag¤ÏÆÉ¤ßÈô¤Ğ¤¹
+	si++;		// é€†èµ°flagã¯èª­ã¿é£›ã°ã™
 	
 	if(al > 0) {
 		al = 2; 
@@ -794,7 +794,7 @@ uchar * PMDWIN::panset8_ex(QQ *qq, uchar *si)
 	}
 
 	if(open_work.revpan != 1) {
-		flag |= 4;				// µÕÁê
+		flag |= 4;				// é€†ç›¸
 	}	
 	p86drv.SetPan(flag, data);
 	
@@ -803,7 +803,7 @@ uchar * PMDWIN::panset8_ex(QQ *qq, uchar *si)
 
 
 //=============================================================================
-//	£Æ£Í²»¸»ÍÑ¡¡Entry
+//	ï¼¦ï¼­éŸ³æºç”¨ã€€Entry
 //=============================================================================
 void PMDWIN::lfoinit(QQ *qq, int al)
 {
@@ -817,12 +817,12 @@ void PMDWIN::lfoinit(QQ *qq, int al)
 
 	qq->onkai_def = al;
 
-	if(ah == 0x0f) {				// ¥­¥å¡¼¥Õ ¥Î ¥È¥­ ¥Ï INIT ¥·¥Ê¥¤¥è
+	if(ah == 0x0f) {				// ã‚­ãƒ¥ãƒ¼ãƒ• ãƒ ãƒˆã‚­ ãƒ INIT ã‚·ãƒŠã‚¤ãƒ¨
 		lfo_exit(qq);
 		return;
 	}
 	
-	qq->porta_num = 0;				// ¥İ¥ë¥¿¥á¥ó¥È¤Ï½é´ü²½
+	qq->porta_num = 0;				// ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆã¯åˆæœŸåŒ–
 	
 	if((pmdwork.tieflag & 1) == 0) {
 		lfin1(qq);
@@ -833,14 +833,14 @@ void PMDWIN::lfoinit(QQ *qq, int al)
 
 
 //=============================================================================
-//	£Æ£Í¡¡BLOCK,F-NUMBER SET
+//	ï¼¦ï¼­ã€€BLOCK,F-NUMBER SET
 //		INPUTS	-- AL [KEY#,0-7F]
 //=============================================================================
 void PMDWIN::fnumset(QQ *qq, int al)
 {
 	int		ax,bx;
 	
-	if((al & 0x0f) != 0x0f) {		// ²»Éä¤Î¾ì¹ç
+	if((al & 0x0f) != 0x0f) {		// éŸ³ç¬¦ã®å ´åˆ
 		qq->onkai = al;
 		
 		// BLOCK/FNUM CALICULATE
@@ -850,17 +850,17 @@ void PMDWIN::fnumset(QQ *qq, int al)
 		// BLOCK SET
 		ax |= (((al >> 1) & 0x38) << 8);
 		qq->fnum = ax;
-	} else {						// µÙÉä¤Î¾ì¹ç
+	} else {						// ä¼‘ç¬¦ã®å ´åˆ
 		qq->onkai = 255;
 		if((qq->lfoswi & 0x11) == 0) {
-			qq->fnum = 0;			// ²»ÄøLFOÌ¤»ÈÍÑ
+			qq->fnum = 0;			// éŸ³ç¨‹LFOæœªä½¿ç”¨
 		}
 	}
 }
 
 
 //=============================================================================
-//	£Æ£Í²»ÎÌÀßÄê¥á¥¤¥ó
+//	ï¼¦ï¼­éŸ³é‡è¨­å®šãƒ¡ã‚¤ãƒ³
 //=============================================================================
 void PMDWIN::volset(QQ *qq)
 {
@@ -874,16 +874,16 @@ void PMDWIN::volset(QQ *qq)
 		cl = qq->volume;
 	}
 	
-	if(qq != &EffPart) {	// ¸ú²Ì²»¤Î¾ì¹ç¤Ïvoldown/fadeout±Æ¶ÁÌµ¤·
+	if(qq != &EffPart) {	// åŠ¹æœéŸ³ã®å ´åˆã¯voldown/fadeoutå½±éŸ¿ç„¡ã—
 		//--------------------------------------------------------------------
-		//	²»ÎÌdown·×»»
+		//	éŸ³é‡downè¨ˆç®—
 		//--------------------------------------------------------------------
 		if(open_work.fm_voldown) {
 			cl = ((256-open_work.fm_voldown) * cl) >> 8;
 		}
 		
 		//--------------------------------------------------------------------
-		//	Fadeout·×»»
+		//	Fadeoutè¨ˆç®—
 		//--------------------------------------------------------------------
 		if(open_work.fadeout_volume >= 2) {
 			cl = ((256-(open_work.fadeout_volume >> 1)) * cl) >> 8;
@@ -891,7 +891,7 @@ void PMDWIN::volset(QQ *qq)
 	}
 	
 	//------------------------------------------------------------------------
-	//	²»ÎÌ¤òcarrier¤ËÀßÄê & ²»ÎÌLFO½èÍı
+	//	éŸ³é‡ã‚’carrierã«è¨­å®š & éŸ³é‡LFOå‡¦ç†
 	//		input	cl to Volume[0-127]
 	//			bl to SlotMask
 	//------------------------------------------------------------------------
@@ -904,8 +904,8 @@ void PMDWIN::volset(QQ *qq)
 	vol_tbl[2] = 0x80;
 	vol_tbl[3] = 0x80;
 	
-	cl = 255-cl;			// cl=carrier¤ËÀßÄê¤¹¤ë²»ÎÌ+80H(add)
-	bl &= qq->carrier;		// bl=²»ÎÌ¤òÀßÄê¤¹¤ëSLOT xxxx0000b
+	cl = 255-cl;			// cl=carrierã«è¨­å®šã™ã‚‹éŸ³é‡+80H(add)
+	bl &= qq->carrier;		// bl=éŸ³é‡ã‚’è¨­å®šã™ã‚‹SLOT xxxx0000b
 	bh |= bl;
 	
 	if(bl & 0x80) vol_tbl[0] = cl;
@@ -916,7 +916,7 @@ void PMDWIN::volset(QQ *qq)
 	if(cl != 255) {
 		if(qq->lfoswi & 2) {
 			bl = qq->volmask;
-			bl &= qq->slotmask;		// bl=²»ÎÌLFO¤òÀßÄê¤¹¤ëSLOT xxxx0000b
+			bl &= qq->slotmask;		// bl=éŸ³é‡LFOã‚’è¨­å®šã™ã‚‹SLOT xxxx0000b
 			bh |= bl;
 			fmlfo_sub(qq, qq->lfodat, bl, vol_tbl);
 		}
@@ -939,10 +939,10 @@ void PMDWIN::volset(QQ *qq)
 
 
 //-----------------------------------------------------------------------------
-//	¥¹¥í¥Ã¥ÈËè¤Î·×»» & ½ĞÎÏ ¥Ş¥¯¥í
-//			in.	dl	¸µ¤ÎTLÃÍ
-//				dh	Out¤¹¤ë¥ì¥¸¥¹¥¿
-//				al	²»ÎÌÊÑÆ°ÃÍ Ãæ¿´=80h
+//	ã‚¹ãƒ­ãƒƒãƒˆæ¯ã®è¨ˆç®— & å‡ºåŠ› ãƒã‚¯ãƒ­
+//			in.	dl	å…ƒã®TLå€¤
+//				dh	Outã™ã‚‹ãƒ¬ã‚¸ã‚¹ã‚¿
+//				al	éŸ³é‡å¤‰å‹•å€¤ ä¸­å¿ƒ=80h
 //-----------------------------------------------------------------------------
 void PMDWIN::volset_slot(int dh, int dl, int al)
 {
@@ -953,7 +953,7 @@ void PMDWIN::volset_slot(int dh, int dl, int al)
 
 
 //-----------------------------------------------------------------------------
-//	²»ÎÌLFOÍÑ¥µ¥Ö
+//	éŸ³é‡LFOç”¨ã‚µãƒ–
 //-----------------------------------------------------------------------------
 void PMDWIN::fmlfo_sub(QQ *qq, int al, int bl, uchar *vol_tbl)
 {
@@ -965,7 +965,7 @@ void PMDWIN::fmlfo_sub(QQ *qq, int al, int bl, uchar *vol_tbl)
 
 
 //=============================================================================
-//	£Ó£Ó£Ç²»¸»¡¡±éÁÕ¡¡¥á¥¤¥ó
+//	ï¼³ï¼³ï¼§éŸ³æºã€€æ¼”å¥ã€€ãƒ¡ã‚¤ãƒ³
 //=============================================================================
 void PMDWIN::psgmain(QQ *qq)
 {
@@ -981,16 +981,16 @@ void PMDWIN::psgmain(QQ *qq)
 
 	if(qq == &SSGPart[2] && pmdwork.ppsdrv_flag &&
 					open_work.kshot_dat && qq->leng <= qq->qdat) {
-					// PPS »ÈÍÑ»ş & SSG 3ch & SSG ¸ú²Ì²»ÌÄ¤é¤·¤Æ¤¤¤ë¾ì¹ç
+					// PPS ä½¿ç”¨æ™‚ & SSG 3ch & SSG åŠ¹æœéŸ³é³´ã‚‰ã—ã¦ã„ã‚‹å ´åˆ
 		keyoffp(qq);
-		opna.SetReg(pmdwork.partb+8-1, 0);		// ¶¯À©Åª¤Ë²»¤ò»ß¤á¤ë
+		opna.SetReg(pmdwork.partb+8-1, 0);		// å¼·åˆ¶çš„ã«éŸ³ã‚’æ­¢ã‚ã‚‹
 		qq->keyoff_flag = -1;			
 	}
 	
 	if(qq->partmask) {
 		qq->keyoff_flag = -1;
 	} else {
-		if((qq->keyoff_flag & 3) == 0) {		// ´û¤Ëkeyoff¤·¤¿¤«¡©
+		if((qq->keyoff_flag & 3) == 0) {		// æ—¢ã«keyoffã—ãŸã‹ï¼Ÿ
 			if(qq->leng <= qq->qdat) {
 				keyoffp(qq);
 				qq->keyoff_flag = -1;
@@ -1022,18 +1022,18 @@ void PMDWIN::psgmain(QQ *qq)
 						break;
 					}
 				}
-				// "L"¤¬¤¢¤Ã¤¿»ş
+				// "L"ãŒã‚ã£ãŸæ™‚
 				si = qq->partloop;
 				qq->loopcheck = 1;
 			} else {
-				if(*si == 0xda) {						// ¥İ¥ë¥¿¥á¥ó¥È
+				if(*si == 0xda) {						// ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆ
 					si = portap(qq, ++si);
 					pmdwork.loop_work &= qq->loopcheck;
 					return;
 				} else if(qq->partmask) {
 					if(ssgdrum_check(qq, *si) == 0) {
 						si++;
-						qq->fnum = 0;		//µÙÉä¤ËÀßÄê
+						qq->fnum = 0;		//ä¼‘ç¬¦ã«è¨­å®š
 						qq->onkai = 255;
 						qq->leng = *si++;
 						qq->keyon_flag++;
@@ -1074,7 +1074,7 @@ void PMDWIN::psgmain(QQ *qq)
 				pmdwork.volpush_flag = 0;
 				qq->keyoff_flag = 0;
 				
-				if(*si == 0xfb) {		// '&'¤¬Ä¾¸å¤Ë¤¢¤Ã¤¿¤ékeyoff¤·¤Ê¤¤
+				if(*si == 0xfb) {		// '&'ãŒç›´å¾Œã«ã‚ã£ãŸã‚‰keyoffã—ãªã„
 					qq->keyoff_flag = 2;
 				}
 				pmdwork.loop_work &= qq->loopcheck;
@@ -1120,7 +1120,7 @@ void PMDWIN::psgmain(QQ *qq)
 
 void PMDWIN::keyoffp(QQ *qq)
 {
-	if(qq->onkai == 255) return;		// ¥­¥å¥¦¥Õ ¥Î ¥È¥­
+	if(qq->onkai == 255) return;		// ã‚­ãƒ¥ã‚¦ãƒ• ãƒ ãƒˆã‚­
 	if(qq->envf != -1) {
 		qq->envf = 2;
 	} else {
@@ -1130,7 +1130,7 @@ void PMDWIN::keyoffp(QQ *qq)
 
 
 //=============================================================================
-//	¥ê¥º¥à¥Ñ¡¼¥È¡¡±éÁÕ¡¡¥á¥¤¥ó
+//	ãƒªã‚ºãƒ ãƒ‘ãƒ¼ãƒˆã€€æ¼”å¥ã€€ãƒ¡ã‚¤ãƒ³
 //=============================================================================
 void PMDWIN::rhythmmain(QQ *qq)
 {
@@ -1193,7 +1193,7 @@ void PMDWIN::rhythmmain(QQ *qq)
 				pmdwork.volpush_flag = 0;
 				pmdwork.loop_work &= qq->loopcheck;
 				return;
-			} else {		//  "L"¤¬¤¢¤Ã¤¿»ş
+			} else {		//  "L"ãŒã‚ã£ãŸæ™‚
 				si = bx;
 				qq->loopcheck = 1;
 			}
@@ -1205,7 +1205,7 @@ void PMDWIN::rhythmmain(QQ *qq)
 
 
 //=============================================================================
-//	PSG¥ê¥º¥à ON
+//	PSGãƒªã‚ºãƒ  ON
 //=============================================================================
 uchar * PMDWIN::rhythmon(QQ *qq, uchar *bx, int al, int *result)
 {
@@ -1219,7 +1219,7 @@ uchar * PMDWIN::rhythmon(QQ *qq, uchar *bx, int al, int *result)
 	
 	*result = 1;
 	
-	if(qq->partmask) {		// mask¤µ¤ì¤Æ¤¤¤ë¾ì¹ç
+	if(qq->partmask) {		// maskã•ã‚Œã¦ã„ã‚‹å ´åˆ
 		open_work.kshot_dat = 0;
 		return ++bx;
 	}
@@ -1256,7 +1256,7 @@ uchar * PMDWIN::rhythmon(QQ *qq, uchar *bx, int al, int *result)
 			}
 			opna.SetReg(0x11, dl);
 		}
-		if(pmdwork.ppsdrv_flag == false) {	// fadeout»şppsdrv¤Ç¤Ê¤éÈ¯²»¤·¤Ê¤¤
+		if(pmdwork.ppsdrv_flag == false) {	// fadeoutæ™‚ppsdrvã§ãªã‚‰ç™ºéŸ³ã—ãªã„
 			bx = open_work.rhyadr;
 			return bx;
 		}
@@ -1271,22 +1271,22 @@ uchar * PMDWIN::rhythmon(QQ *qq, uchar *bx, int al, int *result)
 		}
 		effgo(qq, al);
 		bx_ >>= 1;
-	}while(pmdwork.ppsdrv_flag && bx_);	// PPSDRV¤Ê¤é£²²»ÌÜ°Ê¾å¤âÌÄ¤é¤·¤Æ¤ß¤ë
+	}while(pmdwork.ppsdrv_flag && bx_);	// PPSDRVãªã‚‰ï¼’éŸ³ç›®ä»¥ä¸Šã‚‚é³´ã‚‰ã—ã¦ã¿ã‚‹
 	
 	return open_work.rhyadr;
 }
 
 
 //=============================================================================
-//	£Ğ£Ó£Ç¡¡¥É¥é¥à¥¹¡õ¸ú²Ì²»¡¡¥ë¡¼¥Á¥ó
-//	£Æ£ò£ï£í¡¡£×£Ô£²£¹£¸
+//	ï¼°ï¼³ï¼§ã€€ãƒ‰ãƒ©ãƒ ã‚¹ï¼†åŠ¹æœéŸ³ã€€ãƒ«ãƒ¼ãƒãƒ³
+//	ï¼¦ï½’ï½ï½ã€€ï¼·ï¼´ï¼’ï¼™ï¼˜
 //
-//	AL ¤Ë ¸ú²Ì²»£Î£ï¡¥¤òÆş¤ì¤Æ¡¡£Ã£Á£Ì£Ì¤¹¤ë
-//	ppsdrv¤¬¤¢¤ë¤Ê¤é¤½¤Ã¤Á¤òÌÄ¤é¤¹
+//	AL ã« åŠ¹æœéŸ³ï¼®ï½ï¼ã‚’å…¥ã‚Œã¦ã€€ï¼£ï¼¡ï¼¬ï¼¬ã™ã‚‹
+//	ppsdrvãŒã‚ã‚‹ãªã‚‰ãã£ã¡ã‚’é³´ã‚‰ã™
 //=============================================================================
 void PMDWIN::effgo(QQ *qq, int al)
 {
-	if(pmdwork.ppsdrv_flag) {		// PPS ¤òÌÄ¤é¤¹
+	if(pmdwork.ppsdrv_flag) {		// PPS ã‚’é³´ã‚‰ã™
 		al |= 0x80;
 		if(effwork.last_shot_data == al) {
 			ppsdrv.Stop();
@@ -1295,14 +1295,14 @@ void PMDWIN::effgo(QQ *qq, int al)
 		}
 	}
 	
-	effwork.hosei_flag = 3;				//	²»Äø/²»ÎÌÊäÀµ¤¢¤ê (K part) 
+	effwork.hosei_flag = 3;				//	éŸ³ç¨‹/éŸ³é‡è£œæ­£ã‚ã‚Š (K part) 
 	eff_main(qq, al);
 }
 
 
 void PMDWIN::eff_on2(QQ *qq, int al)
 {
-	effwork.hosei_flag = 1;				//	²»Äø¤Î¤ßÊäÀµ¤¢¤ê (n command)
+	effwork.hosei_flag = 1;				//	éŸ³ç¨‹ã®ã¿è£œæ­£ã‚ã‚Š (n command)
 	eff_main(qq, al);
 }
 
@@ -1311,25 +1311,25 @@ void PMDWIN::eff_main(QQ *qq, int al)
 {
 	int		ah, bh, bl;
 	
-	if(open_work.effflag) return;		//	¸ú²Ì²»¤ò»ÈÍÑ¤·¤Ê¤¤¥â¡¼¥É
+	if(open_work.effflag) return;		//	åŠ¹æœéŸ³ã‚’ä½¿ç”¨ã—ãªã„ãƒ¢ãƒ¼ãƒ‰
 
-	if(pmdwork.ppsdrv_flag && (al & 0x80)) {	// PPS ¤òÌÄ¤é¤¹
-		if(effwork.effon >= 2) return;	// ÄÌ¾ï¸ú²Ì²»È¯²»»ş¤ÏÈ¯À¼¤µ¤»¤Ê¤¤
+	if(pmdwork.ppsdrv_flag && (al & 0x80)) {	// PPS ã‚’é³´ã‚‰ã™
+		if(effwork.effon >= 2) return;	// é€šå¸¸åŠ¹æœéŸ³ç™ºéŸ³æ™‚ã¯ç™ºå£°ã•ã›ãªã„
 		
 		SSGPart[2].partmask |= 2;		// Part Mask
-		effwork.effon = 1;				// Í¥ÀèÅÙ£±(ppsdrv)
-		effwork.psgefcnum = al;			// ²»¿§ÈÖ¹æÀßÄê (80H¡Á)
+		effwork.effon = 1;				// å„ªå…ˆåº¦ï¼‘(ppsdrv)
+		effwork.psgefcnum = al;			// éŸ³è‰²ç•ªå·è¨­å®š (80Hã€œ)
 		
 		bh = 0;
 		bl = 15;
 		ah = effwork.hosei_flag;
 		if(ah & 1) {
-			bh = qq->detune % 256;		// BH = Detune¤Î²¼°Ì 8bit
+			bh = qq->detune % 256;		// BH = Detuneã®ä¸‹ä½ 8bit
 		}
 		
 		if(ah & 2) {
 			if(qq->volume < 15) {
-				bl = qq->volume;		// BL = volumeÃÍ (0¡Á15)
+				bl = qq->volume;		// BL = volumeå€¤ (0ã€œ15)
 			}
 			
 			if(open_work.fadeout_volume) {
@@ -1352,22 +1352,22 @@ void PMDWIN::eff_main(QQ *qq, int al)
 			}
 			
 			SSGPart[2].partmask |= 2;		// Part Mask
-			efffor(efftbl[al].table);		// £±È¯ÌÜ¤òÈ¯²»
+			efffor(efftbl[al].table);		// ï¼‘ç™ºç›®ã‚’ç™ºéŸ³
 			effwork.effon = efftbl[al].priority;
-												//	Í¥Àè½ç°Ì¤òÀßÄê(È¯²»³«»Ï)
+												//	å„ªå…ˆé †ä½ã‚’è¨­å®š(ç™ºéŸ³é–‹å§‹)
 		}
 	}
 }
 
 
 //=============================================================================
-//	¤³¡¼¤«¤ª¤ó¡¡¤¨¤ó¤½¤¦¡¡¤á¤¤¤ó
-// 	£Æ£ò£ï£í¡¡£Ö£Ò£Ô£Ã
+//	ã“ãƒ¼ã‹ãŠã‚“ã€€ãˆã‚“ãã†ã€€ã‚ã„ã‚“
+// 	ï¼¦ï½’ï½ï½ã€€ï¼¶ï¼²ï¼´ï¼£
 //=============================================================================
 void PMDWIN::effplay(void)
 {
 	if(--effwork.effcnt) {
-		effsweep();			// ¿·¤·¤¯¥»¥Ã¥È¤µ¤ì¤Ê¤¤
+		effsweep();			// æ–°ã—ãã‚»ãƒƒãƒˆã•ã‚Œãªã„
 	} else {
 		efffor(effwork.effadr);
 	}
@@ -1382,27 +1382,27 @@ void PMDWIN::efffor(const int *si)
 	if(al == -1) {
 		effend();
 	} else {
-		effwork.effcnt = al;		// ¥«¥¦¥ó¥È¿ô
+		effwork.effcnt = al;		// ã‚«ã‚¦ãƒ³ãƒˆæ•°
 		cl = *si;
-		opna.SetReg(4, *si++);		// ¼şÇÈ¿ô¥»¥Ã¥È
+		opna.SetReg(4, *si++);		// å‘¨æ³¢æ•°ã‚»ãƒƒãƒˆ
 		ch = *si;
-		opna.SetReg(5, *si++);		// ¼şÇÈ¿ô¥»¥Ã¥È
+		opna.SetReg(5, *si++);		// å‘¨æ³¢æ•°ã‚»ãƒƒãƒˆ
 		effwork.eswthz = (ch << 8) + cl;
 		
 		open_work.psnoi_last = effwork.eswnhz = *si;
-		opna.SetReg(6, *si++);		// ¥Î¥¤¥º
+		opna.SetReg(6, *si++);		// ãƒã‚¤ã‚º
 		
 		opna.SetReg(7, ((*si++ << 2) & 0x24) | (opna.GetReg(0x07) & 0xdb));
 		
-		opna.SetReg(10, *si++);		// ¥Ü¥ê¥å¡¼¥à
-		opna.SetReg(11, *si++);		// ¥¨¥ó¥Ù¥í¡¼¥×¼şÇÈ¿ô
+		opna.SetReg(10, *si++);		// ãƒœãƒªãƒ¥ãƒ¼ãƒ 
+		opna.SetReg(11, *si++);		// ã‚¨ãƒ³ãƒ™ãƒ­ãƒ¼ãƒ—å‘¨æ³¢æ•°
 		opna.SetReg(12, *si++);		// 
-		opna.SetReg(13, *si++);		// ¥¨¥ó¥Ù¥í¡¼¥×PATTERN
+		opna.SetReg(13, *si++);		// ã‚¨ãƒ³ãƒ™ãƒ­ãƒ¼ãƒ—PATTERN
 		
-		effwork.eswtst = *si++;		// ¥¹¥¤¡¼¥×ÁıÊ¬ (TONE)
-		effwork.eswnst = *si++;		// ¥¹¥¤¡¼¥×ÁıÊ¬ (NOISE)
+		effwork.eswtst = *si++;		// ã‚¹ã‚¤ãƒ¼ãƒ—å¢—åˆ† (TONE)
+		effwork.eswnst = *si++;		// ã‚¹ã‚¤ãƒ¼ãƒ—å¢—åˆ† (NOISE)
 		
-		effwork.eswnct = effwork.eswnst & 15;		// ¥¹¥¤¡¼¥×¥«¥¦¥ó¥È (NOISE)
+		effwork.eswnct = effwork.eswnst & 15;		// ã‚¹ã‚¤ãƒ¼ãƒ—ã‚«ã‚¦ãƒ³ãƒˆ (NOISE)
 		
 		effwork.effadr = (int *)si;
 	}
@@ -1421,7 +1421,7 @@ void PMDWIN::effend(void)
 }
 
 
-// ÉáÃÊ¤Î½èÍı
+// æ™®æ®µã®å‡¦ç†
 void PMDWIN::effsweep(void)
 {
 	int		dl;
@@ -1430,7 +1430,7 @@ void PMDWIN::effsweep(void)
 	opna.SetReg(4, effwork.eswthz & 0xff);
 	opna.SetReg(5, effwork.eswthz >> 8);
 	
-	if(effwork.eswnst == 0) return;		// ¥Î¥¤¥º¥¹¥¤¡¼¥×Ìµ¤·
+	if(effwork.eswnst == 0) return;		// ãƒã‚¤ã‚ºã‚¹ã‚¤ãƒ¼ãƒ—ç„¡ã—
 	if(--effwork.eswnct) return;
 	
 	dl = effwork.eswnst;
@@ -1444,19 +1444,19 @@ void PMDWIN::effsweep(void)
 
 
 //=============================================================================
-//	PDR¤Îswitch
+//	PDRã®switch
 //=============================================================================
 uchar * PMDWIN::pdrswitch(QQ *qq, uchar *si)
 {
 	if(pmdwork.ppsdrv_flag == false) return si+1;
 	
-//	ppsdrv.SetParam((*si & 1) << 1, *si & 1);		@»ÃÄê
+//	ppsdrv.SetParam((*si & 1) << 1, *si & 1);		@æš«å®š
 	si++;
 	return si;
 }
 
 //=============================================================================
-//	£Ğ£Ã£Í²»¸»¡¡±éÁÕ¡¡¥á¥¤¥ó
+//	ï¼°ï¼£ï¼­éŸ³æºã€€æ¼”å¥ã€€ãƒ¡ã‚¤ãƒ³
 //=============================================================================
 void PMDWIN::adpcmmain(QQ *qq)
 {
@@ -1471,7 +1471,7 @@ void PMDWIN::adpcmmain(QQ *qq)
 		qq->keyoff_flag = -1;
 	} else {
 		// KEYOFF CHECK
-		if((qq->keyoff_flag & 3) == 0) {		// ´û¤Ëkeyoff¤·¤¿¤«¡©
+		if((qq->keyoff_flag & 3) == 0) {		// æ—¢ã«keyoffã—ãŸã‹ï¼Ÿ
 			if(qq->leng <= qq->qdat) {
 				keyoffm(qq);
 				qq->keyoff_flag = -1;
@@ -1500,17 +1500,17 @@ void PMDWIN::adpcmmain(QQ *qq)
 						break;
 					}
 				}
-				// "L"¤¬¤¢¤Ã¤¿»ş
+				// "L"ãŒã‚ã£ãŸæ™‚
 				si = qq->partloop;
 				qq->loopcheck = 1;
 			} else {
-				if(*si == 0xda) {				// ¥İ¥ë¥¿¥á¥ó¥È
+				if(*si == 0xda) {				// ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆ
 					si = portam(qq, ++si);
 					pmdwork.loop_work &= qq->loopcheck;
 					return;
 				} else if(qq->partmask) {
 					si++;
-					qq->fnum = 0;		//µÙÉä¤ËÀßÄê
+					qq->fnum = 0;		//ä¼‘ç¬¦ã«è¨­å®š
 					qq->onkai = 255;
 //					qq->onkai_def = 255;
 					qq->leng = *si++;
@@ -1552,7 +1552,7 @@ void PMDWIN::adpcmmain(QQ *qq)
 				pmdwork.tieflag = 0;
 				pmdwork.volpush_flag = 0;
 				
-				if(*si == 0xfb) {		// '&'¤¬Ä¾¸å¤Ë¤¢¤Ã¤¿¤ékeyoff¤·¤Ê¤¤
+				if(*si == 0xfb) {		// '&'ãŒç›´å¾Œã«ã‚ã£ãŸã‚‰keyoffã—ãªã„
 					qq->keyoff_flag = 2;
 				} else {
 					qq->keyoff_flag = 0;
@@ -1600,7 +1600,7 @@ void PMDWIN::adpcmmain(QQ *qq)
 
 
 //=============================================================================
-//	£Ğ£Ã£Í²»¸»¡¡±éÁÕ¡¡¥á¥¤¥ó(PMD86)
+//	ï¼°ï¼£ï¼­éŸ³æºã€€æ¼”å¥ã€€ãƒ¡ã‚¤ãƒ³(PMD86)
 //=============================================================================
 void PMDWIN::pcm86main(QQ *qq)
 {
@@ -1615,7 +1615,7 @@ void PMDWIN::pcm86main(QQ *qq)
 		qq->keyoff_flag = -1;
 	} else {
 		// KEYOFF CHECK
-		if((qq->keyoff_flag & 3) == 0) {		// ´û¤Ëkeyoff¤·¤¿¤«¡©
+		if((qq->keyoff_flag & 3) == 0) {		// æ—¢ã«keyoffã—ãŸã‹ï¼Ÿ
 			if(qq->leng <= qq->qdat) {
 				keyoff8(qq);
 				qq->keyoff_flag = -1;
@@ -1643,13 +1643,13 @@ void PMDWIN::pcm86main(QQ *qq)
 						break;
 					}
 				}
-				// "L"¤¬¤¢¤Ã¤¿»ş
+				// "L"ãŒã‚ã£ãŸæ™‚
 				si = qq->partloop;
 				qq->loopcheck = 1;
 			} else {
 				if(qq->partmask) {
 					si++;
-					qq->fnum = 0;		//µÙÉä¤ËÀßÄê
+					qq->fnum = 0;		//ä¼‘ç¬¦ã«è¨­å®š
 					qq->onkai = 255;
 //					qq->onkai_def = 255;
 					qq->leng = *si++;
@@ -1691,7 +1691,7 @@ void PMDWIN::pcm86main(QQ *qq)
 				pmdwork.tieflag = 0;
 				pmdwork.volpush_flag = 0;
 				
-				if(*si == 0xfb) {		// '&'¤¬Ä¾¸å¤Ë¤¢¤Ã¤¿¤ékeyoff¤·¤Ê¤¤
+				if(*si == 0xfb) {		// '&'ãŒç›´å¾Œã«ã‚ã£ãŸã‚‰keyoffã—ãªã„
 					qq->keyoff_flag = 2;
 				} else {
 					qq->keyoff_flag = 0;
@@ -1736,7 +1736,7 @@ void PMDWIN::pcm86main(QQ *qq)
 
 
 //=============================================================================
-//	£Ğ£Ã£Í²»¸»¡¡±éÁÕ¡¡¥á¥¤¥ó [PPZ8]
+//	ï¼°ï¼£ï¼­éŸ³æºã€€æ¼”å¥ã€€ãƒ¡ã‚¤ãƒ³ [PPZ8]
 //=============================================================================
 void PMDWIN::ppz8main(QQ *qq)
 {
@@ -1751,7 +1751,7 @@ void PMDWIN::ppz8main(QQ *qq)
 		qq->keyoff_flag = -1;
 	} else {
 		// KEYOFF CHECK
-		if((qq->keyoff_flag & 3) == 0) {		// ´û¤Ëkeyoff¤·¤¿¤«¡©
+		if((qq->keyoff_flag & 3) == 0) {		// æ—¢ã«keyoffã—ãŸã‹ï¼Ÿ
 			if(qq->leng <= qq->qdat) {
 				keyoffz(qq);
 				qq->keyoff_flag = -1;
@@ -1780,17 +1780,17 @@ void PMDWIN::ppz8main(QQ *qq)
 						break;
 					}
 				}
-				// "L"¤¬¤¢¤Ã¤¿»ş
+				// "L"ãŒã‚ã£ãŸæ™‚
 				si = qq->partloop;
 				qq->loopcheck = 1;
 			} else {
-				if(*si == 0xda) {				// ¥İ¥ë¥¿¥á¥ó¥È
+				if(*si == 0xda) {				// ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆ
 					si = portaz(qq, ++si);
 					pmdwork.loop_work &= qq->loopcheck;
 					return;
 				} else if(qq->partmask) {
 					si++;
-					qq->fnum = 0;		//µÙÉä¤ËÀßÄê
+					qq->fnum = 0;		//ä¼‘ç¬¦ã«è¨­å®š
 					qq->onkai = 255;
 //					qq->onkai_def = 255;
 					qq->leng = *si++;
@@ -1832,7 +1832,7 @@ void PMDWIN::ppz8main(QQ *qq)
 				pmdwork.tieflag = 0;
 				pmdwork.volpush_flag = 0;
 				
-				if(*si == 0xfb) {		// '&'¤¬Ä¾¸å¤Ë¤¢¤Ã¤¿¤ékeyoff¤·¤Ê¤¤
+				if(*si == 0xfb) {		// '&'ãŒç›´å¾Œã«ã‚ã£ãŸã‚‰keyoffã—ãªã„
 					qq->keyoff_flag = 2;
 				} else {
 					qq->keyoff_flag = 0;
@@ -1955,7 +1955,7 @@ void PMDWIN::otodasim(QQ *qq)
 	if(qq->lfoswi & 0x10) {
 		dx += qq->_lfodat;
 	}
-	dx *= 4;	// PCM ¥Ï LFO ¥¬ ¥«¥«¥ê¥Ë¥¯¥¤ ¥Î¥Ç depth ¥ò 4¥Ğ¥¤ ¥¹¥ë
+	dx *= 4;	// PCM ãƒ LFO ã‚¬ ã‚«ã‚«ãƒªãƒ‹ã‚¯ã‚¤ ãƒãƒ‡ depth ãƒ² 4ãƒã‚¤ ã‚¹ãƒ«
 	
 	dx += qq->detune;
 	if(dx >= 0) {
@@ -1982,7 +1982,7 @@ void PMDWIN::otodasi8(QQ *qq)
 
 	if(qq->fnum == 0) return;
 	
-	bl = (qq->fnum & 0x0e00000) >> (16+5);		// ÀßÄê¼şÇÈ¿ô
+	bl = (qq->fnum & 0x0e00000) >> (16+5);		// è¨­å®šå‘¨æ³¢æ•°
 	cx = qq->fnum & 0x01fffff;					// fnum
 
 	if(open_work.pcm86_vol == 0 && qq->detune) {
@@ -2041,19 +2041,19 @@ void PMDWIN::volsetm(QQ *qq)
 	}
 	
 	//------------------------------------------------------------------------
-	//	²»ÎÌdown·×»»
+	//	éŸ³é‡downè¨ˆç®—
 	//------------------------------------------------------------------------
 	al = ((256-open_work.pcm_voldown) * al) >> 8;
 	
 	//------------------------------------------------------------------------
-	//	Fadeout·×»»
+	//	Fadeoutè¨ˆç®—
 	//------------------------------------------------------------------------
 	if(open_work.fadeout_volume) {
 		al = (((256 - open_work.fadeout_volume) * (256 - open_work.fadeout_volume) >> 8) * al) >> 8;
 	}
 
 	//------------------------------------------------------------------------
-	//	ENVELOPE ·×»»
+	//	ENVELOPE è¨ˆç®—
 	//------------------------------------------------------------------------
 	if(al == 0) {
 		opna.SetReg(0x10b, 0);
@@ -2061,7 +2061,7 @@ void PMDWIN::volsetm(QQ *qq)
 	}
 	
 	if(qq->envf == -1) {
-		//	³ÈÄ¥ÈÇ ²»ÎÌ=al*(eenv_vol+1)/16
+		//	æ‹¡å¼µç‰ˆ éŸ³é‡=al*(eenv_vol+1)/16
 		if(qq->eenv_volume == 0) {
 			opna.SetReg(0x10b, 0);
 			return;
@@ -2088,7 +2088,7 @@ void PMDWIN::volsetm(QQ *qq)
 	}
 	
 	//--------------------------------------------------------------------
-	//	²»ÎÌLFO·×»»
+	//	éŸ³é‡LFOè¨ˆç®—
 	//--------------------------------------------------------------------
 	
 	if((qq->lfoswi & 0x22) == 0) {
@@ -2138,19 +2138,19 @@ void PMDWIN::volset8(QQ *qq)
 	}
 	
 	//------------------------------------------------------------------------
-	//	²»ÎÌdown·×»»
+	//	éŸ³é‡downè¨ˆç®—
 	//------------------------------------------------------------------------
 	al = ((256-open_work.pcm_voldown) * al) >> 8;
 	
 	//------------------------------------------------------------------------
-	//	Fadeout·×»»
+	//	Fadeoutè¨ˆç®—
 	//------------------------------------------------------------------------
 	if(open_work.fadeout_volume) {
 		al = ((256 - open_work.fadeout_volume) * al) >> 8;
 	}
 
 	//------------------------------------------------------------------------
-	//	ENVELOPE ·×»»
+	//	ENVELOPE è¨ˆç®—
 	//------------------------------------------------------------------------
 	if(al == 0) {
 		opna.SetReg(0x10b, 0);
@@ -2158,7 +2158,7 @@ void PMDWIN::volset8(QQ *qq)
 	}
 	
 	if(qq->envf == -1) {
-		//	³ÈÄ¥ÈÇ ²»ÎÌ=al*(eenv_vol+1)/16
+		//	æ‹¡å¼µç‰ˆ éŸ³é‡=al*(eenv_vol+1)/16
 		if(qq->eenv_volume == 0) {
 			opna.SetReg(0x10b, 0);
 			return;
@@ -2185,7 +2185,7 @@ void PMDWIN::volset8(QQ *qq)
 	}
 	
 	//--------------------------------------------------------------------
-	//	²»ÎÌLFO·×»»
+	//	éŸ³é‡LFOè¨ˆç®—
 	//--------------------------------------------------------------------
 	
 	if(qq->lfoswi & 2) {
@@ -2205,7 +2205,7 @@ void PMDWIN::volset8(QQ *qq)
 	}
 	
 	if(open_work.pcm86_vol) {
-		//	SPB¤ÈÆ±ÍÍ¤Î²»ÎÌÀßÄê
+		//	SPBã¨åŒæ§˜ã®éŸ³é‡è¨­å®š
 		al = (int)sqrt(al);
 	} else {
 		al >>= 4;
@@ -2229,19 +2229,19 @@ void PMDWIN::volsetz(QQ *qq)
 	}
 	
 	//------------------------------------------------------------------------
-	//	²»ÎÌdown·×»»
+	//	éŸ³é‡downè¨ˆç®—
 	//------------------------------------------------------------------------
 	al = ((256-open_work.ppz_voldown) * al) >> 8;
 	
 	//------------------------------------------------------------------------
-	//	Fadeout·×»»
+	//	Fadeoutè¨ˆç®—
 	//------------------------------------------------------------------------
 	if(open_work.fadeout_volume) {
 		al = ((256 - open_work.fadeout_volume) * al) >> 8;
 	}
 
 	//------------------------------------------------------------------------
-	//	ENVELOPE ·×»»
+	//	ENVELOPE è¨ˆç®—
 	//------------------------------------------------------------------------
 	if(al == 0) {
 //*@
@@ -2251,7 +2251,7 @@ void PMDWIN::volsetz(QQ *qq)
 	}
 	
 	if(qq->envf == -1) {
-		//	³ÈÄ¥ÈÇ ²»ÎÌ=al*(eenv_vol+1)/16
+		//	æ‹¡å¼µç‰ˆ éŸ³é‡=al*(eenv_vol+1)/16
 		if(qq->eenv_volume == 0) {
 //*@		ppz8.SetVol(pmdwork.partb, 0);
 			ppz8.Stop(pmdwork.partb);
@@ -2280,7 +2280,7 @@ void PMDWIN::volsetz(QQ *qq)
 	}
 	
 	//--------------------------------------------------------------------
-	//	²»ÎÌLFO·×»»
+	//	éŸ³é‡LFOè¨ˆç®—
 	//--------------------------------------------------------------------
 	
 	if((qq->lfoswi & 0x22)) {
@@ -2329,7 +2329,7 @@ void PMDWIN::fnumsetm(QQ *qq, int al)
 {
 	int		ax, bx, ch, cl;
 	
-	if((al & 0x0f) != 0x0f) {			// ²»Éä¤Î¾ì¹ç
+	if((al & 0x0f) != 0x0f) {			// éŸ³ç¬¦ã®å ´åˆ
 		qq->onkai = al;
 		
 		bx = al & 0x0f;					// bx=onkai
@@ -2342,21 +2342,21 @@ void PMDWIN::fnumsetm(QQ *qq, int al)
 		}
 		
 		ax = pcm_tune_data[bx];
-		if(ch >= 6) {					// o7°Ê¾å?
+		if(ch >= 6) {					// o7ä»¥ä¸Š?
 			ch = 0x50;
 			if(ax < 0x8000) {
-				ax *= 2;				// o7°Ê¾å¤Ç2ÇÜ¤Ç¤­¤ë¾ì¹ç¤Ï2ÇÜ
+				ax *= 2;				// o7ä»¥ä¸Šã§2å€ã§ãã‚‹å ´åˆã¯2å€
 				ch = 0x60;
 			}
-			qq->onkai = (qq->onkai & 0x0f) | ch;	// onkaiÃÍ½¤Àµ
+			qq->onkai = (qq->onkai & 0x0f) | ch;	// onkaiå€¤ä¿®æ­£
 		} else {
 			ax >>= cl;					// ax=ax/[2^OCTARB]
 		}
 		qq->fnum = ax;
-	} else {						// µÙÉä¤Î¾ì¹ç
+	} else {						// ä¼‘ç¬¦ã®å ´åˆ
 		qq->onkai = 255;
 		if((qq->lfoswi & 0x11) == 0) {
-			qq->fnum = 0;			// ²»ÄøLFOÌ¤»ÈÍÑ
+			qq->fnum = 0;			// éŸ³ç¨‹LFOæœªä½¿ç”¨
 		}
 	}
 }
@@ -2370,7 +2370,7 @@ void PMDWIN::fnumset8(QQ *qq, int al)
 	int		ah, bl;
 	
 	ah = al & 0x0f;
-	if(ah != 0x0f) {			// ²»Éä¤Î¾ì¹ç
+	if(ah != 0x0f) {			// éŸ³ç¬¦ã®å ´åˆ
 		if(open_work.pcm86_vol && al >= 0x65) {		// o7e?
 			if(ah < 5) {
 				al = 0x60;		// o7
@@ -2383,10 +2383,10 @@ void PMDWIN::fnumset8(QQ *qq, int al)
 		qq->onkai = al;
 		bl = ((al & 0xf0) >> 4) * 12 + ah;
 		qq->fnum = p86_tune_data[bl];
-	} else {						// µÙÉä¤Î¾ì¹ç
+	} else {						// ä¼‘ç¬¦ã®å ´åˆ
 		qq->onkai = 255;
 		if((qq->lfoswi & 0x11) == 0) {
-			qq->fnum = 0;			// ²»ÄøLFOÌ¤»ÈÍÑ
+			qq->fnum = 0;			// éŸ³ç¨‹LFOæœªä½¿ç”¨
 		}
 	}
 }
@@ -2401,7 +2401,7 @@ void PMDWIN::fnumsetz(QQ *qq, int al)
 	int		bx, cl;
 	
 	
-	if((al & 0x0f) != 0x0f) {			// ²»Éä¤Î¾ì¹ç
+	if((al & 0x0f) != 0x0f) {			// éŸ³ç¬¦ã®å ´åˆ
 		qq->onkai = al;
 		
 		bx = al & 0x0f;					// bx=onkai
@@ -2416,23 +2416,23 @@ void PMDWIN::fnumsetz(QQ *qq, int al)
 			ax <<= cl;
 		}
 		qq->fnum = ax;
-	} else {						// µÙÉä¤Î¾ì¹ç
+	} else {						// ä¼‘ç¬¦ã®å ´åˆ
 		qq->onkai = 255;
 		if((qq->lfoswi & 0x11) == 0) {
-			qq->fnum = 0;			// ²»ÄøLFOÌ¤»ÈÍÑ
+			qq->fnum = 0;			// éŸ³ç¨‹LFOæœªä½¿ç”¨
 		}
 	}
 }
 
 //=============================================================================
-//	¥İ¥ë¥¿¥á¥ó¥È(PCM)
+//	ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆ(PCM)
 //=============================================================================
 uchar * PMDWIN::portam(QQ *qq, uchar *si)
 {
 	int		ax, al_, bx_;
 	
 	if(qq->partmask) {
-		qq->fnum = 0;		//µÙÉä¤ËÀßÄê
+		qq->fnum = 0;		//ä¼‘ç¬¦ã«è¨­å®š
 		qq->onkai = 255;
 		qq->leng = *(si+2);
 		qq->keyon_flag++;
@@ -2445,7 +2445,7 @@ uchar * PMDWIN::portam(QQ *qq, uchar *si)
 		pmdwork.tieflag = 0;
 		pmdwork.volpush_flag = 0;
 		pmdwork.loop_work &= qq->loopcheck;
-		return si+3;		// ÆÉ¤ßÈô¤Ğ¤¹	(Mask»ş)
+		return si+3;		// èª­ã¿é£›ã°ã™	(Maskæ™‚)
 	}
 	
 	lfoinitp(qq, *si);
@@ -2454,17 +2454,17 @@ uchar * PMDWIN::portam(QQ *qq, uchar *si)
 	bx_ = qq->fnum;
 	al_ = qq->onkai;
 	fnumsetm(qq, oshift(qq, *si++));
-	ax = qq->fnum; 			// ax = ¥İ¥ë¥¿¥á¥ó¥ÈÀè¤Îdelta_nÃÍ
+	ax = qq->fnum; 			// ax = ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆå…ˆã®delta_nå€¤
 	
 	qq->onkai = al_;
-	qq->fnum = bx_;			// bx = ¥İ¥ë¥¿¥á¥ó¥È¸µ¤Îdekta_nÃÍ
-	ax -= bx_;				// ax = delta_nº¹
+	qq->fnum = bx_;			// bx = ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆå…ƒã®dekta_nå€¤
+	ax -= bx_;				// ax = delta_nå·®
 	
 	qq->leng = *si++;
 	si = calc_q(qq, si);
 	
-	qq->porta_num2 = ax / qq->leng;		// ¾¦
-	qq->porta_num3 = ax % qq->leng;		// Í¾¤ê
+	qq->porta_num2 = ax / qq->leng;		// å•†
+	qq->porta_num3 = ax % qq->leng;		// ä½™ã‚Š
 	qq->lfoswi |= 8;				// Porta ON
 	
 	if(qq->volpush && qq->onkai != 255) {
@@ -2487,7 +2487,7 @@ uchar * PMDWIN::portam(QQ *qq, uchar *si)
 	pmdwork.volpush_flag = 0;
 	qq->keyoff_flag = 0;
 	
-	if(*si == 0xfb) {			// '&'¤¬Ä¾¸å¤Ë¤¢¤Ã¤¿¤ékeyoff¤·¤Ê¤¤
+	if(*si == 0xfb) {			// '&'ãŒç›´å¾Œã«ã‚ã£ãŸã‚‰keyoffã—ãªã„
 		qq->keyoff_flag = 2;
 	}
 	
@@ -2497,14 +2497,14 @@ uchar * PMDWIN::portam(QQ *qq, uchar *si)
 
 
 //=============================================================================
-//	¥İ¥ë¥¿¥á¥ó¥È(PPZ)
+//	ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆ(PPZ)
 //=============================================================================
 uchar * PMDWIN::portaz(QQ *qq, uchar *si)
 {
 	int		ax, al_, bx_;
 	
 	if(qq->partmask) {
-		qq->fnum = 0;		//µÙÉä¤ËÀßÄê
+		qq->fnum = 0;		//ä¼‘ç¬¦ã«è¨­å®š
 		qq->onkai = 255;
 		qq->leng = *(si+2);
 		qq->keyon_flag++;
@@ -2517,7 +2517,7 @@ uchar * PMDWIN::portaz(QQ *qq, uchar *si)
 		pmdwork.tieflag = 0;
 		pmdwork.volpush_flag = 0;
 		pmdwork.loop_work &= qq->loopcheck;
-		return si+3;		// ÆÉ¤ßÈô¤Ğ¤¹	(Mask»ş)
+		return si+3;		// èª­ã¿é£›ã°ã™	(Maskæ™‚)
 	}
 	
 	lfoinitp(qq, *si);
@@ -2527,18 +2527,18 @@ uchar * PMDWIN::portaz(QQ *qq, uchar *si)
 	al_ = qq->onkai;
 	
 	fnumsetz(qq, oshift(qq, *si++));
-	ax = qq->fnum; 			// ax = ¥İ¥ë¥¿¥á¥ó¥ÈÀè¤Îdelta_nÃÍ
+	ax = qq->fnum; 			// ax = ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆå…ˆã®delta_nå€¤
 	
 	qq->onkai = al_;
-	qq->fnum = bx_;			// bx = ¥İ¥ë¥¿¥á¥ó¥È¸µ¤Îdekta_nÃÍ
-	ax -= bx_;				// ax = delta_nº¹
+	qq->fnum = bx_;			// bx = ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆå…ƒã®dekta_nå€¤
+	ax -= bx_;				// ax = delta_nå·®
 	ax /= 16;
 	
 	qq->leng = *si++;
 	si = calc_q(qq, si);
 	
-	qq->porta_num2 = ax / qq->leng;		// ¾¦
-	qq->porta_num3 = ax % qq->leng;		// Í¾¤ê
+	qq->porta_num2 = ax / qq->leng;		// å•†
+	qq->porta_num3 = ax % qq->leng;		// ä½™ã‚Š
 	qq->lfoswi |= 8;				// Porta ON
 	
 	if(qq->volpush && qq->onkai != 255) {
@@ -2561,7 +2561,7 @@ uchar * PMDWIN::portaz(QQ *qq, uchar *si)
 	pmdwork.volpush_flag = 0;
 	qq->keyoff_flag = 0;
 	
-	if(*si == 0xfb) {			// '&'¤¬Ä¾¸å¤Ë¤¢¤Ã¤¿¤ékeyoff¤·¤Ê¤¤
+	if(*si == 0xfb) {			// '&'ãŒç›´å¾Œã«ã‚ã£ãŸã‚‰keyoffã—ãªã„
 		qq->keyoff_flag = 2;
 	}
 	
@@ -2645,12 +2645,12 @@ uchar * PMDWIN::pansetm_ex(QQ *qq, uchar * si)
 		qq->fmpan = 0x40;
 	}
 	
-	return si+2;	// µÕÁöflag¤ÏÆÉ¤ßÈô¤Ğ¤¹
+	return si+2;	// é€†èµ°flagã¯èª­ã¿é£›ã°ã™
 }
 
 
 //=============================================================================
-//	¥ê¥Ô¡¼¥ÈÀßÄê
+//	ãƒªãƒ”ãƒ¼ãƒˆè¨­å®š
 //=============================================================================
 uchar * PMDWIN::pcmrepeat_set(QQ *qq, uchar * si)
 {
@@ -2691,7 +2691,7 @@ uchar * PMDWIN::pcmrepeat_set(QQ *qq, uchar * si)
 
 
 //=============================================================================
-//	¥ê¥Ô¡¼¥ÈÀßÄê(PMD86)
+//	ãƒªãƒ”ãƒ¼ãƒˆè¨­å®š(PMD86)
 //=============================================================================
 uchar * PMDWIN::pcmrepeat_set8(QQ *qq, uchar * si)
 {
@@ -2714,7 +2714,7 @@ uchar * PMDWIN::pcmrepeat_set8(QQ *qq, uchar * si)
 
 
 //=============================================================================
-//	¥ê¥Ô¡¼¥ÈÀßÄê
+//	ãƒªãƒ”ãƒ¼ãƒˆè¨­å®š
 //=============================================================================
 uchar * PMDWIN::ppzrepeat_set(QQ *qq, uchar * si)
 {
@@ -2776,10 +2776,10 @@ uchar * PMDWIN::pansetm(QQ *qq, uchar *si)
 
 //=============================================================================
 //	COMMAND 'p' [Panning Set]
-//	p0		µÕÁê
-//	p1		±¦
-//	p2		º¸
-//	p3		Ãæ
+//	p0		é€†ç›¸
+//	p1		å³
+//	p2		å·¦
+//	p3		ä¸­
 //=============================================================================
 uchar * PMDWIN::panset8(QQ *qq, uchar *si)
 {
@@ -2803,7 +2803,7 @@ uchar * PMDWIN::panset8(QQ *qq, uchar *si)
 			data = 0;
 			break;
 
-		default :					// µÕÁê
+		default :					// é€†ç›¸
 			flag = 3 | 4;
 			data = 0;
 
@@ -2815,10 +2815,10 @@ uchar * PMDWIN::panset8(QQ *qq, uchar *si)
 
 //=============================================================================
 //	COMMAND 'p' [Panning Set]
-//		0=0	Ìµ²»
-//		1=9	±¦
-//		2=1	º¸
-//		3=5	Ãæ±û
+//		0=0	ç„¡éŸ³
+//		1=9	å³
+//		2=1	å·¦
+//		3=5	ä¸­å¤®
 //=============================================================================
 uchar * PMDWIN::pansetz(QQ *qq, uchar *si)
 {
@@ -2830,14 +2830,14 @@ uchar * PMDWIN::pansetz(QQ *qq, uchar *si)
 
 //=============================================================================
 //	Pan setting Extend
-//		px -4¡Á+4
+//		px -4ã€œ+4
 //=============================================================================
 uchar * PMDWIN::pansetz_ex(QQ *qq, uchar *si)
 {
 	int		al;
 	
 	al = read_char(si++);
-	si++;		// µÕÁêflag¤ÏÆÉ¤ßÈô¤Ğ¤¹
+	si++;		// é€†ç›¸flagã¯èª­ã¿é£›ã°ã™
 	
 	if(al >= 5) {
 		al = 4;
@@ -2893,27 +2893,27 @@ uchar *PMDWIN::comatz(QQ *qq, uchar *si)
 
 
 //=============================================================================
-//	SSG¥É¥é¥à¤ò¾Ã¤·¤ÆSSG¤òÉü³è¤µ¤»¤ë¤«¤É¤¦¤«check
+//	SSGãƒ‰ãƒ©ãƒ ã‚’æ¶ˆã—ã¦SSGã‚’å¾©æ´»ã•ã›ã‚‹ã‹ã©ã†ã‹check
 //		input	AL <- Command
-//		output	cy=1 : Éü³è¤µ¤»¤ë
+//		output	cy=1 : å¾©æ´»ã•ã›ã‚‹
 //=============================================================================
 int PMDWIN::ssgdrum_check(QQ *qq, int al)
 {
-	// SSG¥Ş¥¹¥¯Ãæ¤Ï¥É¥é¥à¤ò»ß¤á¤Ê¤¤
-	// SSG¥É¥é¥à¤ÏÌÄ¤Ã¤Æ¤Ê¤¤
+	// SSGãƒã‚¹ã‚¯ä¸­ã¯ãƒ‰ãƒ©ãƒ ã‚’æ­¢ã‚ãªã„
+	// SSGãƒ‰ãƒ©ãƒ ã¯é³´ã£ã¦ãªã„
 	if((qq->partmask & 1) || ((qq->partmask & 2) == 0)) return 0;
 	
-	// ÉáÄÌ¤Î¸ú²Ì²»¤Ï¾Ã¤µ¤Ê¤¤
+	// æ™®é€šã®åŠ¹æœéŸ³ã¯æ¶ˆã•ãªã„
 	if(effwork.effon >= 2) return 0;
 	
 	al = (al & 0x0f);
 	
-	// µÙÉä¤Î»ş¤Ï¥É¥é¥à¤Ï»ß¤á¤Ê¤¤
+	// ä¼‘ç¬¦ã®æ™‚ã¯ãƒ‰ãƒ©ãƒ ã¯æ­¢ã‚ãªã„
 	if(al == 0x0f) return 0;
 	
-	// SSG¥É¥é¥à¤Ï¤Ş¤ÀºÆÀ¸Ãæ¤«¡©
+	// SSGãƒ‰ãƒ©ãƒ ã¯ã¾ã å†ç”Ÿä¸­ã‹ï¼Ÿ
 	if(effwork.effon == 1) {
-		effend();			// SSG¥É¥é¥à¤ò¾Ã¤¹
+		effend();			// SSGãƒ‰ãƒ©ãƒ ã‚’æ¶ˆã™
 	}
 	
 	if((qq->partmask &= 0xfd) == 0) return -1;
@@ -2922,7 +2922,7 @@ int PMDWIN::ssgdrum_check(QQ *qq, int al)
 
 
 //=============================================================================
-//	³Æ¼ïÆÃ¼ì¥³¥Ş¥ó¥É½èÍı
+//	å„ç¨®ç‰¹æ®Šã‚³ãƒãƒ³ãƒ‰å‡¦ç†
 //=============================================================================
 uchar * PMDWIN::commands(QQ *qq, uchar *si)
 {
@@ -2962,7 +2962,7 @@ uchar * PMDWIN::commands(QQ *qq, uchar *si)
 		case 0xe5 : si = rhyvs_sft(si); break;
 		//
 		case 0xe4 : qq->hldelay = *si++; break;
-		//ÄÉ²Ã for V2.3
+		//è¿½åŠ  for V2.3
 		case 0xe3 : if((qq->volume += *si++) > 127) qq->volume = 127; break;
 		case 0xe2 : 
 			if(qq->volume < *si) qq->volume = 0; else qq->volume -= *si;
@@ -3102,7 +3102,7 @@ uchar * PMDWIN::commandsp(QQ *qq, uchar *si)
 		case 0xe5 : si = rhyvs_sft(si); break;
 		//
 		case 0xe4 : si++; break;
-		//ÄÉ²Ã for V2.3
+		//è¿½åŠ  for V2.3
 		case 0xe3 : if((qq->volume + *si) < 16) qq->volume += *si; si++;break;
 		case 0xe2 : if((qq->volume - *si) >= 0) qq->volume -= *si; si++;break;
 		//
@@ -3245,7 +3245,7 @@ uchar * PMDWIN::commandsr(QQ *qq, uchar *si)
 		case 0xe5 : si = rhyvs_sft(si); break;
 		//
 		case 0xe4 : si++; break;
-		//ÄÉ²Ã for V2.3
+		//è¿½åŠ  for V2.3
 		case 0xe3 : if((qq->volume + *si) < 16) qq->volume += *si; si++;break;
 		case 0xe2 : if((qq->volume - *si) >= 0) qq->volume -= *si; si++;break;
 		//
@@ -3357,7 +3357,7 @@ uchar * PMDWIN::commandsm(QQ *qq, uchar *si)
 		case 0xe5 : si = rhyvs_sft(si); break;
 		//
 		case 0xe4 : si++; break;
-		//ÄÉ²Ã for V2.3
+		//è¿½åŠ  for V2.3
 		case 0xe3 : if((qq->volume += *si++) < qq->volume) qq->volume = 255; break;
 		case 0xe2 :
 			if(qq->volume < *si) qq->volume = 0; else qq->volume -= *si;
@@ -3494,7 +3494,7 @@ uchar * PMDWIN::commands8(QQ *qq, uchar *si)
 		case 0xe5 : si = rhyvs_sft(si); break;
 		//
 		case 0xe4 : si++; break;
-		//ÄÉ²Ã for V2.3
+		//è¿½åŠ  for V2.3
 		case 0xe3 : if((qq->volume += *si++) < qq->volume) qq->volume = 255; break;
 		case 0xe2 :
 			if(qq->volume < *si) qq->volume = 0; else qq->volume -= *si;
@@ -3616,7 +3616,7 @@ uchar * PMDWIN::commandsz(QQ *qq, uchar *si)
 		case 0xe5 : si = rhyvs_sft(si); break;
 		//
 		case 0xe4 : si++; break;
-		//ÄÉ²Ã for V2.3
+		//è¿½åŠ  for V2.3
 		case 0xe3 : if((qq->volume += *si++) < qq->volume) qq->volume = 255; break;
 		case 0xe2 :
 			if(qq->volume < *si) qq->volume = 0; else qq->volume -= *si;
@@ -3727,7 +3727,7 @@ uchar * PMDWIN::comat(QQ *qq, uchar *si)
 	qq->voicenum = al = *si++;
 	dl = qq->voicenum;
 	
-	if(qq->partmask == 0) {	// ¥Ñ¡¼¥È¥Ş¥¹¥¯¤µ¤ì¤Æ¤¤¤ë¤«¡©
+	if(qq->partmask == 0) {	// ãƒ‘ãƒ¼ãƒˆãƒã‚¹ã‚¯ã•ã‚Œã¦ã„ã‚‹ã‹ï¼Ÿ
 		neiroset(qq, dl);
 		return si;
 	} else {
@@ -3735,18 +3735,18 @@ uchar * PMDWIN::comat(QQ *qq, uchar *si)
 		qq->alg_fb = dl = bx[24];
 		bx += 4;
 		
-		// tlÀßÄê 
+		// tlè¨­å®š 
 		qq->slot1 = bx[0];
 		qq->slot3 = bx[1];
 		qq->slot2 = bx[2];
 		qq->slot4 = bx[3];
 		
-		//	FM3ch¤Ç¡¢¥Ş¥¹¥¯¤µ¤ì¤Æ¤¤¤¿¾ì¹ç¡¢fm3_alg_fb¤òÀßÄê
+		//	FM3chã§ã€ãƒã‚¹ã‚¯ã•ã‚Œã¦ã„ãŸå ´åˆã€fm3_alg_fbã‚’è¨­å®š
 		if(pmdwork.partb == 3 && qq->neiromask) {
 			if(pmdwork.fmsel == 0) {
 				// in. dl = alg/fb
 				if((qq->slotmask & 0x10) == 0) {
-					al = pmdwork.fm3_alg_fb & 0x38;		// fb¤ÏÁ°¤ÎÃÍ¤ò»ÈÍÑ
+					al = pmdwork.fm3_alg_fb & 0x38;		// fbã¯å‰ã®å€¤ã‚’ä½¿ç”¨
 					dl = (dl & 7) | al;
 				}
 				
@@ -3760,7 +3760,7 @@ uchar * PMDWIN::comat(QQ *qq, uchar *si)
 }
 
 //=============================================================================
-//	²»¿§¤ÎÀßÄê
+//	éŸ³è‰²ã®è¨­å®š
 //		INPUTS	-- [PARTB]
 //			-- dl [TONE_NUMBER]
 //			-- di [PART_DATA_ADDRESS]
@@ -3772,10 +3772,10 @@ void PMDWIN::neiroset(QQ *qq, int dl)
 	
 	bx = toneadr_calc(qq, dl);
 	if(silence_fmpart(qq)) {
-		// neiromask=0¤Î»ş (TL¤Îwork¤Î¤ßÀßÄê)
+		// neiromask=0ã®æ™‚ (TLã®workã®ã¿è¨­å®š)
 		bx += 4;
 		
-		// tlÀßÄê
+		// tlè¨­å®š
 		qq->slot1 = bx[0];
 		qq->slot3 = bx[1];
 		qq->slot2 = bx[2];
@@ -3784,25 +3784,25 @@ void PMDWIN::neiroset(QQ *qq, int dl)
 	}
 	
 	//=========================================================================
-	//	²»¿§ÀßÄê¥á¥¤¥ó
+	//	éŸ³è‰²è¨­å®šãƒ¡ã‚¤ãƒ³
 	//=========================================================================
 	//-------------------------------------------------------------------------
-	//	AL/FB¤òÀßÄê
+	//	AL/FBã‚’è¨­å®š
 	//-------------------------------------------------------------------------
 	
 	dh = 0xb0 - 1 + pmdwork.partb;
 	
-	if(pmdwork.af_check) {		// ALG/FB¤ÏÀßÄê¤·¤Ê¤¤mode¤«¡©
+	if(pmdwork.af_check) {		// ALG/FBã¯è¨­å®šã—ãªã„modeã‹ï¼Ÿ
 		dl = qq->alg_fb;
 	} else {
 		dl = bx[24];
 	}
 	
 	if(pmdwork.partb == 3 && pmdwork.fmsel == 0) {
-		if(pmdwork.af_check != 0) {	// ALG/FB¤ÏÀßÄê¤·¤Ê¤¤mode¤«¡©
+		if(pmdwork.af_check != 0) {	// ALG/FBã¯è¨­å®šã—ãªã„modeã‹ï¼Ÿ
 			dl = pmdwork.fm3_alg_fb;
 		} else {
-			if((qq->slotmask & 0x10) == 0) {	// slot1¤ò»ÈÍÑ¤·¤Æ¤¤¤ë¤«¡©
+			if((qq->slotmask & 0x10) == 0) {	// slot1ã‚’ä½¿ç”¨ã—ã¦ã„ã‚‹ã‹ï¼Ÿ
 				dl = (pmdwork.fm3_alg_fb & 0x38) | (dl & 7);
 			}
 			pmdwork.fm3_alg_fb = dl;
@@ -3814,7 +3814,7 @@ void PMDWIN::neiroset(QQ *qq, int dl)
 	dl &= 7;		// dl = algo
 	
 	//-------------------------------------------------------------------------
-	//	Carrier¤Î°ÌÃÖ¤òÄ´¤Ù¤ë (VolMask¤Ë¤âÀßÄê)
+	//	Carrierã®ä½ç½®ã‚’èª¿ã¹ã‚‹ (VolMaskã«ã‚‚è¨­å®š)
 	//-------------------------------------------------------------------------
 	
 	if((qq->volmask & 0x0f) == 0) {
@@ -3826,12 +3826,12 @@ void PMDWIN::neiroset(QQ *qq, int dl)
 	}
 	
 	qq->carrier = carrier_table[dl];
-	ah = carrier_table[dl+8];	// slot2/3¤ÎµÕÅ¾¥Ç¡¼¥¿(notºÑ¤ß)
+	ah = carrier_table[dl+8];	// slot2/3ã®é€†è»¢ãƒ‡ãƒ¼ã‚¿(notæ¸ˆã¿)
 	al = qq->neiromask;
-	ah &= al;				// AH=TLÍÑ¤Îmask / AL=¤½¤ÎÂ¾ÍÑ¤Îmask
+	ah &= al;				// AH=TLç”¨ã®mask / AL=ãã®ä»–ç”¨ã®mask
 	
 	//-------------------------------------------------------------------------
-	//	³Æ²»¿§¥Ñ¥é¥á¡¼¥¿¤òÀßÄê (TL¤Ï¥â¥¸¥å¥ì¡¼¥¿¤Î¤ß)
+	//	å„éŸ³è‰²ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã‚’è¨­å®š (TLã¯ãƒ¢ã‚¸ãƒ¥ãƒ¬ãƒ¼ã‚¿ã®ã¿)
 	//-------------------------------------------------------------------------
 	
 	dh = 0x30 - 1 + pmdwork.partb;
@@ -3952,7 +3952,7 @@ void PMDWIN::neiroset(QQ *qq, int dl)
 */
 
 	//-------------------------------------------------------------------------
-	//	SLOTËè¤ÎTL¤ò¥ï¡¼¥¯¤ËÊİÂ¸
+	//	SLOTæ¯ã®TLã‚’ãƒ¯ãƒ¼ã‚¯ã«ä¿å­˜
 	//-------------------------------------------------------------------------
 	bx -= 20;
 	qq->slot1 = bx[0];
@@ -3963,8 +3963,8 @@ void PMDWIN::neiroset(QQ *qq, int dl)
 
 
 //=============================================================================
-//	[PartB]¤Î¥Ñ¡¼¥È¤Î²»¤ò´°àú¤Ë¾Ã¤¹ (TL=127 and RR=15 and KEY-OFF)
-//		cy=1 ¡¦¡¦¡¦ Á´¥¹¥í¥Ã¥Èneiromask¤µ¤ì¤Æ¤¤¤ë
+//	[PartB]ã®ãƒ‘ãƒ¼ãƒˆã®éŸ³ã‚’å®Œç’§ã«æ¶ˆã™ (TL=127 and RR=15 and KEY-OFF)
+//		cy=1 ãƒ»ãƒ»ãƒ» å…¨ã‚¹ãƒ­ãƒƒãƒˆneiromaskã•ã‚Œã¦ã„ã‚‹
 //=============================================================================
 int PMDWIN::silence_fmpart(QQ *qq)
 {
@@ -4005,7 +4005,7 @@ int PMDWIN::silence_fmpart(QQ *qq)
 
 
 //=============================================================================
-//	TONE DATA START ADDRESS ¤ò·×»»
+//	TONE DATA START ADDRESS ã‚’è¨ˆç®—
 //		input	dl	tone_number
 //		output	bx	address
 //=============================================================================
@@ -4028,22 +4028,22 @@ uchar * PMDWIN::toneadr_calc(QQ *qq, int dl)
 
 
 //=============================================================================
-//	£Æ£Í²»¸»¥Ï¡¼¥É£Ì£Æ£Ï¤ÎÀßÄê¡Ê£Ö£²¡¥£´³ÈÄ¥Ê¬¡Ë
+//	ï¼¦ï¼­éŸ³æºãƒãƒ¼ãƒ‰ï¼¬ï¼¦ï¼¯ã®è¨­å®šï¼ˆï¼¶ï¼’ï¼ï¼”æ‹¡å¼µåˆ†ï¼‰
 //=============================================================================
 uchar * PMDWIN::hlfo_set(QQ *qq, uchar *si)
 {
 	qq->fmpan = (qq->fmpan & 0xc0) | *si++;
 	
 	if(pmdwork.partb == 3 && pmdwork.fmsel == 0) {
-		// 2608¤Î»ş¤Î¤ß¤Ê¤Î¤Ç part_e¤Ï¤¢¤ê¤¨¤Ê¤¤
-		//	FM3¤Î¾ì¹ç¤Ï 4¤Ä¤Î¥Ñ¡¼¥ÈÁí¤ÆÀßÄê
+		// 2608ã®æ™‚ã®ã¿ãªã®ã§ part_eã¯ã‚ã‚Šãˆãªã„
+		//	FM3ã®å ´åˆã¯ 4ã¤ã®ãƒ‘ãƒ¼ãƒˆç·ã¦è¨­å®š
 		FMPart[2].fmpan = qq->fmpan;
 		ExtPart[0].fmpan = qq->fmpan;
 		ExtPart[1].fmpan = qq->fmpan;
 		ExtPart[2].fmpan = qq->fmpan;
 	}
 	
-	if(qq->partmask == 0) {		// ¥Ñ¡¼¥È¥Ş¥¹¥¯¤µ¤ì¤Æ¤¤¤ë¤«¡©
+	if(qq->partmask == 0) {		// ãƒ‘ãƒ¼ãƒˆãƒã‚¹ã‚¯ã•ã‚Œã¦ã„ã‚‹ã‹ï¼Ÿ
 		opna.SetReg(pmdwork.fmsel + pmdwork.partb + 0xb4 - 1,
 			calc_panout(qq));
 	}
@@ -4052,7 +4052,7 @@ uchar * PMDWIN::hlfo_set(QQ *qq, uchar *si)
 
 
 //=============================================================================
-//	¥Ü¥ê¥å¡¼¥à¤ò¼¡¤Î°ì¸Ä¤À¤±ÊÑ¹¹¡Ê£Ö£²¡¥£·³ÈÄ¥Ê¬¡Ë
+//	ãƒœãƒªãƒ¥ãƒ¼ãƒ ã‚’æ¬¡ã®ä¸€å€‹ã ã‘å¤‰æ›´ï¼ˆï¼¶ï¼’ï¼ï¼—æ‹¡å¼µåˆ†ï¼‰
 //=============================================================================
 uchar * PMDWIN::vol_one_up_fm(QQ *qq, uchar *si)
 {
@@ -4068,14 +4068,14 @@ uchar * PMDWIN::vol_one_up_fm(QQ *qq, uchar *si)
 
 
 //=============================================================================
-//	¥İ¥ë¥¿¥á¥ó¥È(FM)
+//	ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆ(FM)
 //=============================================================================
 uchar * PMDWIN::porta(QQ *qq, uchar *si)
 {
 	int		ax, cx, cl, bx, bh;
 	
 	if(qq->partmask) {
-		qq->fnum = 0;		//µÙÉä¤ËÀßÄê
+		qq->fnum = 0;		//ä¼‘ç¬¦ã«è¨­å®š
 		qq->onkai = 255;
 		qq->leng = *(si+2);
 		qq->keyon_flag++;
@@ -4089,7 +4089,7 @@ uchar * PMDWIN::porta(QQ *qq, uchar *si)
 		pmdwork.volpush_flag = 0;
 		pmdwork.loop_work &= qq->loopcheck;
 		
-		return si+3;		// ÆÉ¤ßÈô¤Ğ¤¹	(Mask»ş)
+		return si+3;		// èª­ã¿é£›ã°ã™	(Maskæ™‚)
 	}
 	
 	lfoinit(qq, *si);
@@ -4098,26 +4098,26 @@ uchar * PMDWIN::porta(QQ *qq, uchar *si)
 	cx = qq->fnum;
 	cl = qq->onkai;
 	fnumset(qq, oshift(qq, *si++));
-	bx = qq->fnum;			// bx=¥İ¥ë¥¿¥á¥ó¥ÈÀè¤ÎfnumÃÍ
+	bx = qq->fnum;			// bx=ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆå…ˆã®fnumå€¤
 	qq->onkai = cl;
-	qq->fnum = cx;			// cx=¥İ¥ë¥¿¥á¥ó¥È¸µ¤ÎfnumÃÍ
+	qq->fnum = cx;			// cx=ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆå…ƒã®fnumå€¤
 	
-	bh = (int)((bx / 256) & 0x38) - ((cx / 256) & 0x38);	// Àè¤Îoctarb - ¸µ¤Îoctarb
+	bh = (int)((bx / 256) & 0x38) - ((cx / 256) & 0x38);	// å…ˆã®octarb - å…ƒã®octarb
 	if(bh) {
 		bh /= 8;
-		ax = bh * 0x26a;			// ax = 26ah * octarbº¹
+		ax = bh * 0x26a;			// ax = 26ah * octarbå·®
 	} else {
 		ax = 0;
 	}
 		
 	bx  = (bx & 0x7ff) - (cx & 0x7ff);
-	ax += bx;				// ax=26ah*octarbº¹ + ²»Äøº¹
+	ax += bx;				// ax=26ah*octarbå·® + éŸ³ç¨‹å·®
 	
 	qq->leng = *si++;
 	si = calc_q(qq, si);
 	
-	qq->porta_num2 = ax / qq->leng;	// ¾¦
-	qq->porta_num3 = ax % qq->leng;	// Í¾¤ê
+	qq->porta_num2 = ax / qq->leng;	// å•†
+	qq->porta_num3 = ax % qq->leng;	// ä½™ã‚Š
 	qq->lfoswi |= 8;				// Porta ON
 	
 	if(qq->volpush && qq->onkai != 255) {
@@ -4137,7 +4137,7 @@ uchar * PMDWIN::porta(QQ *qq, uchar *si)
 	pmdwork.tieflag = 0;
 	pmdwork.volpush_flag = 0;
 	
-	if(*si == 0xfb) {		// '&'¤¬Ä¾¸å¤Ë¤¢¤Ã¤¿¤ékeyoff¤·¤Ê¤¤
+	if(*si == 0xfb) {		// '&'ãŒç›´å¾Œã«ã‚ã£ãŸã‚‰keyoffã—ãªã„
 		qq->keyoff_flag = 2;
 	} else {
 		qq->keyoff_flag = 0;
@@ -4173,13 +4173,13 @@ uchar * PMDWIN::slotmask_set(QQ *qq, uchar *si)
 	if(qq->slotmask != ah) {
 		qq->slotmask = ah;
 		if((ah & 0xf0) == 0) {
-			qq->partmask |= 0x20;	// s0¤Î»ş¥Ñ¡¼¥È¥Ş¥¹¥¯
+			qq->partmask |= 0x20;	// s0ã®æ™‚ãƒ‘ãƒ¼ãƒˆãƒã‚¹ã‚¯
 		} else {
-			qq->partmask &= 0xdf;	// s0°Ê³°¤Î»ş¥Ñ¡¼¥È¥Ş¥¹¥¯²ò½ü
+			qq->partmask &= 0xdf;	// s0ä»¥å¤–ã®æ™‚ãƒ‘ãƒ¼ãƒˆãƒã‚¹ã‚¯è§£é™¤
 		}
 		
-		if(ch3_setting(qq)) {		// FM3ch¤Î¾ì¹ç¤Î¤ß ch3mode¤ÎÊÑ¹¹½èÍı
-			// ch3¤Ê¤é¡¢¤½¤ì°ÊÁ°¤ÎFM3¥Ñ¡¼¥È¤Çkeyon½èÍı
+		if(ch3_setting(qq)) {		// FM3chã®å ´åˆã®ã¿ ch3modeã®å¤‰æ›´å‡¦ç†
+			// ch3ãªã‚‰ã€ãã‚Œä»¥å‰ã®FM3ãƒ‘ãƒ¼ãƒˆã§keyonå‡¦ç†
 			if(qq != &FMPart[2]) {
 				if(FMPart[2].partmask == 0 &&
 						(FMPart[2].keyoff_flag & 1) == 0) {
@@ -4257,7 +4257,7 @@ uchar * PMDWIN::slotdetune_set(QQ *qq, uchar *si)
 
 
 //=============================================================================
-//	Slot Detune Set(ÁêÂĞ)
+//	Slot Detune Set(ç›¸å¯¾)
 //=============================================================================
 uchar * PMDWIN::slotdetune_set2(QQ *qq, uchar *si)
 {
@@ -4302,22 +4302,22 @@ uchar * PMDWIN::slotdetune_set2(QQ *qq, uchar *si)
 void PMDWIN::fm3_partinit(QQ *qq, uchar *ax)
 {
 	qq->address = ax;
-	qq->leng = 1;					// ¥¢¥È 1¥«¥¦¥ó¥È ¥Ç ¥¨¥ó¥½¥¦ ¥«¥¤¥·
-	qq->keyoff_flag = -1;			// ¸½ºßkeyoffÃæ
-	qq->mdc = -1;					// MDepth Counter (Ìµ¸Â)
+	qq->leng = 1;					// ã‚¢ãƒˆ 1ã‚«ã‚¦ãƒ³ãƒˆ ãƒ‡ ã‚¨ãƒ³ã‚½ã‚¦ ã‚«ã‚¤ã‚·
+	qq->keyoff_flag = -1;			// ç¾åœ¨keyoffä¸­
+	qq->mdc = -1;					// MDepth Counter (ç„¡é™)
 	qq->mdc2 = -1;					//
 	qq->_mdc = -1;					//
 	qq->_mdc2 = -1;					//
 	qq->onkai = 255;				// rest
 	qq->onkai_def = 255;			// rest
 	qq->volume = 108;				// FM  VOLUME DEFAULT= 108
-	qq->fmpan = FMPart[2].fmpan;	// FM PAN = CH3¤ÈÆ±¤¸
-	qq->partmask |= 0x20;			// s0ÍÑ partmask
+	qq->fmpan = FMPart[2].fmpan;	// FM PAN = CH3ã¨åŒã˜
+	qq->partmask |= 0x20;			// s0ç”¨ partmask
 }
 
 
 //=============================================================================
-//	FM3ch ³ÈÄ¥¥Ñ¡¼¥È¥»¥Ã¥È
+//	FM3ch æ‹¡å¼µãƒ‘ãƒ¼ãƒˆã‚»ãƒƒãƒˆ
 //=============================================================================
 uchar * PMDWIN::fm3_extpartset(QQ *qq, uchar *si)
 {
@@ -4339,7 +4339,7 @@ uchar * PMDWIN::fm3_extpartset(QQ *qq, uchar *si)
 
 
 //=============================================================================
-//	ppz ³ÈÄ¥¥Ñ¡¼¥È¥»¥Ã¥È
+//	ppz æ‹¡å¼µãƒ‘ãƒ¼ãƒˆã‚»ãƒƒãƒˆ
 //=============================================================================
 uchar * PMDWIN::ppz_extpartset(QQ *qq, uchar *si)
 {
@@ -4351,9 +4351,9 @@ uchar * PMDWIN::ppz_extpartset(QQ *qq, uchar *si)
 		si+=2;
 		if(ax) {
 			PPZ8Part[i].address = &open_work.mmlbuf[ax];
-			PPZ8Part[i].leng = 1;					// ¥¢¥È 1¥«¥¦¥ó¥È ¥Ç ¥¨¥ó¥½¥¦ ¥«¥¤¥·
-			PPZ8Part[i].keyoff_flag = -1;			// ¸½ºßkeyoffÃæ
-			PPZ8Part[i].mdc = -1;					// MDepth Counter (Ìµ¸Â)
+			PPZ8Part[i].leng = 1;					// ã‚¢ãƒˆ 1ã‚«ã‚¦ãƒ³ãƒˆ ãƒ‡ ã‚¨ãƒ³ã‚½ã‚¦ ã‚«ã‚¤ã‚·
+			PPZ8Part[i].keyoff_flag = -1;			// ç¾åœ¨keyoffä¸­
+			PPZ8Part[i].mdc = -1;					// MDepth Counter (ç„¡é™)
 			PPZ8Part[i].mdc2 = -1;					//
 			PPZ8Part[i]._mdc = -1;					//
 			PPZ8Part[i]._mdc2 = -1;					//
@@ -4368,7 +4368,7 @@ uchar * PMDWIN::ppz_extpartset(QQ *qq, uchar *si)
 
 
 //=============================================================================
-//	²»ÎÌ¥Ş¥¹¥¯slot¤ÎÀßÄê
+//	éŸ³é‡ãƒã‚¹ã‚¯slotã®è¨­å®š
 //=============================================================================
 uchar * PMDWIN::volmask_set(QQ *qq, uchar *si)
 {
@@ -4387,7 +4387,7 @@ uchar * PMDWIN::volmask_set(QQ *qq, uchar *si)
 
 
 //=============================================================================
-//	0c0h¤ÎÄÉ²ÃspecialÌ¿Îá
+//	0c0hã®è¿½åŠ specialå‘½ä»¤
 //=============================================================================
 uchar * PMDWIN::special_0c0h(QQ *qq, uchar *si, uchar al)
 {
@@ -4481,7 +4481,7 @@ uchar * PMDWIN::_vd_ppz(QQ *qq, uchar *si)
 }
 
 //=============================================================================
-//	±éÁÕÃæ¥Ñ¡¼¥È¤Î¥Ş¥¹¥¯on/off
+//	æ¼”å¥ä¸­ãƒ‘ãƒ¼ãƒˆã®ãƒã‚¹ã‚¯on/off
 //=============================================================================
 uchar * PMDWIN::fm_mml_part_mask(QQ *qq, uchar *si)
 {
@@ -4493,11 +4493,11 @@ uchar * PMDWIN::fm_mml_part_mask(QQ *qq, uchar *si)
 	} else if(al) {
 		qq->partmask |= 0x40;
 		if(qq->partmask == 0x40) {
-			silence_fmpart(qq);	// ²»¾Ãµî
+			silence_fmpart(qq);	// éŸ³æ¶ˆå»
 		}
 	} else {
 		if((qq->partmask &= 0xbf) == 0) {
-			neiro_reset(qq);		// ²»¿§ºÆÀßÄê
+			neiro_reset(qq);		// éŸ³è‰²å†è¨­å®š
 		}
 	}
 	return si;
@@ -4600,7 +4600,7 @@ uchar * PMDWIN::ppz_mml_part_mask(QQ *qq, uchar * si)
 
 
 //=============================================================================
-//	FM²»¸»¤Î²»¿§¤òºÆÀßÄê
+//	FMéŸ³æºã®éŸ³è‰²ã‚’å†è¨­å®š
 //=============================================================================
 void PMDWIN::neiro_reset(QQ *qq)
 {
@@ -4613,7 +4613,7 @@ void PMDWIN::neiro_reset(QQ *qq)
 	s3 = qq->slot3;
 	s4 = qq->slot4;
 	pmdwork.af_check = 1;
-	neiroset(qq, qq->voicenum);		// ²»¿§Éüµ¢
+	neiroset(qq, qq->voicenum);		// éŸ³è‰²å¾©å¸°
 	pmdwork.af_check = 0;
 	qq->slot1 = s1;
 	qq->slot2 = s2;
@@ -4621,7 +4621,7 @@ void PMDWIN::neiro_reset(QQ *qq)
 	qq->slot4 = s4;
 	
 	al = ((~qq->carrier) & qq->slotmask) & 0xf0;
-		// al<- TL¤òºÆÀßÄê¤·¤Æ¤¤¤¤slot 4321xxxx
+		// al<- TLã‚’å†è¨­å®šã—ã¦ã„ã„slot 4321xxxx
 	if(al) {
 		dh = 0x4c - 1 + pmdwork.partb;	// dh=TL FM Port Address
 		if(al & 0x80) opna.SetReg(pmdwork.fmsel + dh, s4);
@@ -4668,7 +4668,7 @@ uchar * PMDWIN::_volmask_set(QQ *qq, uchar *si)
 
 
 //=============================================================================
-//	TLÊÑ²½
+//	TLå¤‰åŒ–
 //=============================================================================
 uchar * PMDWIN::tl_set(QQ *qq, uchar *si)
 {
@@ -4678,7 +4678,7 @@ uchar * PMDWIN::tl_set(QQ *qq, uchar *si)
 	al = read_char(si++);
 	ah = al & 0x0f;
 	ch = (qq->slotmask >> 4) | ((qq->slotmask << 4) & 0xf0);
-	ah &= ch;							// ah=ÊÑ²½¤µ¤»¤ëslot 00004321
+	ah &= ch;							// ah=å¤‰åŒ–ã•ã›ã‚‹slot 00004321
 	dl = *si++;
 	
 	if(al >= 0) {
@@ -4714,7 +4714,7 @@ uchar * PMDWIN::tl_set(QQ *qq, uchar *si)
 			}
 		}
 	} else {
-		//	ÁêÂĞÊÑ²½
+		//	ç›¸å¯¾å¤‰åŒ–
 		al = dl;
 		if(ah & 1) {
 			if((dl = (int)qq->slot1 + al) < 0) {
@@ -4768,7 +4768,7 @@ uchar * PMDWIN::tl_set(QQ *qq, uchar *si)
 
 
 //=============================================================================
-//	FBÊÑ²½
+//	FBå¤‰åŒ–
 //=============================================================================
 uchar * PMDWIN::fb_set(QQ *qq, uchar *si)
 {
@@ -4778,10 +4778,10 @@ uchar * PMDWIN::fb_set(QQ *qq, uchar *si)
 	dh = pmdwork.partb + 0xb0 - 1;	// dh=ALG/FB port address
 	al = read_char(si++);
 	if(al >= 0) {
-		// in	al 00000xxx ÀßÄê¤¹¤ëFB
+		// in	al 00000xxx è¨­å®šã™ã‚‹FB
 		al = ((al << 3) & 0xff) | (al >> 5);
 		
-		// in	al 00xxx000 ÀßÄê¤¹¤ëFB
+		// in	al 00xxx000 è¨­å®šã™ã‚‹FB
 		if(pmdwork.partb == 3 && pmdwork.fmsel == 0) {
 			if((qq->slotmask & 0x10) == 0) return si;
 			dl = (pmdwork.fm3_alg_fb & 7) | al;
@@ -4817,10 +4817,10 @@ uchar * PMDWIN::fb_set(QQ *qq, uchar *si)
 				qq->alg_fb = dl;
 				return si;
 			} else {
-				// in	al 00000xxx ÀßÄê¤¹¤ëFB
+				// in	al 00000xxx è¨­å®šã™ã‚‹FB
 				al = ((al << 3) & 0xff) | (al >> 5);
 				
-				// in	al 00xxx000 ÀßÄê¤¹¤ëFB
+				// in	al 00xxx000 è¨­å®šã™ã‚‹FB
 				if(pmdwork.partb == 3 && pmdwork.fmsel == 0) {
 					if((qq->slotmask & 0x10) == 0) return si;
 					dl = (pmdwork.fm3_alg_fb & 7) | al;
@@ -4853,8 +4853,8 @@ uchar * PMDWIN::fb_set(QQ *qq, uchar *si)
 //=============================================================================
 //	COMMAND 't' [TEMPO CHANGE1]
 //	COMMAND 'T' [TEMPO CHANGE2]
-//	COMMAND 't¡Ş' [TEMPO CHANGE ÁêÂĞ1]
-//	COMMAND 'T¡Ş' [TEMPO CHANGE ÁêÂĞ2]
+//	COMMAND 'tÂ±' [TEMPO CHANGE ç›¸å¯¾1]
+//	COMMAND 'TÂ±' [TEMPO CHANGE ç›¸å¯¾2]
 //=============================================================================
 uchar * PMDWIN::comt(uchar *si)
 {
@@ -4874,7 +4874,7 @@ uchar * PMDWIN::comt(uchar *si)
 		calc_tempo_tb();
 	
 	} else if(al == 0xfe) {
-		al = char(*si++);			// T¡Ş (FC FE)
+		al = char(*si++);			// TÂ± (FC FE)
 		if(al >= 0) {
 			al += open_work.tempo_d_push;
 		} else {
@@ -4891,7 +4891,7 @@ uchar * PMDWIN::comt(uchar *si)
 		calc_tb_tempo();
 	
 	} else {
-		al = char(*si++);			// t¡Ş (FC FD)
+		al = char(*si++);			// tÂ± (FC FD)
 		if(al >= 0) {
 			al += open_work.tempo_48_push;
 			if(al > 255) {
@@ -4910,7 +4910,7 @@ uchar * PMDWIN::comt(uchar *si)
 
 
 //=============================================================================
-//	COMMAND '[' [¥ë¡¼¥× ¥¹¥¿¡¼¥È]
+//	COMMAND '[' [ãƒ«ãƒ¼ãƒ— ã‚¹ã‚¿ãƒ¼ãƒˆ]
 //=============================================================================
 uchar * PMDWIN::comstloop(QQ *qq, uchar *si)
 {
@@ -4928,7 +4928,7 @@ uchar * PMDWIN::comstloop(QQ *qq, uchar *si)
 
 
 //=============================================================================
-//	COMMAND	']' [¥ë¡¼¥× ¥¨¥ó¥É]
+//	COMMAND	']' [ãƒ«ãƒ¼ãƒ— ã‚¨ãƒ³ãƒ‰]
 //=============================================================================
 uchar * PMDWIN::comedloop(QQ *qq, uchar *si)
 {
@@ -4942,7 +4942,7 @@ uchar * PMDWIN::comedloop(QQ *qq, uchar *si)
 			si+=2;
 			return si;
 		}
-	} else {			// 0 ¥Ê¥é ¥à¥¸¥ç¥¦¥±¥ó ¥ë¡¼¥×
+	} else {			// 0 ãƒŠãƒ© ãƒ ã‚¸ãƒ§ã‚¦ã‚±ãƒ³ ãƒ«ãƒ¼ãƒ—
 		si++;
 		qq->loopcheck = 1;
 	}
@@ -4959,7 +4959,7 @@ uchar * PMDWIN::comedloop(QQ *qq, uchar *si)
 
 
 //=============================================================================
-//	COMMAND	':' [¥ë¡¼¥× ¥À¥Ã¥·¥å¥Ä]
+//	COMMAND	':' [ãƒ«ãƒ¼ãƒ— ãƒ€ãƒƒã‚·ãƒ¥ãƒ„]
 //=============================================================================
 uchar * PMDWIN::comexloop(QQ *qq, uchar *si)
 {
@@ -4985,7 +4985,7 @@ uchar * PMDWIN::comexloop(QQ *qq, uchar *si)
 
 
 //=============================================================================
-//	LFO ¥Ñ¥é¥á¡¼¥¿ ¥»¥Ã¥È
+//	LFO ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ ã‚»ãƒƒãƒˆ
 //=============================================================================
 uchar * PMDWIN::lfoset(QQ *qq, uchar *si)
 {
@@ -5203,7 +5203,7 @@ uchar *PMDWIN::rmsvs_sft(uchar *si)
 
 
 //=============================================================================
-//	¥Ü¥ê¥å¡¼¥à¤ò¼¡¤Î°ì¸Ä¤À¤±ÊÑ¹¹¡Ê£Ö£²¡¥£·³ÈÄ¥Ê¬¡Ë
+//	ãƒœãƒªãƒ¥ãƒ¼ãƒ ã‚’æ¬¡ã®ä¸€å€‹ã ã‘å¤‰æ›´ï¼ˆï¼¶ï¼’ï¼ï¼—æ‹¡å¼µåˆ†ï¼‰
 //=============================================================================
 uchar * PMDWIN::vol_one_up_psg(QQ *qq, uchar *si)
 {
@@ -5235,14 +5235,14 @@ uchar * PMDWIN::vol_one_down(QQ *qq, uchar *si)
 
 
 //=============================================================================
-//	¥İ¥ë¥¿¥á¥ó¥È(PSG)
+//	ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆ(PSG)
 //=============================================================================
 uchar * PMDWIN::portap(QQ *qq, uchar *si)
 {
 	int		ax, al_, bx_;
 
 	if(qq->partmask) {
-		qq->fnum = 0;		//µÙÉä¤ËÀßÄê
+		qq->fnum = 0;		//ä¼‘ç¬¦ã«è¨­å®š
 		qq->onkai = 255;
 		qq->leng = *(si+2);
 		qq->keyon_flag++;
@@ -5255,7 +5255,7 @@ uchar * PMDWIN::portap(QQ *qq, uchar *si)
 		pmdwork.tieflag = 0;
 		pmdwork.volpush_flag = 0;
 		pmdwork.loop_work &= qq->loopcheck;
-		return si+3;		// ÆÉ¤ßÈô¤Ğ¤¹	(Mask»ş)
+		return si+3;		// èª­ã¿é£›ã°ã™	(Maskæ™‚)
 	}
 	
 	lfoinitp(qq, *si);
@@ -5264,17 +5264,17 @@ uchar * PMDWIN::portap(QQ *qq, uchar *si)
 	bx_ = qq->fnum;
 	al_ = qq->onkai;
 	fnumsetp(qq, oshiftp(qq, *si++));
-	ax = qq->fnum; 			// ax = ¥İ¥ë¥¿¥á¥ó¥ÈÀè¤Îpsg_tuneÃÍ
+	ax = qq->fnum; 			// ax = ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆå…ˆã®psg_tuneå€¤
 	
 	qq->onkai = al_;
-	qq->fnum = bx_;			// bx = ¥İ¥ë¥¿¥á¥ó¥È¸µ¤Îpsg_tuneÃÍ
+	qq->fnum = bx_;			// bx = ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆå…ƒã®psg_tuneå€¤
 	ax -= bx_;
 	
 	qq->leng = *si++;
 	si = calc_q(qq, si);
 	
-	qq->porta_num2 = ax / qq->leng;		// ¾¦
-	qq->porta_num3 = ax % qq->leng;		// Í¾¤ê
+	qq->porta_num2 = ax / qq->leng;		// å•†
+	qq->porta_num3 = ax % qq->leng;		// ä½™ã‚Š
 	qq->lfoswi |= 8;				// Porta ON
 	
 	if(qq->volpush && qq->onkai != 255) {
@@ -5295,7 +5295,7 @@ uchar * PMDWIN::portap(QQ *qq, uchar *si)
 	pmdwork.volpush_flag = 0;
 	qq->keyoff_flag = 0;
 	
-	if(*si == 0xfb) {			// '&'¤¬Ä¾¸å¤Ë¤¢¤Ã¤¿¤ékeyoff¤·¤Ê¤¤
+	if(*si == 0xfb) {			// '&'ãŒç›´å¾Œã«ã‚ã£ãŸã‚‰keyoffã—ãªã„
 		qq->keyoff_flag = 2;
 	}
 	
@@ -5305,7 +5305,7 @@ uchar * PMDWIN::portap(QQ *qq, uchar *si)
 
 
 //=============================================================================
-//	'w' COMMAND [PSG NOISE ¥Ø¥¤¥­¥ó ¥·¥å¥¦¥Ï¥¹¥¦]
+//	'w' COMMAND [PSG NOISE ãƒ˜ã‚¤ã‚­ãƒ³ ã‚·ãƒ¥ã‚¦ãƒã‚¹ã‚¦]
 //=============================================================================
 uchar * PMDWIN::psgnoise_move(uchar *si)
 {
@@ -5328,7 +5328,7 @@ uchar * PMDWIN::extend_psgenvset(QQ *qq, uchar *si)
 	qq->eenv_sl = ((*si++ >> 4) & 0x0f) ^ 0x0f;
 	qq->eenv_al = *si++ & 0x0f;
 	
-	if(qq->envf != -1) {	// ¥Î¡¼¥Ş¥ë¡ä³ÈÄ¥¤Ë°Ü¹Ô¤·¤¿¤«¡©
+	if(qq->envf != -1) {	// ãƒãƒ¼ãƒãƒ«ï¼æ‹¡å¼µã«ç§»è¡Œã—ãŸã‹ï¼Ÿ
 		qq->envf = -1;
 		qq->eenv_count = 4;		// RR
 		qq->eenv_volume = 0;	// Volume
@@ -5358,10 +5358,10 @@ uchar * PMDWIN::mdepth_count(QQ *qq, uchar *si)
 
 
 //=============================================================================
-//	£Ì£Æ£Ï¤È£Ğ£Ó£Ç¡¿£Ğ£Ã£Í¤Î¥½¥Õ¥È¥¦¥¨¥¢¥¨¥ó¥Ù¥í¡¼¥×¤Î½é´ü²½
+//	ï¼¬ï¼¦ï¼¯ã¨ï¼°ï¼³ï¼§ï¼ï¼°ï¼£ï¼­ã®ã‚½ãƒ•ãƒˆã‚¦ã‚¨ã‚¢ã‚¨ãƒ³ãƒ™ãƒ­ãƒ¼ãƒ—ã®åˆæœŸåŒ–
 //=============================================================================
 //=============================================================================
-//	£Ğ£Ó£Ç¡¿£Ğ£Ã£Í²»¸»ÍÑ¡¡Entry
+//	ï¼°ï¼³ï¼§ï¼ï¼°ï¼£ï¼­éŸ³æºç”¨ã€€Entry
 //=============================================================================
 void PMDWIN::lfoinitp(QQ *qq, int al)
 {
@@ -5376,12 +5376,12 @@ void PMDWIN::lfoinitp(QQ *qq, int al)
 
 	qq->onkai_def = al;
 
-	if(ah == 0x0f) {		// ¥­¥å¡¼¥Õ ¥Î ¥È¥­ ¥Ï INIT ¥·¥Ê¥¤¥è
+	if(ah == 0x0f) {		// ã‚­ãƒ¥ãƒ¼ãƒ• ãƒ ãƒˆã‚­ ãƒ INIT ã‚·ãƒŠã‚¤ãƒ¨
 		lfo_exit(qq);
 		return;
 	}
 	
-	qq->porta_num = 0;				// ¥İ¥ë¥¿¥á¥ó¥È¤Ï½é´ü²½
+	qq->porta_num = 0;				// ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆã¯åˆæœŸåŒ–
 	
 	if(pmdwork.tieflag & 1) {
 		lfo_exit(qq);
@@ -5389,7 +5389,7 @@ void PMDWIN::lfoinitp(QQ *qq, int al)
 	}
 	
 	//------------------------------------------------------------------------
-	//	¥½¥Õ¥È¥¦¥¨¥¢¥¨¥ó¥Ù¥í¡¼¥×½é´ü²½
+	//	ã‚½ãƒ•ãƒˆã‚¦ã‚¨ã‚¢ã‚¨ãƒ³ãƒ™ãƒ­ãƒ¼ãƒ—åˆæœŸåŒ–
 	//------------------------------------------------------------------------
 	if(qq->envf != -1) {
 		qq->envf = 0;
@@ -5397,7 +5397,7 @@ void PMDWIN::lfoinitp(QQ *qq, int al)
 		qq->eenv_ar = qq->eenv_arc;
 		
 		if(qq->eenv_ar == 0) {
-			qq->envf = 1;	// ATTACK=0 ... ¥¹¥° Decay ¥Ë
+			qq->envf = 1;	// ATTACK=0 ... ã‚¹ã‚° Decay ãƒ‹
 			qq->eenv_volume = qq->eenv_dr;
 		}
 		
@@ -5406,7 +5406,7 @@ void PMDWIN::lfoinitp(QQ *qq, int al)
 		lfin1(qq);
 		
 	} else {
-		//	³ÈÄ¥ssg_envelopeÍÑ
+		//	æ‹¡å¼µssg_envelopeç”¨
 		
 		qq->eenv_arc = qq->eenv_ar - 16;
 		if(qq->eenv_dr < 16) {
@@ -5432,11 +5432,11 @@ void PMDWIN::lfoinitp(QQ *qq, int al)
 
 void PMDWIN::lfo_exit(QQ *qq)
 {
-	if((qq->lfoswi & 3) != 0) {		// Á°¤¬ & ¤Î¾ì¹ç -> 1²ó LFO½èÍı
+	if((qq->lfoswi & 3) != 0) {		// å‰ãŒ & ã®å ´åˆ -> 1å› LFOå‡¦ç†
 		lfo(qq);
 	}
 	
-	if((qq->lfoswi & 0x30) != 0) {	// Á°¤¬ & ¤Î¾ì¹ç -> 1²ó LFO½èÍı
+	if((qq->lfoswi & 0x30) != 0) {	// å‰ãŒ & ã®å ´åˆ -> 1å› LFOå‡¦ç†
 		lfo_change(qq);
 		lfo(qq);
 		lfo_change(qq);
@@ -5445,7 +5445,7 @@ void PMDWIN::lfo_exit(QQ *qq)
 
 
 //=============================================================================
-//	£Ì£Æ£Ï½é´ü²½
+//	ï¼¬ï¼¦ï¼¯åˆæœŸåŒ–
 //=============================================================================
 void PMDWIN::lfin1(QQ *qq)
 {
@@ -5457,15 +5457,15 @@ void PMDWIN::lfin1(QQ *qq)
 	
 	qq->sdelay_c = qq->sdelay;
 	
-	if(qq->lfoswi & 3) {	// LFO¤ÏÌ¤»ÈÍÑ
-		if((qq->lfoswi & 4) == 0) {	//keyonÈóÆ±´ü¤«?
+	if(qq->lfoswi & 3) {	// LFOã¯æœªä½¿ç”¨
+		if((qq->lfoswi & 4) == 0) {	//keyonéåŒæœŸã‹?
 			lfoinit_main(qq);
 		}
 		lfo(qq);
 	}
 	
-	if(qq->lfoswi & 0x30) {	// LFO¤ÏÌ¤»ÈÍÑ
-		if((qq->lfoswi & 0x40) == 0) {	//keyonÈóÆ±´ü¤«?
+	if(qq->lfoswi & 0x30) {	// LFOã¯æœªä½¿ç”¨
+		if((qq->lfoswi & 0x40) == 0) {	//keyonéåŒæœŸã‹?
 			lfo_change(qq);
 			lfoinit_main(qq);
 			lfo_change(qq);
@@ -5487,16 +5487,16 @@ void PMDWIN::lfoinit_main(QQ *qq)
 	qq->time = qq->time2;
 	qq->mdc = qq->mdc2;
 	
-	if(qq->lfo_wave == 2 || qq->lfo_wave == 3) {	// ¶ë·ÁÇÈ or ¥é¥ó¥À¥àÇÈ¡©
-		qq->speed = 1;	// delayÄ¾¸å¤ËLFO¤¬³İ¤«¤ë¤è¤¦¤Ë¤¹¤ë
+	if(qq->lfo_wave == 2 || qq->lfo_wave == 3) {	// çŸ©å½¢æ³¢ or ãƒ©ãƒ³ãƒ€ãƒ æ³¢ï¼Ÿ
+		qq->speed = 1;	// delayç›´å¾Œã«LFOãŒæ›ã‹ã‚‹ã‚ˆã†ã«ã™ã‚‹
 	} else {
-		qq->speed++;	// ¤½¤ì°Ê³°¤Î¾ì¹ç¤ÏdelayÄ¾¸å¤ÎspeedÃÍ¤ò +1
+		qq->speed++;	// ãã‚Œä»¥å¤–ã®å ´åˆã¯delayç›´å¾Œã®speedå€¤ã‚’ +1
 	}
 }
 
 
 //=============================================================================
-//	SHIFT[di] Ê¬°ÜÄ´¤¹¤ë
+//	SHIFT[di] åˆ†ç§»èª¿ã™ã‚‹
 //=============================================================================
 int PMDWIN::oshiftp(QQ *qq, int al)
 {
@@ -5514,7 +5514,7 @@ int PMDWIN::oshift(QQ *qq, int al)
 		if((al = qq->onkai) >= 0x80) {
 			return 0x0f;
 		} else {
-			return al;	//@»ÃÄêÂĞ±ş
+			return al;	//@æš«å®šå¯¾å¿œ
 		}
 	}
 
@@ -5525,7 +5525,7 @@ int PMDWIN::oshift(QQ *qq, int al)
 	bh = (al & 0xf0) >> 4;	// bh = OCT
 
 	if(dl < 0) {
-		// - ¥Û¥¦¥³¥¦ ¥·¥Õ¥È
+		// - ãƒ›ã‚¦ã‚³ã‚¦ ã‚·ãƒ•ãƒˆ
 		if((bl += dl) < 0) {
 			do {
 				bh--;
@@ -5535,7 +5535,7 @@ int PMDWIN::oshift(QQ *qq, int al)
 		return (bh << 4) | bl;
 
 	} else {
-		// + ¥Û¥¦¥³¥¦ ¥·¥Õ¥È
+		// + ãƒ›ã‚¦ã‚³ã‚¦ ã‚·ãƒ•ãƒˆ
 		bl += dl;
 		while(bl >= 0x0c) {
 			bh++;
@@ -5555,10 +5555,10 @@ void PMDWIN::fnumsetp(QQ *qq, int al)
 {
 	int	ax, bx, cl;
 	
-	if((al & 0x0f) == 0x0f) {		// ¥­¥å¥¦¥Õ ¥Ê¥é FNUM ¥Ë 0 ¥ò ¥»¥Ã¥È
+	if((al & 0x0f) == 0x0f) {		// ã‚­ãƒ¥ã‚¦ãƒ• ãƒŠãƒ© FNUM ãƒ‹ 0 ãƒ² ã‚»ãƒƒãƒˆ
 		qq->onkai = 255;
 		if(qq->lfoswi & 0x11) return;
-		qq->fnum = 0;	// ²»ÄøLFOÌ¤»ÈÍÑ
+		qq->fnum = 0;	// éŸ³ç¨‹LFOæœªä½¿ç”¨
 		return;
 	}
 	
@@ -5577,7 +5577,7 @@ void PMDWIN::fnumsetp(QQ *qq, int al)
 
 
 //=============================================================================
-//	QÃÍ¤Î·×»»
+//	Qå€¤ã®è¨ˆç®—
 //		break	dx
 //=============================================================================
 uchar * PMDWIN::calc_q(QQ *qq, uchar *si)
@@ -5625,7 +5625,7 @@ uchar * PMDWIN::calc_q(QQ *qq, uchar *si)
 
 
 //=============================================================================
-//	£Ğ£Ó£Ç¡¡£Ö£Ï£Ì£Õ£Í£Å¡¡£Ó£Å£Ô
+//	ï¼°ï¼³ï¼§ã€€ï¼¶ï¼¯ï¼¬ï¼µï¼­ï¼¥ã€€ï¼³ï¼¥ï¼´
 //=============================================================================
 void PMDWIN::volsetp(QQ *qq)
 {
@@ -5640,17 +5640,17 @@ void PMDWIN::volsetp(QQ *qq)
 	}
 	
 	//------------------------------------------------------------------------
-	//	²»ÎÌdown·×»»
+	//	éŸ³é‡downè¨ˆç®—
 	//------------------------------------------------------------------------
 	dl = ((256-open_work.ssg_voldown) * dl) >> 8;
 	
 	//------------------------------------------------------------------------
-	//	Fadeout·×»»
+	//	Fadeoutè¨ˆç®—
 	//------------------------------------------------------------------------
 	dl = ((256 - open_work.fadeout_volume) * dl) >> 8;
 	
 	//------------------------------------------------------------------------
-	//	ENVELOPE ·×»»
+	//	ENVELOPE è¨ˆç®—
 	//------------------------------------------------------------------------
 	if(dl <= 0) {
 		opna.SetReg(pmdwork.partb+8-1, 0);
@@ -5673,7 +5673,7 @@ void PMDWIN::volsetp(QQ *qq)
 	}
 
 	//--------------------------------------------------------------------
-	//	²»ÎÌLFO·×»»
+	//	éŸ³é‡LFOè¨ˆç®—
 	//--------------------------------------------------------------------
 	if((qq->lfoswi & 0x22) == 0) {
 		opna.SetReg(pmdwork.partb+8-1, dl);
@@ -5698,14 +5698,14 @@ void PMDWIN::volsetp(QQ *qq)
 	if(dl > 15) dl = 15;
 	
 	//------------------------------------------------------------------------
-	//	½ĞÎÏ
+	//	å‡ºåŠ›
 	//------------------------------------------------------------------------
 	opna.SetReg(pmdwork.partb+8-1, dl);
 }
 
 
 //=============================================================================
-//	£Ğ£Ó£Ç¡¡²»ÄøÀßÄê
+//	ï¼°ï¼³ï¼§ã€€éŸ³ç¨‹è¨­å®š
 //=============================================================================
 void PMDWIN::otodasip(QQ *qq)
 {
@@ -5729,7 +5729,7 @@ void PMDWIN::otodasip(QQ *qq)
 			ax -= qq->_lfodat;
 		}
 	} else {
-		// ³ÈÄ¥DETUNE(DETUNE)¤Î·×»»
+		// æ‹¡å¼µDETUNE(DETUNE)ã®è¨ˆç®—
 		if(qq->detune) {
 			dx = (ax * qq->detune) >> 12;		// dx:ax=ax * qq->detune
 			if(dx >= 0) {
@@ -5739,7 +5739,7 @@ void PMDWIN::otodasip(QQ *qq)
 			}
 			ax -= dx;
 		}
-		// ³ÈÄ¥DETUNE(LFO)¤Î·×»»
+		// æ‹¡å¼µDETUNE(LFO)ã®è¨ˆç®—
 		if(qq->lfoswi & 0x11) {
 			if(qq->lfoswi & 1) {
 				dx = qq->lfodat;
@@ -5779,13 +5779,13 @@ void PMDWIN::otodasip(QQ *qq)
 
 
 //=============================================================================
-//	£Ğ£Ó£Ç¡¡£Ë£Å£Ù£Ï£Î
+//	ï¼°ï¼³ï¼§ã€€ï¼«ï¼¥ï¼¹ï¼¯ï¼®
 //=============================================================================
 void PMDWIN::keyonp(QQ *qq)
 {
 	int		ah, al;
 	
-	if(qq->onkai == 255) return;		// ¥­¥å¥¦¥Õ ¥Î ¥È¥­
+	if(qq->onkai == 255) return;		// ã‚­ãƒ¥ã‚¦ãƒ• ãƒ ãƒˆã‚­
 
 	ah=(1 << (pmdwork.partb -1)) | (1 << (pmdwork.partb +2));
 	al = opna.GetReg(0x07) | ah;
@@ -5793,7 +5793,7 @@ void PMDWIN::keyonp(QQ *qq)
 	al &= ah;
 	opna.SetReg(7, al);
 	
-	// PSG ¥Î¥¤¥º ¥·¥å¥¦¥Ï¥¹¥¦ ¥Î ¥»¥Ã¥È
+	// PSG ãƒã‚¤ã‚º ã‚·ãƒ¥ã‚¦ãƒã‚¹ã‚¦ ãƒ ã‚»ãƒƒãƒˆ
 	
 	if(open_work.psnoi != open_work.psnoi_last && effwork.effon == 0) {
 		opna.SetReg(6, open_work.psnoi);
@@ -5803,9 +5803,9 @@ void PMDWIN::keyonp(QQ *qq)
 
 
 //=============================================================================
-//	£Ì£Æ£Ï½èÍı
+//	ï¼¬ï¼¦ï¼¯å‡¦ç†
 //		Don't Break cl
-//		output		cy=1	ÊÑ²½¤¬¤¢¤Ã¤¿
+//		output		cy=1	å¤‰åŒ–ãŒã‚ã£ãŸ
 //=============================================================================
 int PMDWIN::lfo(QQ *qq)
 {
@@ -5821,8 +5821,8 @@ int PMDWIN::lfop(QQ *qq)
 		return 0;
 	}
 	
-	if(qq->extendmode & 2) {	// TimerA¤È¹ç¤ï¤»¤ë¤«¡©
-								// ¤½¤¦¤¸¤ã¤Ê¤¤¤Ê¤éÌµ¾ò·ï¤Ëlfo½èÍı
+	if(qq->extendmode & 2) {	// TimerAã¨åˆã‚ã›ã‚‹ã‹ï¼Ÿ
+								// ãã†ã˜ã‚ƒãªã„ãªã‚‰ç„¡æ¡ä»¶ã«lfoå‡¦ç†
 		ch = open_work.TimerAtime - pmdwork.lastTimerAtime;
 		if(ch == 0) return 0;
 		ax = qq->lfodat;
@@ -5855,7 +5855,7 @@ void PMDWIN::lfo_main(QQ *qq)
 	qq->speed = qq->speed2;
 	
 	if(qq->lfo_wave == 0 || qq->lfo_wave == 4 || qq->lfo_wave == 5) {
-		//	»°³ÑÇÈ		lfowave = 0,4,5
+		//	ä¸‰è§’æ³¢		lfowave = 0,4,5
 		if(qq->lfo_wave == 5) {
 			ax = abs(qq->step) * qq->step;
 		} else {
@@ -5871,7 +5871,7 @@ void PMDWIN::lfo_main(QQ *qq)
 			if(--al == 0) {
 				al = qq->time2;
 				if(qq->lfo_wave != 4) {
-					al += al;	// lfowave=0,5¤Î¾ì¹ç time¤òÈ¿Å¾»ş£²ÇÜ¤Ë¤¹¤ë
+					al += al;	// lfowave=0,5ã®å ´åˆ timeã‚’åè»¢æ™‚ï¼’å€ã«ã™ã‚‹
 				}
 				qq->time = al;
 				qq->step = -qq->step;
@@ -5881,13 +5881,13 @@ void PMDWIN::lfo_main(QQ *qq)
 		qq->time = al;
 
 	} else if(qq->lfo_wave == 2) {
-		//	¶ë·ÁÇÈ		lfowave = 2
+		//	çŸ©å½¢æ³¢		lfowave = 2
 		qq->lfodat = (qq->step * qq->time);
 		md_inc(qq);
 		qq->step = -qq->step;
 
 	} else if(qq->lfo_wave == 6) {
-		//	¥ï¥ó¥·¥ç¥Ã¥È	lfowave = 6
+		//	ãƒ¯ãƒ³ã‚·ãƒ§ãƒƒãƒˆ	lfowave = 6
 		if(qq->time) {
 			if(qq->time != 255) {
 				qq->time--;
@@ -5895,7 +5895,7 @@ void PMDWIN::lfo_main(QQ *qq)
 			qq->lfodat += qq->step;
 		}
 	} else if(qq->lfo_wave == 1) {
-		//¥Î¥³¥®¥êÇÈ	lfowave = 1
+		//ãƒã‚³ã‚®ãƒªæ³¢	lfowave = 1
 		qq->lfodat += qq->step;
 		al = qq->time;
 		if(al != -1) {		
@@ -5909,7 +5909,7 @@ void PMDWIN::lfo_main(QQ *qq)
 		qq->time = al;
 
 	} else {
-		//	¥é¥ó¥À¥àÇÈ	lfowave = 3
+		//	ãƒ©ãƒ³ãƒ€ãƒ æ³¢	lfowave = 3
 		ax = abs(qq->step) * qq->time;
 		qq->lfodat = ax - (rand() % (ax * 2));
 		md_inc(qq);
@@ -5918,7 +5918,7 @@ void PMDWIN::lfo_main(QQ *qq)
 
 
 //=============================================================================
-//	MD¥³¥Ş¥ó¥É¤ÎÃÍ¤Ë¤è¤Ã¤ÆSTEPÃÍ¤òÊÑ¹¹
+//	MDã‚³ãƒãƒ³ãƒ‰ã®å€¤ã«ã‚ˆã£ã¦STEPå€¤ã‚’å¤‰æ›´
 //=============================================================================
 void PMDWIN::md_inc(QQ *qq)
 {
@@ -5996,7 +5996,7 @@ void PMDWIN::lfo_change(QQ *qq)
 
 
 //=============================================================================
-//	¥İ¥ë¥¿¥á¥ó¥È·×»»¤Ê¤Î¤Í
+//	ãƒãƒ«ã‚¿ãƒ¡ãƒ³ãƒˆè¨ˆç®—ãªã®ã­
 //=============================================================================
 void PMDWIN::porta_calc(QQ *qq)
 {
@@ -6013,7 +6013,7 @@ void PMDWIN::porta_calc(QQ *qq)
 
 
 //=============================================================================
-//	£Ğ£Ó£Ç¡¿£Ğ£Ã£Í¤Î¥½¥Õ¥È¥¦¥¨¥¢¥¨¥ó¥Ù¥í¡¼¥×
+//	ï¼°ï¼³ï¼§ï¼ï¼°ï¼£ï¼­ã®ã‚½ãƒ•ãƒˆã‚¦ã‚¨ã‚¢ã‚¨ãƒ³ãƒ™ãƒ­ãƒ¼ãƒ—
 //=============================================================================
 int PMDWIN::soft_env(QQ *qq)
 {
@@ -6068,7 +6068,7 @@ int PMDWIN::soft_env_sub(QQ *qq)
 	
 	if(qq->envf != 2) {
 		// Decay
-		if(qq->eenv_sr == 0) return 0;	// £Ä£Ò¡á£°¤Î»ş¤Ï¸º¿ê¤·¤Ê¤¤
+		if(qq->eenv_sr == 0) return 0;	// ï¼¤ï¼²ï¼ï¼ã®æ™‚ã¯æ¸›è¡°ã—ãªã„
 		if(--qq->eenv_sr != 0) return 0;
 		qq->eenv_sr = qq->eenv_src;
 		qq->eenv_volume--;
@@ -6080,7 +6080,7 @@ int PMDWIN::soft_env_sub(QQ *qq)
 	
 	
 	// Release
-	if(qq->eenv_rr == 0) {				// £Ò£Ò¡á£°¤Î»ş¤Ï¤¹¤°¤Ë²»¾Ã¤·
+	if(qq->eenv_rr == 0) {				// ï¼²ï¼²ï¼ï¼ã®æ™‚ã¯ã™ãã«éŸ³æ¶ˆã—
 		qq->eenv_volume = -15;
 		return 0;
 	}
@@ -6095,7 +6095,7 @@ int PMDWIN::soft_env_sub(QQ *qq)
 }
 
 
-//	³ÈÄ¥ÈÇ
+//	æ‹¡å¼µç‰ˆ
 int PMDWIN::ext_ssgenv_main(QQ *qq)
 {
 	int		dl;
@@ -6123,7 +6123,7 @@ void PMDWIN::esm_sub(QQ *qq, int ah)
 			
 			qq->eenv_volume = 15;
 			qq->eenv_count++;
-			if(qq->eenv_sl != 15) return;		// SL=0¤Î¾ì¹ç¤Ï¤¹¤°SR¤Ë
+			if(qq->eenv_sl != 15) return;		// SL=0ã®å ´åˆã¯ã™ãSRã«
 			qq->eenv_count++;
 			return;
 		} else {
@@ -6135,7 +6135,7 @@ void PMDWIN::esm_sub(QQ *qq, int ah)
 	
 	if(--ah == 0) {
 		//	[[[ Decay Rate ]]]
-		if(qq->eenv_drc > 0) {	// 0°Ê²¼¤Î¾ì¹ç¤Ï¥«¥¦¥ó¥ÈCHECK
+		if(qq->eenv_drc > 0) {	// 0ä»¥ä¸‹ã®å ´åˆã¯ã‚«ã‚¦ãƒ³ãƒˆCHECK
 			qq->eenv_volume -= qq->eenv_drc;
 			if(qq->eenv_volume < 0 || qq->eenv_volume < qq->eenv_sl) {
 				qq->eenv_volume = qq->eenv_sl;
@@ -6158,7 +6158,7 @@ void PMDWIN::esm_sub(QQ *qq, int ah)
 	
 	if(--ah == 0) {
 		//	[[[ Sustain Rate ]]]
-		if(qq->eenv_src > 0) {	// 0°Ê²¼¤Î¾ì¹ç¤Ï¥«¥¦¥ó¥ÈCHECK
+		if(qq->eenv_src > 0) {	// 0ä»¥ä¸‹ã®å ´åˆã¯ã‚«ã‚¦ãƒ³ãƒˆCHECK
 			if((qq->eenv_volume -= qq->eenv_src) < 0) {
 				qq->eenv_volume = 0;
 			}
@@ -6177,7 +6177,7 @@ void PMDWIN::esm_sub(QQ *qq, int ah)
 	}
 
 	//	[[[ Release Rate ]]]
-	if(qq->eenv_rrc > 0) {	// 0°Ê²¼¤Î¾ì¹ç¤Ï¥«¥¦¥ó¥ÈCHECK
+	if(qq->eenv_rrc > 0) {	// 0ä»¥ä¸‹ã®å ´åˆã¯ã‚«ã‚¦ãƒ³ãƒˆCHECK
 		if((qq->eenv_volume -= qq->eenv_rrc) < 0) {
 			qq->eenv_volume = 0;
 		}
@@ -6192,7 +6192,7 @@ void PMDWIN::esm_sub(QQ *qq, int ah)
 
 
 //=============================================================================
-//	¥Æ¥ó¥İÀßÄê
+//	ãƒ†ãƒ³ãƒè¨­å®š
 //=============================================================================
 void PMDWIN::settempo_b(void)
 {
@@ -6204,7 +6204,7 @@ void PMDWIN::settempo_b(void)
 
 
 //=============================================================================
-//	¾®Àá¤Î¥«¥¦¥ó¥È
+//	å°ç¯€ã®ã‚«ã‚¦ãƒ³ãƒˆ
 //=============================================================================
 void PMDWIN::syousetu_count(void)
 {
@@ -6218,7 +6218,7 @@ void PMDWIN::syousetu_count(void)
 
 
 //=============================================================================
-//	£Ï£Ğ£Î³ä¤ê¹ş¤ßµö²Ä½èÍı
+//	ï¼¯ï¼°ï¼®å‰²ã‚Šè¾¼ã¿è¨±å¯å‡¦ç†
 //=============================================================================
 void PMDWIN::opnint_start(void)
 {
@@ -6244,7 +6244,7 @@ void PMDWIN::opnint_start(void)
 
 
 //=============================================================================
-//	DATA AREA ¤Î ¥¤¥Ë¥·¥ã¥é¥¤¥º
+//	DATA AREA ã® ã‚¤ãƒ‹ã‚·ãƒ£ãƒ©ã‚¤ã‚º
 //=============================================================================
 void PMDWIN::data_init(void)
 {
@@ -6400,13 +6400,13 @@ void PMDWIN::opn_init(void)
 	opna.SetReg(0x10, 0xff);
 	
 	//------------------------------------------------------------------------
-	//	¥ê¥º¥à¥È¡¼¥¿¥ë¥ì¥Ù¥ë¡¡¥»¥Ã¥È
+	//	ãƒªã‚ºãƒ ãƒˆãƒ¼ã‚¿ãƒ«ãƒ¬ãƒ™ãƒ«ã€€ã‚»ãƒƒãƒˆ
 	//------------------------------------------------------------------------
 	open_work.rhyvol = 48*4*(256-open_work.rhythm_voldown)/1024;
 	opna.SetReg(0x11, open_work.rhyvol);
 	
 	//------------------------------------------------------------------------
-	//	£Ğ£Ã£Í¡¡reset & £Ì£É£Í£É£Ô¡¡£Ó£Å£Ô
+	//	ï¼°ï¼£ï¼­ã€€reset & ï¼¬ï¼©ï¼­ï¼©ï¼´ã€€ï¼³ï¼¥ï¼´
 	//------------------------------------------------------------------------
 	opna.SetReg(0x10c, 0xff);
 	opna.SetReg(0x10d, 0xff);
@@ -6418,7 +6418,7 @@ void PMDWIN::opn_init(void)
 
 
 //=============================================================================
-//	£Í£Õ£Ó£É£Ã¡¡£Ó£Ô£Ï£Ğ
+//	ï¼­ï¼µï¼³ï¼©ï¼£ã€€ï¼³ï¼´ï¼¯ï¼°
 //=============================================================================
 void PMDWIN::mstop_f(void)
 {
@@ -6499,8 +6499,8 @@ void PMDWIN::silence(void)
 
 	opna.SetReg(0x101, 0x02);			// PAN=0 / x8 bit mode
 	opna.SetReg(0x100, 0x01);			// PCM RESET
-	opna.SetReg(0x110, 0x80);			// TA/TB/EOS ¤ò RESET
-	opna.SetReg(0x110, 0x18);			// TIMERB/A/EOS¤Î¤ßbitÊÑ²½¤¢¤ê
+	opna.SetReg(0x110, 0x80);			// TA/TB/EOS ã‚’ RESET
+	opna.SetReg(0x110, 0x18);			// TIMERB/A/EOSã®ã¿bitå¤‰åŒ–ã‚ã‚Š
 
 	for(i = 0; i < PCM_CNL_MAX; i++) {
 		ppz8.Stop(i);
@@ -6509,12 +6509,12 @@ void PMDWIN::silence(void)
 
 
 //=============================================================================
-//	±éÁÕ³«»Ï(function)
+//	æ¼”å¥é–‹å§‹(function)
 //=============================================================================
 void PMDWIN::mstart_f(void)
 {
 	if(open_work.TimerAflag || open_work.TimerBflag) {
-		pmdwork.music_flag |= 1;			//	TA/TB½èÍıÃæ¤Ï ¼Â¹Ô¤·¤Ê¤¤
+		pmdwork.music_flag |= 1;			//	TA/TBå‡¦ç†ä¸­ã¯ å®Ÿè¡Œã—ãªã„
 		return;
 	}
 
@@ -6523,41 +6523,41 @@ void PMDWIN::mstart_f(void)
 
 
 //=============================================================================
-//	±éÁÕ³«»Ï
+//	æ¼”å¥é–‹å§‹
 //=============================================================================
 void PMDWIN::mstart(void)
 {
-	// TimerB = 0 ¤ËÀßÄê¤·¡¢Timer Reset(¶Ê¤ÎÄ¹¤µ¤òËè²ó¤½¤í¤¨¤ë¤¿¤á)
+	// TimerB = 0 ã«è¨­å®šã—ã€Timer Reset(æ›²ã®é•·ã•ã‚’æ¯å›ãã‚ãˆã‚‹ãŸã‚)
 	open_work.tempo_d = 0;
 	settempo_b();	
-	opna.SetReg(0x27, 0);	// TIMER RESET(timerA,B¤È¤â)
+	opna.SetReg(0x27, 0);	// TIMER RESET(timerA,Bã¨ã‚‚)
 
 	//------------------------------------------------------------------------
-	//	±éÁÕÄä»ß
+	//	æ¼”å¥åœæ­¢
 	//------------------------------------------------------------------------
 	pmdwork.music_flag &= 0xfe;
 	mstop();
 
 	//------------------------------------------------------------------------
-	//	¥Ğ¥Ã¥Õ¥¡½é´ü²½
+	//	ãƒãƒƒãƒ•ã‚¡åˆæœŸåŒ–
 	//------------------------------------------------------------------------
-	pos2 = (char *)wavbuf2;	// buf ¤ËÍ¾¤Ã¤Æ¤¤¤ë¥µ¥ó¥×¥ë¤ÎÀèÆ¬°ÌÃÖ
-	us2	= 0;				// buf ¤ËÍ¾¤Ã¤Æ¤¤¤ë¥µ¥ó¥×¥ë¿ô
-	upos = 0;				// ±éÁÕ³«»Ï¤«¤é¤Î»ş´Ö(¦Ìsec)
+	pos2 = (char *)wavbuf2;	// buf ã«ä½™ã£ã¦ã„ã‚‹ã‚µãƒ³ãƒ—ãƒ«ã®å…ˆé ­ä½ç½®
+	us2	= 0;				// buf ã«ä½™ã£ã¦ã„ã‚‹ã‚µãƒ³ãƒ—ãƒ«æ•°
+	upos = 0;				// æ¼”å¥é–‹å§‹ã‹ã‚‰ã®æ™‚é–“(Î¼sec)
 	
 	//------------------------------------------------------------------------
-	//	±éÁÕ½àÈ÷
+	//	æ¼”å¥æº–å‚™
 	//------------------------------------------------------------------------
 	data_init();
 	play_init();
 
 	//------------------------------------------------------------------------
-	//	OPN½é´ü²½
+	//	OPNåˆæœŸåŒ–
 	//------------------------------------------------------------------------
 	opn_init();
 
 	//------------------------------------------------------------------------
-	//	²»³Ú¤Î±éÁÕ¤ò³«»Ï
+	//	éŸ³æ¥½ã®æ¼”å¥ã‚’é–‹å§‹
 	//------------------------------------------------------------------------
 	setint();
 	open_work.play_flag = 1;
@@ -6606,7 +6606,7 @@ int PMDWIN::read_char(void *value)
 
 
 //=============================================================================
-//	³Æ¥Ñ¡¼¥È¤Î¥¹¥¿¡¼¥È¥¢¥É¥ì¥¹µÚ¤Ó½é´üÃÍ¤ò¥»¥Ã¥È
+//	å„ãƒ‘ãƒ¼ãƒˆã®ã‚¹ã‚¿ãƒ¼ãƒˆã‚¢ãƒ‰ãƒ¬ã‚¹åŠã³åˆæœŸå€¤ã‚’ã‚»ãƒƒãƒˆ
 //=============================================================================
 void PMDWIN::play_init(void)
 {
@@ -6616,7 +6616,7 @@ void PMDWIN::play_init(void)
 	
 	open_work.x68_flg = *(open_work.mmlbuf-1);
 	
-	//£²¡¥£¶ÄÉ²ÃÊ¬
+	//ï¼’ï¼ï¼–è¿½åŠ åˆ†
 	if(*open_work.mmlbuf != 2*(max_part2+1)) {
 		addr =  read_word(&open_work.mmlbuf[2*(max_part2+1)]);
 		open_work.prgdat_adr = open_work.mmlbuf + addr;
@@ -6627,22 +6627,22 @@ void PMDWIN::play_init(void)
 	
 	p = (ushort *)open_work.mmlbuf;
 
-	//	Part 0,1,2,3,4,5(FM1¡Á6)¤Î»ş
-	for(i = 0; i < 6; i++) { // word¶­³¦¤Ë¥Ğ¥°
+	//	Part 0,1,2,3,4,5(FM1ã€œ6)ã®æ™‚
+	for(i = 0; i < 6; i++) { // wordå¢ƒç•Œã«ãƒã‚°
 		addr = read_word(p);
 		tmp = open_work.mmlbuf[addr];
-		if (tmp == 0x80) {		//ÀèÆ¬¤¬80h¤Ê¤é±éÁÕ¤·¤Ê¤¤
+		if (tmp == 0x80) {		//å…ˆé ­ãŒ80hãªã‚‰æ¼”å¥ã—ãªã„
 			FMPart[i].address = NULL;
 		} else {
 			FMPart[i].address = &open_work.mmlbuf[read_word(p)];
 		}
 		
 		FMPart[i].leng = 1;
-		FMPart[i].keyoff_flag = -1;		// ¸½ºßkeyoffÃæ
-		FMPart[i].mdc = -1;				// MDepth Counter (Ìµ¸Â)
-		FMPart[i].mdc2 = -1;			// Æ±¾å
-		FMPart[i]._mdc = -1;			// Æ±¾å
-		FMPart[i]._mdc2 = -1;			// Æ±¾å
+		FMPart[i].keyoff_flag = -1;		// ç¾åœ¨keyoffä¸­
+		FMPart[i].mdc = -1;				// MDepth Counter (ç„¡é™)
+		FMPart[i].mdc2 = -1;			// åŒä¸Š
+		FMPart[i]._mdc = -1;			// åŒä¸Š
+		FMPart[i]._mdc2 = -1;			// åŒä¸Š
 		FMPart[i].onkai = 255;			// rest
 		FMPart[i].onkai_def = 255;		// rest
 		FMPart[i].volume = 108;			// FM  VOLUME DEFAULT= 108
@@ -6652,20 +6652,20 @@ void PMDWIN::play_init(void)
 		p++;
 	}
 	
-	//	Part 6,7,8(PSG1¡Á3)¤Î»ş
+	//	Part 6,7,8(PSG1ã€œ3)ã®æ™‚
 	for(i = 0; i < 3; i++) {
-		if(open_work.mmlbuf[read_word(p)] == 0x80) {		//ÀèÆ¬¤¬80h¤Ê¤é±éÁÕ¤·¤Ê¤¤
+		if(open_work.mmlbuf[read_word(p)] == 0x80) {		//å…ˆé ­ãŒ80hãªã‚‰æ¼”å¥ã—ãªã„
 			SSGPart[i].address = NULL;
 		} else {
 			SSGPart[i].address = &open_work.mmlbuf[read_word(p)];
 		}
 		
 		SSGPart[i].leng = 1;
-		SSGPart[i].keyoff_flag = -1;	// ¸½ºßkeyoffÃæ
-		SSGPart[i].mdc = -1;			// MDepth Counter (Ìµ¸Â)
-		SSGPart[i].mdc2 = -1;			// Æ±¾å
-		SSGPart[i]._mdc = -1;			// Æ±¾å
-		SSGPart[i]._mdc2 = -1;			// Æ±¾å
+		SSGPart[i].keyoff_flag = -1;	// ç¾åœ¨keyoffä¸­
+		SSGPart[i].mdc = -1;			// MDepth Counter (ç„¡é™)
+		SSGPart[i].mdc2 = -1;			// åŒä¸Š
+		SSGPart[i]._mdc = -1;			// åŒä¸Š
+		SSGPart[i]._mdc2 = -1;			// åŒä¸Š
 		SSGPart[i].onkai = 255;			// rest
 		SSGPart[i].onkai_def = 255;		// rest
 		SSGPart[i].volume = 8;			// PSG VOLUME DEFAULT= 8
@@ -6675,45 +6675,45 @@ void PMDWIN::play_init(void)
 
 }
 	
-	//	Part 9(OPNA/ADPCM)¤Î»ş
-	if(open_work.mmlbuf[read_word(p)] == 0x80) {		//ÀèÆ¬¤¬80h¤Ê¤é±éÁÕ¤·¤Ê¤¤
+	//	Part 9(OPNA/ADPCM)ã®æ™‚
+	if(open_work.mmlbuf[read_word(p)] == 0x80) {		//å…ˆé ­ãŒ80hãªã‚‰æ¼”å¥ã—ãªã„
 		ADPCMPart.address = NULL;
 	} else {
 		ADPCMPart.address = &open_work.mmlbuf[read_word(p)];
 	}
 	
 	ADPCMPart.leng = 1;
-	ADPCMPart.keyoff_flag = -1;		// ¸½ºßkeyoffÃæ
-	ADPCMPart.mdc = -1;				// MDepth Counter (Ìµ¸Â)
-	ADPCMPart.mdc2 = -1;			// Æ±¾å
-	ADPCMPart._mdc = -1;			// Æ±¾å
-	ADPCMPart._mdc2 = -1;			// Æ±¾å
+	ADPCMPart.keyoff_flag = -1;		// ç¾åœ¨keyoffä¸­
+	ADPCMPart.mdc = -1;				// MDepth Counter (ç„¡é™)
+	ADPCMPart.mdc2 = -1;			// åŒä¸Š
+	ADPCMPart._mdc = -1;			// åŒä¸Š
+	ADPCMPart._mdc2 = -1;			// åŒä¸Š
 	ADPCMPart.onkai = 255;			// rest
 	ADPCMPart.onkai_def = 255;		// rest
 	ADPCMPart.volume = 128;			// PCM VOLUME DEFAULT= 128
 	ADPCMPart.fmpan = 0xc0;			// PCM PAN = Middle
 	p++;
 
-	//	Part 10(Rhythm)¤Î»ş
-	if(open_work.mmlbuf[read_word(p)] == 0x80) {		//ÀèÆ¬¤¬80h¤Ê¤é±éÁÕ¤·¤Ê¤¤
+	//	Part 10(Rhythm)ã®æ™‚
+	if(open_work.mmlbuf[read_word(p)] == 0x80) {		//å…ˆé ­ãŒ80hãªã‚‰æ¼”å¥ã—ãªã„
 		RhythmPart.address = NULL;
 	} else {
 		RhythmPart.address = &open_work.mmlbuf[read_word(p)];
 	}
 	
 	RhythmPart.leng = 1;
-	RhythmPart.keyoff_flag = -1;	// ¸½ºßkeyoffÃæ
-	RhythmPart.mdc = -1;			// MDepth Counter (Ìµ¸Â)
-	RhythmPart.mdc2 = -1;			// Æ±¾å
-	RhythmPart._mdc = -1;			// Æ±¾å
-	RhythmPart._mdc2 = -1;			// Æ±¾å
+	RhythmPart.keyoff_flag = -1;	// ç¾åœ¨keyoffä¸­
+	RhythmPart.mdc = -1;			// MDepth Counter (ç„¡é™)
+	RhythmPart.mdc2 = -1;			// åŒä¸Š
+	RhythmPart._mdc = -1;			// åŒä¸Š
+	RhythmPart._mdc2 = -1;			// åŒä¸Š
 	RhythmPart.onkai = 255;			// rest
 	RhythmPart.onkai_def = 255;		// rest
 	RhythmPart.volume = 15;			// PPSDRV volume
 	p++;
 	
 	//------------------------------------------------------------------------
-	//	Rhythm ¤Î¥¢¥É¥ì¥¹¥Æ¡¼¥Ö¥ë¤ò¥»¥Ã¥È
+	//	Rhythm ã®ã‚¢ãƒ‰ãƒ¬ã‚¹ãƒ†ãƒ¼ãƒ–ãƒ«ã‚’ã‚»ãƒƒãƒˆ
 	//------------------------------------------------------------------------
 	
 	open_work.radtbl = (ushort *)&open_work.mmlbuf[read_word(p)];
@@ -6722,13 +6722,13 @@ void PMDWIN::play_init(void)
 
 
 //=============================================================================
-//	¥¤¥ó¥¿¥é¥×¥È¡¡ÀßÄê
-//	FM²»¸»ÀìÍÑ
+//	ã‚¤ãƒ³ã‚¿ãƒ©ãƒ—ãƒˆã€€è¨­å®š
+//	FMéŸ³æºå°‚ç”¨
 //=============================================================================
 void PMDWIN::setint(void)
 {
 	//
-	// £Ï£Ğ£Î³ä¤ê¹ş¤ß½é´üÀßÄê
+	// ï¼¯ï¼°ï¼®å‰²ã‚Šè¾¼ã¿åˆæœŸè¨­å®š
 	//
 	
 	open_work.tempo_d = 200;
@@ -6737,12 +6737,12 @@ void PMDWIN::setint(void)
 	calc_tb_tempo();
 	settempo_b();
 	
-	opna.SetReg(0x25, 0x00);			// TIMER A SET (9216¦Ìs¸ÇÄê)
-	opna.SetReg(0x24, 0x00);			// °ìÈÖÃÙ¤¯¤ÆÃúÅÙ¤¤¤¤
+	opna.SetReg(0x25, 0x00);			// TIMER A SET (9216Î¼så›ºå®š)
+	opna.SetReg(0x24, 0x00);			// ä¸€ç•ªé…ãã¦ä¸åº¦ã„ã„
 	opna.SetReg(0x27, 0x3f);			// TIMER ENABLE
 	
 	//
-	//¡¡¾®Àá¥«¥¦¥ó¥¿¥ê¥»¥Ã¥È
+	//ã€€å°ç¯€ã‚«ã‚¦ãƒ³ã‚¿ãƒªã‚»ãƒƒãƒˆ
 	//
 	
 	open_work.opncount = 0;
@@ -6752,7 +6752,7 @@ void PMDWIN::setint(void)
 
 
 //=============================================================================
-//	T->t ÊÑ´¹
+//	T->t å¤‰æ›
 //		input	[tempo_d]
 //		output	[tempo_48]
 //=============================================================================
@@ -6774,7 +6774,7 @@ void PMDWIN::calc_tb_tempo(void)
 
 
 //=============================================================================
-//	t->T ÊÑ´¹
+//	t->T å¤‰æ›
 //		input	[tempo_48]
 //		output	[tempo_d]
 //=============================================================================
@@ -6799,7 +6799,7 @@ void PMDWIN::calc_tempo_tb(void)
 
 
 //=============================================================================
-//	£Ğ£Ã£Í¥á¥â¥ê¤«¤é¥á¥¤¥ó¥á¥â¥ê¤Ø¤Î¥Ç¡¼¥¿¼è¤ê¹ş¤ß
+//	ï¼°ï¼£ï¼­ãƒ¡ãƒ¢ãƒªã‹ã‚‰ãƒ¡ã‚¤ãƒ³ãƒ¡ãƒ¢ãƒªã¸ã®ãƒ‡ãƒ¼ã‚¿å–ã‚Šè¾¼ã¿
 //
 //	INPUTS 	.. pcmstart   	to Start Address
 //			.. pcmstop    	to Stop  Address
@@ -6821,8 +6821,8 @@ void PMDWIN::pcmread(ushort pcmstart, ushort pcmstop, uchar *buf)
 	opna.SetReg(0x104, 0xff);
 	opna.SetReg(0x105, 0xff);
 
-	*buf = opna.GetReg(0x108);		// ÌµÂÌÆÉ¤ß
-	*buf = opna.GetReg(0x108);		// ÌµÂÌÆÉ¤ß
+	*buf = opna.GetReg(0x108);		// ç„¡é§„èª­ã¿
+	*buf = opna.GetReg(0x108);		// ç„¡é§„èª­ã¿
 
 	for(i = 0; i < (pcmstop - pcmstart) * 32; i++) {
 		*buf++ = opna.GetReg(0x108);
@@ -6832,7 +6832,7 @@ void PMDWIN::pcmread(ushort pcmstart, ushort pcmstop, uchar *buf)
 
 
 //=============================================================================
-//	£Ğ£Ã£Í¥á¥â¥ê¤Ø¥á¥¤¥ó¥á¥â¥ê¤«¤é¥Ç¡¼¥¿¤òÁ÷¤ë (x8,¹âÂ®ÈÇ)
+//	ï¼°ï¼£ï¼­ãƒ¡ãƒ¢ãƒªã¸ãƒ¡ã‚¤ãƒ³ãƒ¡ãƒ¢ãƒªã‹ã‚‰ãƒ‡ãƒ¼ã‚¿ã‚’é€ã‚‹ (x8,é«˜é€Ÿç‰ˆ)
 //
 //	INPUTS 	.. pcmstart   	to Start Address
 //			.. pcmstop    	to Stop  Address
@@ -6843,7 +6843,7 @@ void PMDWIN::pcmstore(ushort pcmstart, ushort pcmstop, uchar *buf)
 	int		i;
 	
 	opna.SetReg(0x100, 0x01);
-//	opna.SetReg(0x110, 0x17);	// brdy°Ê³°¤Ï¥Ş¥¹¥¯(=timer³ä¤ê¹ş¤ß¤Ï³İ¤«¤é¤Ê¤¤)
+//	opna.SetReg(0x110, 0x17);	// brdyä»¥å¤–ã¯ãƒã‚¹ã‚¯(=timerå‰²ã‚Šè¾¼ã¿ã¯æ›ã‹ã‚‰ãªã„)
 	opna.SetReg(0x110, 0x80);
 	opna.SetReg(0x100, 0x60);
 	opna.SetReg(0x101, 0x02);	// x8
@@ -6861,14 +6861,14 @@ void PMDWIN::pcmstore(ushort pcmstart, ushort pcmstop, uchar *buf)
 
 
 //=============================================================================
-//	PCM ¤ò¸¡º÷¥Ç¥£¥ì¥¯¥È¥ê¤«¤é¸¡º÷
+//	PCM ã‚’æ¤œç´¢ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªã‹ã‚‰æ¤œç´¢
 //		input
-//			filename	: ¸¡º÷¤¹¤ë¥Õ¥¡¥¤¥ë(¥Õ¥¡¥¤¥ëÌ¾ÉôÊ¬¤Î¤ß)
-//			currentdir	: ºÇ½é¤Ë¸¡º÷¤¹¤ë¾ì½ê¤¬¤¢¤ë¤Ê¤é»ØÄê
-//						  open_work.pcmdir ¤è¤êÍ¥Àè¤¹¤ë
-//						  NULL ¤Ê¤éÌµ»ë 
-//		output			: ¸¡º÷·ë²Ì¡Ê¥Õ¥ë¥Ñ¥¹)
-//						  ¸«¤Ä¤«¤é¤Ê¤«¤Ã¤¿¤é NULL
+//			filename	: æ¤œç´¢ã™ã‚‹ãƒ•ã‚¡ã‚¤ãƒ«(ãƒ•ã‚¡ã‚¤ãƒ«åéƒ¨åˆ†ã®ã¿)
+//			currentdir	: æœ€åˆã«æ¤œç´¢ã™ã‚‹å ´æ‰€ãŒã‚ã‚‹ãªã‚‰æŒ‡å®š
+//						  open_work.pcmdir ã‚ˆã‚Šå„ªå…ˆã™ã‚‹
+//						  NULL ãªã‚‰ç„¡è¦– 
+//		output			: æ¤œç´¢çµæœï¼ˆãƒ•ãƒ«ãƒ‘ã‚¹)
+//						  è¦‹ã¤ã‹ã‚‰ãªã‹ã£ãŸã‚‰ NULL
 //=============================================================================
 char * PMDWIN::search_pcm(char *dest, const char *filename, const char *current_dir)
 {
@@ -6906,7 +6906,7 @@ char * PMDWIN::search_pcm(char *dest, const char *filename, const char *current_
 
 
 //=============================================================================
-//	¶Ê¤ÎÆÉ¤ß¹ş¤ß¤½¤Î£³¡Ê¥á¥â¥ê¤«¤é¡¢¥«¥ì¥ó¥È¥Ç¥£¥ì¥¯¥È¥ê¤¢¤ê¡Ë
+//	æ›²ã®èª­ã¿è¾¼ã¿ãã®ï¼“ï¼ˆãƒ¡ãƒ¢ãƒªã‹ã‚‰ã€ã‚«ãƒ¬ãƒ³ãƒˆãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªã‚ã‚Šï¼‰
 //=============================================================================
 int PMDWIN::music_load3(uchar *musdata, int size, char *current_dir)
 {
@@ -6931,13 +6931,13 @@ int PMDWIN::music_load3(uchar *musdata, int size, char *current_dir)
 	
 	mstop_f();
 
-	// ¥á¥â¥ê¤ò 0x80(½ªÎ»¥³¡¼¥É)¤Ç½é´ü²½¤¹¤ë
+	// ãƒ¡ãƒ¢ãƒªã‚’ 0x80(çµ‚äº†ã‚³ãƒ¼ãƒ‰)ã§åˆæœŸåŒ–ã™ã‚‹
 	memset(mdataarea, 0x80, sizeof(mdataarea));
 
 	memcpy(mdataarea, musdata, size);
 	memset(open_work.mus_filename, 0x0, sizeof(open_work.mus_filename));
 
-	// PPC/P86 ÆÉ¤ß¹ş¤ß
+	// PPC/P86 èª­ã¿è¾¼ã¿
 	getmemo(pcmfilename, musdata, size, 0);
 	resultppc = PMDWIN_OK;
 
@@ -6991,7 +6991,7 @@ int PMDWIN::music_load3(uchar *musdata, int size, char *current_dir)
 		}
 	}
 	
-	// PPS ÆÉ¤ß¹ş¤ß
+	// PPS èª­ã¿è¾¼ã¿
 	getmemo(pcmfilename, musdata, size, -1);
 	resultpps = PMDWIN_OK;
 	if(*pcmfilename != '\0') {
@@ -7007,12 +7007,12 @@ int PMDWIN::music_load3(uchar *musdata, int size, char *current_dir)
 		}
 	}
 
-	// PPZ ÆÉ¤ß¹ş¤ß
+	// PPZ èª­ã¿è¾¼ã¿
 	getmemo(ppzfilename1, musdata, size, -2);
 	if(*ppzfilename1 != '\0') {
-		if((p = strchr(ppzfilename1, ',')) == NULL) {	// £±¤Ä¤Î¤ß
+		if((p = strchr(ppzfilename1, ',')) == NULL) {	// ï¼‘ã¤ã®ã¿
 			if((p = strchr(ppzfilename1, '.')) == NULL) {
-				strcat(ppzfilename1, ".PZI");			// ¤È¤ê¤¢¤¨¤º pzi ¤Ë¤¹¤ë
+				strcat(ppzfilename1, ".PZI");			// ã¨ã‚Šã‚ãˆãš pzi ã«ã™ã‚‹
 			}
 			
 			search_pcm(fullfilename, ppzfilename1, current_dir); 
@@ -7030,10 +7030,10 @@ int PMDWIN::music_load3(uchar *musdata, int size, char *current_dir)
 			strcpy(ppzfilename2, p + 1);
 
 			if((p = strchr(ppzfilename1, '.')) == NULL)
-			strcat(ppzfilename1, ".PZI");				// ¤È¤ê¤¢¤¨¤º pzi ¤Ë¤¹¤ë
+			strcat(ppzfilename1, ".PZI");				// ã¨ã‚Šã‚ãˆãš pzi ã«ã™ã‚‹
 
 			if((p = strchr(ppzfilename2, '.')) == NULL)
-			strcat(ppzfilename2, ".PZI");				// ¤È¤ê¤¢¤¨¤º pzi ¤Ë¤¹¤ë
+			strcat(ppzfilename2, ".PZI");				// ã¨ã‚Šã‚ãˆãš pzi ã«ã™ã‚‹
 
 			search_pcm(fullfilename, ppzfilename1, current_dir); 
 			resultz1 = ppz8.Load(fullfilename, 0);
@@ -7066,7 +7066,7 @@ int PMDWIN::music_load3(uchar *musdata, int size, char *current_dir)
 
 
 //=============================================================================
-//	ppc_load¡ÊÆâÉô½èÍı¡Ë
+//	ppc_loadï¼ˆå†…éƒ¨å‡¦ç†ï¼‰
 //=============================================================================
 int PMDWIN::ppc_load2(char *filename)
 {
@@ -7078,10 +7078,10 @@ int PMDWIN::ppc_load2(char *filename)
 		return ERR_OPEN_PPC_FILE;
 	}
 
-	size = (int)GetFileSize_s(filename);		// ¥Õ¥¡¥¤¥ë¥µ¥¤¥º
+	size = (int)GetFileSize_s(filename);		// ãƒ•ã‚¡ã‚¤ãƒ«ã‚µã‚¤ã‚º
 	
 	if((pcmbuf = (uchar *)malloc(size)) == NULL) {
-		return ERR_OUT_OF_MEMORY;					// ¥á¥â¥ê¤¬³ÎÊİ¤Ç¤­¤Ê¤¤
+		return ERR_OUT_OF_MEMORY;					// ãƒ¡ãƒ¢ãƒªãŒç¢ºä¿ã§ããªã„
 	}
 
 	fread(pcmbuf, 1, size, fp);
@@ -7094,7 +7094,7 @@ int PMDWIN::ppc_load2(char *filename)
 
 
 //=============================================================================
-//	 ppc_load ¤½¤Î£³¡Ê¥á¥â¥ê¤«¤é¡Ë
+//	 ppc_load ãã®ï¼“ï¼ˆãƒ¡ãƒ¢ãƒªã‹ã‚‰ï¼‰
 //=============================================================================
 int PMDWIN::ppc_load3(uchar *pcmdata, int size)
 {
@@ -7108,7 +7108,7 @@ int PMDWIN::ppc_load3(uchar *pcmdata, int size)
 
 	if(size < 0x10) {
 		memset(open_work.ppcfilename, 0x0, sizeof(open_work.ppcfilename));
-		return ERR_WRONG_PPC_FILE;	// PPC / PVI ¤Ç¤Ï¤Ê¤¤
+		return ERR_WRONG_PPC_FILE;	// PPC / PVI ã§ã¯ãªã„
 	}
 
 	if(strncmp((char *)pcmdata, PVIHeader, sizeof(PVIHeader)-1) == 0 &&
@@ -7116,7 +7116,7 @@ int PMDWIN::ppc_load3(uchar *pcmdata, int size)
 		pvi_flag = true;
 
 		//--------------------------------------------------------------------
-		//	pvi¤Î²»¿§¾ğÊó¤«¤épmd¤ØÅ¾Á÷
+		//	pviã®éŸ³è‰²æƒ…å ±ã‹ã‚‰pmdã¸è»¢é€
 		//--------------------------------------------------------------------
 	
 		 for(i = 0; i < 128; i++) {
@@ -7133,7 +7133,7 @@ int PMDWIN::ppc_load3(uchar *pcmdata, int size)
 			}
 		}
 
-		for(i = 128; i < 256; i++) {		// »Ä¤ê128¸Ä¤ÏÌ¤ÄêµÁ
+		for(i = 128; i < 256; i++) {		// æ®‹ã‚Š128å€‹ã¯æœªå®šç¾©
 			pcmends.pcmadrs[i][0] = 0;
 			pcmends.pcmadrs[i][1] = 0;
 		}
@@ -7142,9 +7142,9 @@ int PMDWIN::ppc_load3(uchar *pcmdata, int size)
 	} else if(strncmp((char *)pcmdata, PPCHeader, sizeof(PPCHeader)-1) == 0) {	// PPC
 		pvi_flag = false;
 		pcmdata2 = (ushort *)pcmdata + 30 / 2;
-		if(size < 30 + 4*256+2) {						// PPC ¤Ç¤Ï¤Ê¤¤
+		if(size < 30 + 4*256+2) {						// PPC ã§ã¯ãªã„
 			memset(open_work.ppcfilename, 0x0, sizeof(open_work.ppcfilename));
-			return ERR_WRONG_PPC_FILE;	// PPC / PVI ¤Ç¤Ï¤Ê¤¤
+			return ERR_WRONG_PPC_FILE;	// PPC / PVI ã§ã¯ãªã„
 		}
 		
 		pcmends.pcmends = *pcmdata2++;
@@ -7152,24 +7152,24 @@ int PMDWIN::ppc_load3(uchar *pcmdata, int size)
 			pcmends.pcmadrs[i][0] = *pcmdata2++;
 			pcmends.pcmadrs[i][1] = *pcmdata2++;
 		}
-	} else {											// PPC / PVI ¤Ç¤Ï¤Ê¤¤
+	} else {											// PPC / PVI ã§ã¯ãªã„
 		memset(open_work.ppcfilename, 0x0, sizeof(open_work.ppcfilename));
-		return ERR_WRONG_PPC_FILE;	// PPC / PVI ¤Ç¤Ï¤Ê¤¤
+		return ERR_WRONG_PPC_FILE;	// PPC / PVI ã§ã¯ãªã„
 	}
 	
 	//------------------------------------------------------------------------
-	//	PMD¤Î¥ï¡¼¥¯¤ÈPCMRAM¤Î¥Ø¥Ã¥À¤òÈæ³Ó
+	//	PMDã®ãƒ¯ãƒ¼ã‚¯ã¨PCMRAMã®ãƒ˜ãƒƒãƒ€ã‚’æ¯”è¼ƒ
 	//------------------------------------------------------------------------
 		
 	pcmread(0, 0x25, tempbuf);
-	// "ADPCM¡Á"¥Ø¥Ã¥À¤òÈô¤Ğ¤¹
-	//	¥Õ¥¡¥¤¥ëÌ¾Ìµ»ë(PMDWin »ÅÍÍ)
+	// "ADPCMã€œ"ãƒ˜ãƒƒãƒ€ã‚’é£›ã°ã™
+	//	ãƒ•ã‚¡ã‚¤ãƒ«åç„¡è¦–(PMDWin ä»•æ§˜)
 	if(memcmp(&tempbuf[30], &pcmends, sizeof(pcmends)) == 0) {
-		return WARNING_PPC_ALREADY_LOAD;		// °ìÃ×¤·¤¿
+		return WARNING_PPC_ALREADY_LOAD;		// ä¸€è‡´ã—ãŸ
 	}
 	
 	//------------------------------------------------------------------------
-	//	PMD¤Î¥ï¡¼¥¯¤òPCMRAMÆ¬¤Ë½ñ¤­¹ş¤à
+	//	PMDã®ãƒ¯ãƒ¼ã‚¯ã‚’PCMRAMé ­ã«æ›¸ãè¾¼ã‚€
 	//------------------------------------------------------------------------
 	
 	memcpy(tempbuf2, PPCHeader, sizeof(PPCHeader)-1);
@@ -7178,20 +7178,20 @@ int PMDWIN::ppc_load3(uchar *pcmdata, int size)
 	pcmstore(0, 0x25, tempbuf2);
 	
 	//------------------------------------------------------------------------
-	//	PCMDATA¤òPCMRAM¤Ë½ñ¤­¹ş¤à
+	//	PCMDATAã‚’PCMRAMã«æ›¸ãè¾¼ã‚€
 	//------------------------------------------------------------------------
 	
 	if(pvi_flag) {
 		pcmdata2 = (ushort *)(pcmdata + 0x10 + sizeof(ushort) * 2 * 128);
 		if(size < (int)(pcmends.pcmends - (0x10 + sizeof(ushort) * 2 * 128)) * 32) {
-			// PVI ¤Ç¤Ï¤Ê¤¤
+			// PVI ã§ã¯ãªã„
 			memset(open_work.ppcfilename, 0x0, sizeof(open_work.ppcfilename));
 			return ERR_WRONG_PPC_FILE;
 		}
 	} else {
 		pcmdata2 = (ushort *)pcmdata + (30 + 4*256 + 2) / 2;
 		if(size < (pcmends.pcmends - ((30 + 4*256 + 2) / 2)) * 32) {
-			// PPC ¤Ç¤Ï¤Ê¤¤
+			// PPC ã§ã¯ãªã„
 			memset(open_work.ppcfilename, 0x0, sizeof(open_work.ppcfilename));
 			return ERR_WRONG_PPC_FILE;
 		}
@@ -7263,7 +7263,7 @@ void PMDWIN::fout(void)
 
 
 //=============================================================================
-//	½é´ü²½
+//	åˆæœŸåŒ–
 //=============================================================================
 bool WINAPI PMDWIN::init(char *path)
 {
@@ -7285,7 +7285,7 @@ bool WINAPI PMDWIN::init(char *path)
 	ppsdrv.Init(open_work.rate, false);
 	p86drv.Init(open_work.rate, false);
 
-	// OPEN_WORK ¥á¥ó¥Ğ¤Î½é´ü²½
+	// OPEN_WORK ãƒ¡ãƒ³ãƒã®åˆæœŸåŒ–
 	open_work.rhyvol = 0x3c;
 	open_work.fade_stop_flag = 0;
 	open_work.TimerBflag = 0;
@@ -7316,7 +7316,7 @@ bool WINAPI PMDWIN::init(char *path)
 	open_work.ppsip = false;
 	
 	//----------------------------------------------------------------
-	//	ÊÑ¿ô¤Î½é´ü²½
+	//	å¤‰æ•°ã®åˆæœŸåŒ–
 	//----------------------------------------------------------------
 	
 	open_work.MusPart[ 0] = &FMPart[0];
@@ -7370,19 +7370,19 @@ bool WINAPI PMDWIN::init(char *path)
 	open_work._ppz_voldown = 0;				// PPZ_VOLDOWN
 	open_work.rhythm_voldown = 0;			// RHYTHM_VOLDOWN
 	open_work._rhythm_voldown = 0;			// RHYTHM_VOLDOWN
-	open_work.kp_rhythm_flag =  false;		// SSGDRUM¤ÇRHYTHM²»¸»¤òÌÄ¤é¤¹¤« 
-	open_work.rshot_bd = 0;					// ¥ê¥º¥à²»¸» shot inc flag (BD)
-	open_work.rshot_sd = 0;					// ¥ê¥º¥à²»¸» shot inc flag (SD)
-	open_work.rshot_sym = 0;				// ¥ê¥º¥à²»¸» shot inc flag (CYM)
-	open_work.rshot_hh = 0;					// ¥ê¥º¥à²»¸» shot inc flag (HH)
-	open_work.rshot_tom = 0;				// ¥ê¥º¥à²»¸» shot inc flag (TOM)
-	open_work.rshot_rim = 0;				// ¥ê¥º¥à²»¸» shot inc flag (RIM)
-	open_work.rdump_bd = 0;					// ¥ê¥º¥à²»¸» dump inc flag (BD)
-	open_work.rdump_sd = 0;					// ¥ê¥º¥à²»¸» dump inc flag (SD)
-	open_work.rdump_sym = 0;				// ¥ê¥º¥à²»¸» dump inc flag (CYM)
-	open_work.rdump_hh = 0;					// ¥ê¥º¥à²»¸» dump inc flag (HH)
-	open_work.rdump_tom = 0;				// ¥ê¥º¥à²»¸» dump inc flag (TOM)
-	open_work.rdump_rim = 0;				// ¥ê¥º¥à²»¸» dump inc flag (RIM)
+	open_work.kp_rhythm_flag =  false;		// SSGDRUMã§RHYTHMéŸ³æºã‚’é³´ã‚‰ã™ã‹ 
+	open_work.rshot_bd = 0;					// ãƒªã‚ºãƒ éŸ³æº shot inc flag (BD)
+	open_work.rshot_sd = 0;					// ãƒªã‚ºãƒ éŸ³æº shot inc flag (SD)
+	open_work.rshot_sym = 0;				// ãƒªã‚ºãƒ éŸ³æº shot inc flag (CYM)
+	open_work.rshot_hh = 0;					// ãƒªã‚ºãƒ éŸ³æº shot inc flag (HH)
+	open_work.rshot_tom = 0;				// ãƒªã‚ºãƒ éŸ³æº shot inc flag (TOM)
+	open_work.rshot_rim = 0;				// ãƒªã‚ºãƒ éŸ³æº shot inc flag (RIM)
+	open_work.rdump_bd = 0;					// ãƒªã‚ºãƒ éŸ³æº dump inc flag (BD)
+	open_work.rdump_sd = 0;					// ãƒªã‚ºãƒ éŸ³æº dump inc flag (SD)
+	open_work.rdump_sym = 0;				// ãƒªã‚ºãƒ éŸ³æº dump inc flag (CYM)
+	open_work.rdump_hh = 0;					// ãƒªã‚ºãƒ éŸ³æº dump inc flag (HH)
+	open_work.rdump_tom = 0;				// ãƒªã‚ºãƒ éŸ³æº dump inc flag (TOM)
+	open_work.rdump_rim = 0;				// ãƒªã‚ºãƒ éŸ³æº dump inc flag (RIM)
 	
 	memset(FMPart, 0, sizeof(FMPart));
 	memset(SSGPart, 0, sizeof(SSGPart));
@@ -7392,28 +7392,28 @@ bool WINAPI PMDWIN::init(char *path)
 	memset(&EffPart, 0, sizeof(EffPart));
 	memset(&PPZ8Part, 0, sizeof(PPZ8Part));
 	
-	open_work.pcm86_vol = 0;		// PCM²»ÎÌ¹ç¤ï¤»
-	open_work._pcm86_vol = 0;		// PCM²»ÎÌ¹ç¤ï¤»
-	open_work.fade_stop_flag = 1;	// FADEOUT¸åMSTOP¤¹¤ë¤« FLAG
+	open_work.pcm86_vol = 0;		// PCMéŸ³é‡åˆã‚ã›
+	open_work._pcm86_vol = 0;		// PCMéŸ³é‡åˆã‚ã›
+	open_work.fade_stop_flag = 1;	// FADEOUTå¾ŒMSTOPã™ã‚‹ã‹ FLAG
 	
 	pmdwork.ppsdrv_flag = false;	// PPSDRV FLAG
 	pmdwork.music_flag =  0;
 	
 	//----------------------------------------------------------------
-	//	¶Ê¥Ç¡¼¥¿¡¤²»¿§¥Ç¡¼¥¿³ÊÇ¼ÈÖÃÏ¤òÀßÄê
+	//	æ›²ãƒ‡ãƒ¼ã‚¿ï¼ŒéŸ³è‰²ãƒ‡ãƒ¼ã‚¿æ ¼ç´ç•ªåœ°ã‚’è¨­å®š
 	//----------------------------------------------------------------
 	open_work.mmlbuf = &mdataarea[1];
 	open_work.tondat = vdataarea;
 	open_work.efcdat = edataarea;
 	
 	//----------------------------------------------------------------
-	//	¸ú²Ì²»/FMINT/EFCINT¤ò½é´ü²½
+	//	åŠ¹æœéŸ³/FMINT/EFCINTã‚’åˆæœŸåŒ–
 	//----------------------------------------------------------------
 	effwork.effon = 0;
 	effwork.psgefcnum = 0xff;
 	
 	//----------------------------------------------------------------
-	//	088/188/288/388 (Æ±INTÈÖ¹æ¤Î¤ß) ¤ò½é´üÀßÄê
+	//	088/188/288/388 (åŒINTç•ªå·ã®ã¿) ã‚’åˆæœŸè¨­å®š
 	//----------------------------------------------------------------
 	opna.SetReg(0x29, 0x00);
 	opna.SetReg(0x24, 0x00);
@@ -7422,7 +7422,7 @@ bool WINAPI PMDWIN::init(char *path)
 	opna.SetReg(0x27, 0x3f);
 	
 	//----------------------------------------------------------------
-	//	£Ï£Ğ£Î³ä¤ê¹ş¤ß³«»Ï
+	//	ï¼¯ï¼°ï¼®å‰²ã‚Šè¾¼ã¿é–‹å§‹
 	//----------------------------------------------------------------
 	opnint_start();	
 
@@ -7431,7 +7431,7 @@ bool WINAPI PMDWIN::init(char *path)
 
 
 //=============================================================================
-//	¥ê¥º¥à²»¤ÎºÆÆÉ¤ß¹ş¤ß
+//	ãƒªã‚ºãƒ éŸ³ã®å†èª­ã¿è¾¼ã¿
 //=============================================================================
 bool WINAPI PMDWIN::loadrhythmsample(char *path)
 {
@@ -7448,7 +7448,7 @@ bool WINAPI PMDWIN::loadrhythmsample(char *path)
 
 
 //=============================================================================
-//	PCM ¸¡º÷¥Ç¥£¥ì¥¯¥È¥ê¤ÎÀßÄê
+//	PCM æ¤œç´¢ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªã®è¨­å®š
 //=============================================================================
 bool WINAPI PMDWIN::setpcmdir(char **path)
 {
@@ -7475,7 +7475,7 @@ bool WINAPI PMDWIN::setpcmdir(char **path)
 
 
 //=============================================================================
-//	¹çÀ®¼şÇÈ¿ô¤ÎÀßÄê
+//	åˆæˆå‘¨æ³¢æ•°ã®è¨­å®š
 //=============================================================================
 void WINAPI PMDWIN::setpcmrate(int rate)
 {
@@ -7495,7 +7495,7 @@ void WINAPI PMDWIN::setpcmrate(int rate)
 
 
 //=============================================================================
-//	PPZ ¹çÀ®¼şÇÈ¿ô¤ÎÀßÄê
+//	PPZ åˆæˆå‘¨æ³¢æ•°ã®è¨­å®š
 //=============================================================================
 void WINAPI PMDWIN::setppzrate(int rate)
 {
@@ -7505,7 +7505,7 @@ void WINAPI PMDWIN::setppzrate(int rate)
 
 
 //=============================================================================
-//	PPS ¤òÌÄ¤é¤¹¤«¡©
+//	PPS ã‚’é³´ã‚‰ã™ã‹ï¼Ÿ
 //=============================================================================
 void WINAPI PMDWIN::setppsuse(bool value)
 {
@@ -7514,7 +7514,7 @@ void WINAPI PMDWIN::setppsuse(bool value)
 
 
 //=============================================================================
-//	SSG ¸ú²Ì²»¤Ç OPNA Rhythm ¤âÌÄ¤é¤¹¤«¡©
+//	SSG åŠ¹æœéŸ³ã§ OPNA Rhythm ã‚‚é³´ã‚‰ã™ã‹ï¼Ÿ
 //=============================================================================
 void WINAPI PMDWIN::setrhythmwithssgeffect(bool value)
 {
@@ -7523,7 +7523,7 @@ void WINAPI PMDWIN::setrhythmwithssgeffect(bool value)
 
 
 //=============================================================================
-//	PMD86 ¤Î PCM ¤ò PMDB2 ¸ß´¹¤Ë¤¹¤ë¤«¡©
+//	PMD86 ã® PCM ã‚’ PMDB2 äº’æ›ã«ã™ã‚‹ã‹ï¼Ÿ
 //=============================================================================
 void WINAPI PMDWIN::setpmd86pcmmode(bool value)
 {
@@ -7536,7 +7536,7 @@ void WINAPI PMDWIN::setpmd86pcmmode(bool value)
 
 
 //=============================================================================
-//	PMD86 ¤Î PCM ¤¬ PMDB2 ¸ß´¹¤«¤É¤¦¤«¤ò¼èÆÀ¤¹¤ë
+//	PMD86 ã® PCM ãŒ PMDB2 äº’æ›ã‹ã©ã†ã‹ã‚’å–å¾—ã™ã‚‹
 //=============================================================================
 bool WINAPI PMDWIN::getpmd86pcmmode(void)
 {
@@ -7546,7 +7546,7 @@ bool WINAPI PMDWIN::getpmd86pcmmode(void)
 
 
 //=============================================================================
-//	¶Ê¤ÎÆÉ¤ß¹ş¤ß¤½¤Î£±¡Ê¥Õ¥¡¥¤¥ë¤«¤é¡Ë
+//	æ›²ã®èª­ã¿è¾¼ã¿ãã®ï¼‘ï¼ˆãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰ï¼‰
 //=============================================================================
 int WINAPI PMDWIN::music_load(char *filename)
 {
@@ -7582,7 +7582,7 @@ int WINAPI PMDWIN::music_load(char *filename)
 
 
 //=============================================================================
-//	¶Ê¤ÎÆÉ¤ß¹ş¤ß¤½¤Î£²¡Ê¥á¥â¥ê¤«¤é¡Ë
+//	æ›²ã®èª­ã¿è¾¼ã¿ãã®ï¼’ï¼ˆãƒ¡ãƒ¢ãƒªã‹ã‚‰ï¼‰
 //=============================================================================
 int WINAPI PMDWIN::music_load2(uchar *musdata, int size)
 {
@@ -7591,7 +7591,7 @@ int WINAPI PMDWIN::music_load2(uchar *musdata, int size)
 
 
 //=============================================================================
-//	±éÁÕ³«»Ï
+//	æ¼”å¥é–‹å§‹
 //=============================================================================
 void WINAPI PMDWIN::music_start(void)
 {
@@ -7600,7 +7600,7 @@ void WINAPI PMDWIN::music_start(void)
 
 
 //=============================================================================
-//	±éÁÕÄä»ß
+//	æ¼”å¥åœæ­¢
 //=============================================================================
 void WINAPI PMDWIN::music_stop(void)
 {
@@ -7609,7 +7609,7 @@ void WINAPI PMDWIN::music_stop(void)
 
 
 //=============================================================================
-//	¥Õ¥§¡¼¥É¥¢¥¦¥È(PMD¸ß´¹)
+//	ãƒ•ã‚§ãƒ¼ãƒ‰ã‚¢ã‚¦ãƒˆ(PMDäº’æ›)
 //=============================================================================
 void WINAPI PMDWIN::fadeout(int speed)
 {
@@ -7618,7 +7618,7 @@ void WINAPI PMDWIN::fadeout(int speed)
 
 
 //=============================================================================
-//	¥Õ¥§¡¼¥É¥¢¥¦¥È(¹â²»¼Á)
+//	ãƒ•ã‚§ãƒ¼ãƒ‰ã‚¢ã‚¦ãƒˆ(é«˜éŸ³è³ª)
 //=============================================================================
 void WINAPI PMDWIN::fadeout2(int speed)
 {
@@ -7628,17 +7628,17 @@ void WINAPI PMDWIN::fadeout2(int speed)
 		}
 		open_work.fadeout2_speed = speed;
 	} else {
-		open_work.fadeout2_speed = 0;	// fadeout ¶¯À©Ää»ß
+		open_work.fadeout2_speed = 0;	// fadeout å¼·åˆ¶åœæ­¢
 	}
 }
 
 
 //=============================================================================
-//	PCM ¥Ç¡¼¥¿¡Êwave ¥Ç¡¼¥¿¡Ë¤Î¼èÆÀ
+//	PCM ãƒ‡ãƒ¼ã‚¿ï¼ˆwave ãƒ‡ãƒ¼ã‚¿ï¼‰ã®å–å¾—
 //=============================================================================
 void WINAPI PMDWIN::getpcmdata(short *buf, int nsamples)
 {
-	int	copysamples = 0;				// ¥³¥Ô¡¼ºÑ¤ß¤Î¥µ¥ó¥×¥ë¿ô
+	int	copysamples = 0;				// ã‚³ãƒ”ãƒ¼æ¸ˆã¿ã®ã‚µãƒ³ãƒ—ãƒ«æ•°
 	int				i, us, ftemp;
 	int	ppzsample, delta, carry;
 	
@@ -7662,7 +7662,7 @@ void WINAPI PMDWIN::getpcmdata(short *buf, int nsamples)
 				TimerB_main();
 			}
 
-			opna.SetReg(0x27, open_work.ch3mode | 0x30);	// TIMER RESET(timerA,B¤È¤â)
+			opna.SetReg(0x27, open_work.ch3mode | 0x30);	// TIMER RESET(timerA,Bã¨ã‚‚)
 
 
 			us = opna.GetNextEvent();
@@ -7674,14 +7674,14 @@ void WINAPI PMDWIN::getpcmdata(short *buf, int nsamples)
 			if(open_work.rate == open_work.ppzrate) {
 				ppz8.Mix((Sample *)wavbuf, us2);
 			} else {			
-				// ppz8 ¤Î pcm ¤Î¼şÇÈ¿ôÊÑ´¹(Êä´°¤Ê¤·)
+				// ppz8 ã® pcm ã®å‘¨æ³¢æ•°å¤‰æ›(è£œå®Œãªã—)
 				ppzsample = us2 * open_work.ppzrate / open_work.rate + 1;
 				delta = 8192 * open_work.ppzrate / open_work.rate;
 				memset(wavbuf_conv, 0x0, ppzsample * sizeof(Sample) * 2);
 				ppz8.Mix((Sample *)wavbuf_conv, ppzsample);
 				
 				carry = 0;
-				for(i = 0; i < us2; i++) {		// ¼şÇÈ¿ôÊÑ´¹(1 << 13 = 8192)
+				for(i = 0; i < us2; i++) {		// å‘¨æ³¢æ•°å¤‰æ›(1 << 13 = 8192)
 					wavbuf[i].left  = wavbuf_conv[(carry >> 13)].left;
 					wavbuf[i].right = wavbuf_conv[(carry >> 13)].right;
 					carry += delta;
@@ -7710,7 +7710,7 @@ void WINAPI PMDWIN::getpcmdata(short *buf, int nsamples)
 					wavbuf2[i].right = Limit(wavbuf[i].right * ftemp >> 10, 32767, -32768);
 				}
 				if(upos - fpos > open_work.fadeout2_speed * 1000 &&
-									open_work.fade_stop_flag == 1) {	// fadeout ½ªÎ»
+									open_work.fade_stop_flag == 1) {	// fadeout çµ‚äº†
 					pmdwork.music_flag |= 2;
 				}
 			} else {
@@ -7725,7 +7725,7 @@ void WINAPI PMDWIN::getpcmdata(short *buf, int nsamples)
 
 
 //=============================================================================
-//	FM ¤Ç 55kHz¹çÀ®¡¢°ì¼¡Êä´°¤¹¤ë¤«¤É¤¦¤«¤ÎÀßÄê
+//	FM ã§ 55kHzåˆæˆã€ä¸€æ¬¡è£œå®Œã™ã‚‹ã‹ã©ã†ã‹ã®è¨­å®š
 //=============================================================================
 void WINAPI PMDWIN::setfmcalc55k(bool flag)
 {
@@ -7735,7 +7735,7 @@ void WINAPI PMDWIN::setfmcalc55k(bool flag)
 
 
 //=============================================================================
-//	PPS ¤Ç°ì¼¡Êä´°¤¹¤ë¤«¤É¤¦¤«¤ÎÀßÄê
+//	PPS ã§ä¸€æ¬¡è£œå®Œã™ã‚‹ã‹ã©ã†ã‹ã®è¨­å®š
 //=============================================================================
 void WINAPI PMDWIN::setppsinterpolation(bool ip)
 {
@@ -7745,7 +7745,7 @@ void WINAPI PMDWIN::setppsinterpolation(bool ip)
 
 
 //=============================================================================
-//	P86 ¤Ç°ì¼¡Êä´°¤¹¤ë¤«¤É¤¦¤«¤ÎÀßÄê
+//	P86 ã§ä¸€æ¬¡è£œå®Œã™ã‚‹ã‹ã©ã†ã‹ã®è¨­å®š
 //=============================================================================
 void WINAPI PMDWIN::setp86interpolation(bool ip)
 {
@@ -7755,7 +7755,7 @@ void WINAPI PMDWIN::setp86interpolation(bool ip)
 
 
 //=============================================================================
-//	PPZ8 ¤Ç°ì¼¡Êä´°¤¹¤ë¤«¤É¤¦¤«¤ÎÀßÄê
+//	PPZ8 ã§ä¸€æ¬¡è£œå®Œã™ã‚‹ã‹ã©ã†ã‹ã®è¨­å®š
 //=============================================================================
 void WINAPI PMDWIN::setppzinterpolation(bool ip)
 {
@@ -7765,7 +7765,7 @@ void WINAPI PMDWIN::setppzinterpolation(bool ip)
 
 
 //=============================================================================
-//	¥á¥â¤Î¼èÆÀ
+//	ãƒ¡ãƒ¢ã®å–å¾—
 //=============================================================================
 char* WINAPI PMDWIN::getmemo(char *dest, uchar *musdata, int size, int al)
 {
@@ -7781,29 +7781,29 @@ char* WINAPI PMDWIN::getmemo(char *dest, uchar *musdata, int size, int al)
 		maxsize = size - 1;
 	}
 	if(maxsize < 2) {
-		*dest = '\0';			// 	¶Ê¥Ç¡¼¥¿¤¬ÉÔÀµ
+		*dest = '\0';			// 	æ›²ãƒ‡ãƒ¼ã‚¿ãŒä¸æ­£
 		return NULL;
 	}
 	
 	if(mmlbuf[0] != 0x1a || mmlbuf[1] != 0x00) {
-		*dest = '\0';			// 	²»¿§¤¬¤Ê¤¤file=¥á¥â¤Î¥¢¥É¥ì¥¹¼èÆÀÉÔÇ½
+		*dest = '\0';			// 	éŸ³è‰²ãŒãªã„file=ãƒ¡ãƒ¢ã®ã‚¢ãƒ‰ãƒ¬ã‚¹å–å¾—ä¸èƒ½
 		return dest;
 	}
 	
 	if(maxsize < 0x18+1) {
-		*dest = '\0';			// 	¶Ê¥Ç¡¼¥¿¤¬ÉÔÀµ
+		*dest = '\0';			// 	æ›²ãƒ‡ãƒ¼ã‚¿ãŒä¸æ­£
 		return NULL;
 	}
 	
 	if(maxsize < read_word(&mmlbuf[0x18]) - 4 + 3) {
-		*dest = '\0';			// 	¶Ê¥Ç¡¼¥¿¤¬ÉÔÀµ
+		*dest = '\0';			// 	æ›²ãƒ‡ãƒ¼ã‚¿ãŒä¸æ­£
 		return NULL;
 	}
 	
 	si = &mmlbuf[read_word(&mmlbuf[0x18]) - 4];
 	if(*(si + 2) != 0x40) {
 		if(*(si + 3) != 0xfe || *(si + 2) < 0x41) {
-			*dest = '\0';			// 	²»¿§¤¬¤Ê¤¤file=¥á¥â¤Î¥¢¥É¥ì¥¹¼èÆÀÉÔÇ½
+			*dest = '\0';			// 	éŸ³è‰²ãŒãªã„file=ãƒ¡ãƒ¢ã®ã‚¢ãƒ‰ãƒ¬ã‚¹å–å¾—ä¸èƒ½
 			return dest;
 		}
 	}
@@ -7817,7 +7817,7 @@ char* WINAPI PMDWIN::getmemo(char *dest, uchar *musdata, int size, int al)
 	}
 	
 	if(al < 0) {
-		*dest = '\0';				//	ÅĞÏ¿¤Ê¤·
+		*dest = '\0';				//	ç™»éŒ²ãªã—
 		return dest;
 	}
 	
@@ -7825,7 +7825,7 @@ char* WINAPI PMDWIN::getmemo(char *dest, uchar *musdata, int size, int al)
 	
 	for(i = 0; i <= al; i++) {
 		if(maxsize < si - mmlbuf + 1) {
-			*dest = '\0';			// 	¶Ê¥Ç¡¼¥¿¤¬ÉÔÀµ
+			*dest = '\0';			// 	æ›²ãƒ‡ãƒ¼ã‚¿ãŒä¸æ­£
 			return NULL;
 		}
 		
@@ -7836,7 +7836,7 @@ char* WINAPI PMDWIN::getmemo(char *dest, uchar *musdata, int size, int al)
 		}
 		
 		if(maxsize < dx) {
-			*dest = '\0';			// 	¶Ê¥Ç¡¼¥¿¤¬ÉÔÀµ
+			*dest = '\0';			// 	æ›²ãƒ‡ãƒ¼ã‚¿ãŒä¸æ­£
 			return NULL;
 		}
 		
@@ -7852,7 +7852,7 @@ char* WINAPI PMDWIN::getmemo(char *dest, uchar *musdata, int size, int al)
 		if(mmlbuf[i] == '\0') break;
 	}
 
-	// ½ªÃ¼¤Î \0 ¤¬¤Ê¤¤¾ì¹ç
+	// çµ‚ç«¯ã® \0 ãŒãªã„å ´åˆ
 	if(i >= maxsize) {
 		memcpy(dest, &mmlbuf[dx], maxsize - dx);
 		dest[maxsize - dx - 1] = '\0';
@@ -7864,7 +7864,7 @@ char* WINAPI PMDWIN::getmemo(char *dest, uchar *musdata, int size, int al)
 
 
 //=============================================================================
-//	¥á¥â¤Î¼èÆÀ¡Ê£²¥Ğ¥¤¥ÈÈ¾³Ñ¢ªÈ¾³ÑÊ¸»ú¤ËÊÑ´¹¡Ë
+//	ãƒ¡ãƒ¢ã®å–å¾—ï¼ˆï¼’ãƒã‚¤ãƒˆåŠè§’â†’åŠè§’æ–‡å­—ã«å¤‰æ›ï¼‰
 //=============================================================================
 char* WINAPI PMDWIN::getmemo2(char *dest, uchar *musdata, int size, int al)
 {
@@ -7872,7 +7872,7 @@ char* WINAPI PMDWIN::getmemo2(char *dest, uchar *musdata, int size, int al)
 	char	*rslt;
 
 	if((buf = (char *)malloc(mdata_def*1024)) == NULL) {
-		*dest = '\0';		// ¥á¥â¥êÉÔÂ­
+		*dest = '\0';		// ãƒ¡ãƒ¢ãƒªä¸è¶³
 		return NULL;
 	}
 	getmemo(buf, musdata, size, al);
@@ -7883,7 +7883,7 @@ char* WINAPI PMDWIN::getmemo2(char *dest, uchar *musdata, int size, int al)
 
 
 //=============================================================================
-//	¥á¥â¤Î¼èÆÀ¡Ê£²¥Ğ¥¤¥ÈÈ¾³Ñ¢ªÈ¾³ÑÊ¸»ú¤ËÊÑ´¹¡ÜESC¥·¡¼¥±¥ó¥¹¤Î½üµî¡Ë
+//	ãƒ¡ãƒ¢ã®å–å¾—ï¼ˆï¼’ãƒã‚¤ãƒˆåŠè§’â†’åŠè§’æ–‡å­—ã«å¤‰æ›ï¼‹ESCã‚·ãƒ¼ã‚±ãƒ³ã‚¹ã®é™¤å»ï¼‰
 //=============================================================================
 char* WINAPI PMDWIN::getmemo3(char *dest, uchar *musdata, int size, int al)
 {
@@ -7891,7 +7891,7 @@ char* WINAPI PMDWIN::getmemo3(char *dest, uchar *musdata, int size, int al)
 	char	*rslt;
 	
 	if((buf = (char *)malloc(mdata_def*1024)) == NULL) {
-		*dest = '\0';		// ¥á¥â¥êÉÔÂ­
+		*dest = '\0';		// ãƒ¡ãƒ¢ãƒªä¸è¶³
 		return NULL;
 	}
 	getmemo2((char *)buf, musdata, size, al);
@@ -7902,7 +7902,7 @@ char* WINAPI PMDWIN::getmemo3(char *dest, uchar *musdata, int size, int al)
 
 
 //=============================================================================
-//	¥á¥â¤Î¼èÆÀ¡Ê¥Õ¥¡¥¤¥ëÌ¾¤«¤é¡Ë
+//	ãƒ¡ãƒ¢ã®å–å¾—ï¼ˆãƒ•ã‚¡ã‚¤ãƒ«åã‹ã‚‰ï¼‰
 //=============================================================================
 int WINAPI PMDWIN::fgetmemo(char *dest, char *filename, int al)
 {
@@ -7912,7 +7912,7 @@ int WINAPI PMDWIN::fgetmemo(char *dest, char *filename, int al)
 
 	if(filename != NULL) {
 		if(*filename != '\0') {
-			// ¥Õ¥¡¥¤¥ë¤«¤é
+			// ãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰
 			if((fp = fopen(filename, "rb")) == NULL) {
 				return ERR_OPEN_MUSIC_FILE;
 			}
@@ -7930,14 +7930,14 @@ int WINAPI PMDWIN::fgetmemo(char *dest, char *filename, int al)
 		}
 	}
 
-	// ÆâÉô¥Ç¡¼¥¿¤«¤é
+	// å†…éƒ¨ãƒ‡ãƒ¼ã‚¿ã‹ã‚‰
 	getmemo(dest, NULL, 0, al);
 	return PMDWIN_OK;
 }
 
 
 //=============================================================================
-//	¥á¥â¤Î¼èÆÀ¡Ê¥Õ¥¡¥¤¥ëÌ¾¤«¤é¡¿£²¥Ğ¥¤¥ÈÈ¾³Ñ¢ªÈ¾³ÑÊ¸»ú¤ËÊÑ´¹¡Ë
+//	ãƒ¡ãƒ¢ã®å–å¾—ï¼ˆãƒ•ã‚¡ã‚¤ãƒ«åã‹ã‚‰ï¼ï¼’ãƒã‚¤ãƒˆåŠè§’â†’åŠè§’æ–‡å­—ã«å¤‰æ›ï¼‰
 //=============================================================================
 int WINAPI PMDWIN::fgetmemo2(char *dest, char *filename, int al)
 {
@@ -7945,7 +7945,7 @@ int WINAPI PMDWIN::fgetmemo2(char *dest, char *filename, int al)
 	int		rslt;
 
 	if((buf = (char *)malloc(mdata_def*1024)) == NULL) {
-		*dest = '\0';		// ¥á¥â¥êÉÔÂ­
+		*dest = '\0';		// ãƒ¡ãƒ¢ãƒªä¸è¶³
 		return ERR_OUT_OF_MEMORY;
 	}
 	if((rslt = fgetmemo(buf, filename, al)) == PMDWIN_OK) {
@@ -7959,7 +7959,7 @@ int WINAPI PMDWIN::fgetmemo2(char *dest, char *filename, int al)
 
 
 //=============================================================================
-//	¥á¥â¤Î¼èÆÀ¡Ê¥Õ¥¡¥¤¥ëÌ¾¤«¤é¡¿È¾³ÑÊ¸»ú¤ËÊÑ´¹¡ÜESC¥·¡¼¥±¥ó¥¹¤Î½üµî¡Ë
+//	ãƒ¡ãƒ¢ã®å–å¾—ï¼ˆãƒ•ã‚¡ã‚¤ãƒ«åã‹ã‚‰ï¼åŠè§’æ–‡å­—ã«å¤‰æ›ï¼‹ESCã‚·ãƒ¼ã‚±ãƒ³ã‚¹ã®é™¤å»ï¼‰
 //=============================================================================
 int WINAPI PMDWIN::fgetmemo3(char *dest, char *filename, int al)
 {
@@ -7967,7 +7967,7 @@ int WINAPI PMDWIN::fgetmemo3(char *dest, char *filename, int al)
 	int		rslt;
 
 	if((buf = (char *)malloc(mdata_def*1024)) == NULL) {
-		*dest = '\0';		// ¥á¥â¥êÉÔÂ­
+		*dest = '\0';		// ãƒ¡ãƒ¢ãƒªä¸è¶³
 		return ERR_OUT_OF_MEMORY;
 	}
 	if((rslt = fgetmemo2(buf, filename, al)) == PMDWIN_OK) {
@@ -7981,7 +7981,7 @@ int WINAPI PMDWIN::fgetmemo3(char *dest, char *filename, int al)
 
 
 //=============================================================================
-//	¶Ê¤Î filename ¤Î¼èÆÀ
+//	æ›²ã® filename ã®å–å¾—
 //=============================================================================
 char* WINAPI PMDWIN::getmusicfilename(char *dest)
 {
@@ -7991,7 +7991,7 @@ char* WINAPI PMDWIN::getmusicfilename(char *dest)
 
 
 //=============================================================================
-//	PPC / P86 filename ¤Î¼èÆÀ
+//	PPC / P86 filename ã®å–å¾—
 //=============================================================================
 char* WINAPI PMDWIN::getpcmfilename(char *dest)
 {
@@ -8005,7 +8005,7 @@ char* WINAPI PMDWIN::getpcmfilename(char *dest)
 
 
 //=============================================================================
-//	PPC filename ¤Î¼èÆÀ
+//	PPC filename ã®å–å¾—
 //=============================================================================
 char* WINAPI PMDWIN::getppcfilename(char *dest)
 {
@@ -8015,7 +8015,7 @@ char* WINAPI PMDWIN::getppcfilename(char *dest)
 
 
 //=============================================================================
-//	PPS filename ¤Î¼èÆÀ
+//	PPS filename ã®å–å¾—
 //=============================================================================
 char* WINAPI PMDWIN::getppsfilename(char *dest)
 {
@@ -8025,7 +8025,7 @@ char* WINAPI PMDWIN::getppsfilename(char *dest)
 
 
 //=============================================================================
-//	P86 filename ¤Î¼èÆÀ
+//	P86 filename ã®å–å¾—
 //=============================================================================
 char* WINAPI PMDWIN::getp86filename(char *dest)
 {
@@ -8035,7 +8035,7 @@ char* WINAPI PMDWIN::getp86filename(char *dest)
 
 
 //=============================================================================
-//	PPZ filename ¤Î¼èÆÀ
+//	PPZ filename ã®å–å¾—
 //=============================================================================
 char* WINAPI PMDWIN::getppzfilename(char *dest, int bufnum)
 {
@@ -8045,7 +8045,7 @@ char* WINAPI PMDWIN::getppzfilename(char *dest, int bufnum)
 
 
 //=============================================================================
-//	.PPC ¤ÎÆÉ¤ß¹ş¤ß¡Ê¥Õ¥¡¥¤¥ë¤«¤é¡Ë
+//	.PPC ã®èª­ã¿è¾¼ã¿ï¼ˆãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰ï¼‰
 //=============================================================================
 int WINAPI PMDWIN::ppc_load(char *filename)
 {
@@ -8062,7 +8062,7 @@ int WINAPI PMDWIN::ppc_load(char *filename)
 
 
 //=============================================================================
-//	.PPS ¤ÎÆÉ¤ß¹ş¤ß¡Ê¥Õ¥¡¥¤¥ë¤«¤é¡Ë
+//	.PPS ã®èª­ã¿è¾¼ã¿ï¼ˆãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰ï¼‰
 //=============================================================================
 int WINAPI PMDWIN::pps_load(char *filename)
 {
@@ -8082,7 +8082,7 @@ int WINAPI PMDWIN::pps_load(char *filename)
 
 
 //=============================================================================
-//	.P86 ¤ÎÆÉ¤ß¹ş¤ß¡Ê¥Õ¥¡¥¤¥ë¤«¤é¡Ë
+//	.P86 ã®èª­ã¿è¾¼ã¿ï¼ˆãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰ï¼‰
 //=============================================================================
 int WINAPI PMDWIN::p86_load(char *filename)
 {
@@ -8108,7 +8108,7 @@ int WINAPI PMDWIN::p86_load(char *filename)
 
 
 //=============================================================================
-//	.PZI, .PVI ¤ÎÆÉ¤ß¹ş¤ß¡Ê¥Õ¥¡¥¤¥ë¤«¤é¡Ë
+//	.PZI, .PVI ã®èª­ã¿è¾¼ã¿ï¼ˆãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰ï¼‰
 //=============================================================================
 int WINAPI PMDWIN::ppz_load(char *filename, int bufnum)
 {
@@ -8129,7 +8129,7 @@ int WINAPI PMDWIN::ppz_load(char *filename, int bufnum)
 
 
 //=============================================================================
-//	¥Ñ¡¼¥È¤Î¥Ş¥¹¥¯
+//	ãƒ‘ãƒ¼ãƒˆã®ãƒã‚¹ã‚¯
 //=============================================================================
 int WINAPI PMDWIN::maskon(int ch)
 {
@@ -8141,19 +8141,19 @@ int WINAPI PMDWIN::maskon(int ch)
 	}
 	
 	if(part_table[ch][0] < 0) {
-		open_work.rhythmmask = 0;	// Rhythm²»¸»¤òMask
-		opna.SetReg(0x10, 0xff);	// Rhythm²»¸»¤òÁ´ÉôDump
+		open_work.rhythmmask = 0;	// RhythméŸ³æºã‚’Mask
+		opna.SetReg(0x10, 0xff);	// RhythméŸ³æºã‚’å…¨éƒ¨Dump
 	} else {
 		fmseltmp = pmdwork.fmsel;
 		if(open_work.MusPart[ch]->partmask == 0 && open_work.play_flag) {
 			if(part_table[ch][2] == 0) {
 				pmdwork.partb = part_table[ch][1];
 				pmdwork.fmsel = 0;
-				silence_fmpart(open_work.MusPart[ch]);	// ²»¤ò´°àú¤Ë¾Ã¤¹
+				silence_fmpart(open_work.MusPart[ch]);	// éŸ³ã‚’å®Œç’§ã«æ¶ˆã™
 			} else if(part_table[ch][2] == 1) {
 				pmdwork.partb = part_table[ch][1];
 				pmdwork.fmsel = 0x100;
-				silence_fmpart(open_work.MusPart[ch]);	// ²»¤ò´°àú¤Ë¾Ã¤¹
+				silence_fmpart(open_work.MusPart[ch]);	// éŸ³ã‚’å®Œç’§ã«æ¶ˆã™
 			} else if(part_table[ch][2] == 2) {
 				pmdwork.partb = part_table[ch][1];
 				ah =  1 << (pmdwork.partb - 1);
@@ -8179,7 +8179,7 @@ int WINAPI PMDWIN::maskon(int ch)
 
 
 //=============================================================================
-//	¥Ñ¡¼¥È¤Î¥Ş¥¹¥¯²ò½ü
+//	ãƒ‘ãƒ¼ãƒˆã®ãƒã‚¹ã‚¯è§£é™¤
 //=============================================================================
 int WINAPI PMDWIN::maskoff(int ch)
 {
@@ -8192,19 +8192,19 @@ int WINAPI PMDWIN::maskoff(int ch)
 	if(part_table[ch][0] < 0) {
 		open_work.rhythmmask = 0xff;
 	} else {
-		if(open_work.MusPart[ch]->partmask == 0) return ERR_NOT_MASKED;	// ¥Ş¥¹¥¯¤µ¤ì¤Æ¤¤¤Ê¤¤
-											// ¸ú²Ì²»¤Ç¤Ş¤À¥Ş¥¹¥¯¤µ¤ì¤Æ¤¤¤ë
+		if(open_work.MusPart[ch]->partmask == 0) return ERR_NOT_MASKED;	// ãƒã‚¹ã‚¯ã•ã‚Œã¦ã„ãªã„
+											// åŠ¹æœéŸ³ã§ã¾ã ãƒã‚¹ã‚¯ã•ã‚Œã¦ã„ã‚‹
 		if((open_work.MusPart[ch]->partmask &= 0xfe) != 0) return ERR_EFFECT_USED;
-											// ¶Ê¤¬»ß¤Ş¤Ã¤Æ¤¤¤ë
+											// æ›²ãŒæ­¢ã¾ã£ã¦ã„ã‚‹
 		if(open_work.play_flag == 0) return ERR_MUSIC_STOPPED;
 
 		fmseltmp = pmdwork.fmsel;
 		if(open_work.MusPart[ch]->address != NULL) {
-			if(part_table[ch][2] == 0) {		// FM²»¸»(É½)
+			if(part_table[ch][2] == 0) {		// FMéŸ³æº(è¡¨)
 				pmdwork.fmsel = 0;
 				pmdwork.partb = part_table[ch][1];
 				neiro_reset(open_work.MusPart[ch]);
-			} else if(part_table[ch][2] == 1) {	// FM²»¸»(Î¢)
+			} else if(part_table[ch][2] == 1) {	// FMéŸ³æº(è£)
 				pmdwork.fmsel = 0x100;
 				pmdwork.partb = part_table[ch][1];
 				neiro_reset(open_work.MusPart[ch]);
@@ -8218,7 +8218,7 @@ int WINAPI PMDWIN::maskoff(int ch)
 
 
 //=============================================================================
-//	FM Volume Down ¤ÎÀßÄê
+//	FM Volume Down ã®è¨­å®š
 //=============================================================================
 void WINAPI PMDWIN::setfmvoldown(int voldown)
 {
@@ -8227,7 +8227,7 @@ void WINAPI PMDWIN::setfmvoldown(int voldown)
 
 
 //=============================================================================
-//	SSG Volume Down ¤ÎÀßÄê
+//	SSG Volume Down ã®è¨­å®š
 //=============================================================================
 void WINAPI PMDWIN::setssgvoldown(int voldown)
 {
@@ -8236,7 +8236,7 @@ void WINAPI PMDWIN::setssgvoldown(int voldown)
 
 
 //=============================================================================
-//	Rhythm Volume Down ¤ÎÀßÄê
+//	Rhythm Volume Down ã®è¨­å®š
 //=============================================================================
 void WINAPI PMDWIN::setrhythmvoldown(int voldown)
 {
@@ -8248,7 +8248,7 @@ void WINAPI PMDWIN::setrhythmvoldown(int voldown)
 
 
 //=============================================================================
-//	ADPCM Volume Down ¤ÎÀßÄê
+//	ADPCM Volume Down ã®è¨­å®š
 //=============================================================================
 void WINAPI PMDWIN::setadpcmvoldown(int voldown)
 {
@@ -8257,7 +8257,7 @@ void WINAPI PMDWIN::setadpcmvoldown(int voldown)
 
 
 //=============================================================================
-//	PPZ8 Volume Down ¤ÎÀßÄê
+//	PPZ8 Volume Down ã®è¨­å®š
 //=============================================================================
 void WINAPI PMDWIN::setppzvoldown(int voldown)
 {
@@ -8266,7 +8266,7 @@ void WINAPI PMDWIN::setppzvoldown(int voldown)
 
 
 //=============================================================================
-//	FM Volume Down ¤Î¼èÆÀ
+//	FM Volume Down ã®å–å¾—
 //=============================================================================
 int WINAPI PMDWIN::getfmvoldown(void)
 {
@@ -8275,7 +8275,7 @@ int WINAPI PMDWIN::getfmvoldown(void)
 
 
 //=============================================================================
-//	FM Volume Down ¤Î¼èÆÀ¡Ê¤½¤Î£²¡Ë
+//	FM Volume Down ã®å–å¾—ï¼ˆãã®ï¼’ï¼‰
 //=============================================================================
 int WINAPI PMDWIN::getfmvoldown2(void)
 {
@@ -8284,7 +8284,7 @@ int WINAPI PMDWIN::getfmvoldown2(void)
 
 
 //=============================================================================
-//	SSG Volume Down ¤Î¼èÆÀ
+//	SSG Volume Down ã®å–å¾—
 //=============================================================================
 int WINAPI PMDWIN::getssgvoldown(void)
 {
@@ -8293,7 +8293,7 @@ int WINAPI PMDWIN::getssgvoldown(void)
 
 
 //=============================================================================
-//	SSG Volume Down ¤Î¼èÆÀ¡Ê¤½¤Î£²¡Ë
+//	SSG Volume Down ã®å–å¾—ï¼ˆãã®ï¼’ï¼‰
 //=============================================================================
 int WINAPI PMDWIN::getssgvoldown2(void)
 {
@@ -8302,7 +8302,7 @@ int WINAPI PMDWIN::getssgvoldown2(void)
 
 
 //=============================================================================
-//	Rhythm Volume Down ¤Î¼èÆÀ
+//	Rhythm Volume Down ã®å–å¾—
 //=============================================================================
 int WINAPI PMDWIN::getrhythmvoldown(void)
 {
@@ -8311,7 +8311,7 @@ int WINAPI PMDWIN::getrhythmvoldown(void)
 
 
 //=============================================================================
-//	Rhythm Volume Down ¤Î¼èÆÀ¡Ê¤½¤Î£²¡Ë
+//	Rhythm Volume Down ã®å–å¾—ï¼ˆãã®ï¼’ï¼‰
 //=============================================================================
 int WINAPI PMDWIN::getrhythmvoldown2(void)
 {
@@ -8320,7 +8320,7 @@ int WINAPI PMDWIN::getrhythmvoldown2(void)
 
 
 //=============================================================================
-//	ADPCM Volume Down ¤Î¼èÆÀ
+//	ADPCM Volume Down ã®å–å¾—
 //=============================================================================
 int WINAPI PMDWIN::getadpcmvoldown(void)
 {
@@ -8329,7 +8329,7 @@ int WINAPI PMDWIN::getadpcmvoldown(void)
 
 
 //=============================================================================
-//	ADPCM Volume Down ¤Î¼èÆÀ¡Ê¤½¤Î£²¡Ë
+//	ADPCM Volume Down ã®å–å¾—ï¼ˆãã®ï¼’ï¼‰
 //=============================================================================
 int WINAPI PMDWIN::getadpcmvoldown2(void)
 {
@@ -8338,7 +8338,7 @@ int WINAPI PMDWIN::getadpcmvoldown2(void)
 
 
 //=============================================================================
-//	PPZ8 Volume Down ¤Î¼èÆÀ
+//	PPZ8 Volume Down ã®å–å¾—
 //=============================================================================
 int WINAPI PMDWIN::getppzvoldown(void)
 {
@@ -8347,7 +8347,7 @@ int WINAPI PMDWIN::getppzvoldown(void)
 
 
 //=============================================================================
-//	PPZ8 Volume Down ¤Î¼èÆÀ¡Ê¤½¤Î£²¡Ë
+//	PPZ8 Volume Down ã®å–å¾—ï¼ˆãã®ï¼’ï¼‰
 //=============================================================================
 int WINAPI PMDWIN::getppzvoldown2(void)
 {
@@ -8356,20 +8356,20 @@ int WINAPI PMDWIN::getppzvoldown2(void)
 
 
 //=============================================================================
-//	ºÆÀ¸°ÌÃÖ¤Î°ÜÆ°(pos : ms)
+//	å†ç”Ÿä½ç½®ã®ç§»å‹•(pos : ms)
 //=============================================================================
 void WINAPI PMDWIN::setpos(int pos)
 {
 	_int64	_pos;
 	int		us;
 
-	_pos = (_int64)pos * 1000;			// (ms -> usec ¤Ø¤ÎÊÑ´¹)
+	_pos = (_int64)pos * 1000;			// (ms -> usec ã¸ã®å¤‰æ›)
 
 	if(upos > _pos) {
 		mstart();
-		pos2 = (char *)wavbuf2;	// buf ¤ËÍ¾¤Ã¤Æ¤¤¤ë¥µ¥ó¥×¥ë¤ÎÀèÆ¬°ÌÃÖ
-		us2	= 0;				// buf ¤ËÍ¾¤Ã¤Æ¤¤¤ë¥µ¥ó¥×¥ë¿ô
-		upos = 0;				// ±éÁÕ³«»Ï¤«¤é¤Î»ş´Ö(¦Ìsec)
+		pos2 = (char *)wavbuf2;	// buf ã«ä½™ã£ã¦ã„ã‚‹ã‚µãƒ³ãƒ—ãƒ«ã®å…ˆé ­ä½ç½®
+		us2	= 0;				// buf ã«ä½™ã£ã¦ã„ã‚‹ã‚µãƒ³ãƒ—ãƒ«æ•°
+		upos = 0;				// æ¼”å¥é–‹å§‹ã‹ã‚‰ã®æ™‚é–“(Î¼sec)
 	}
 
 	while(upos < _pos) {
@@ -8381,7 +8381,7 @@ void WINAPI PMDWIN::setpos(int pos)
 			TimerB_main();
 		}
 
-		opna.SetReg(0x27, open_work.ch3mode | 0x30);	// TIMER RESET(timerA,B¤È¤â)
+		opna.SetReg(0x27, open_work.ch3mode | 0x30);	// TIMER RESET(timerA,Bã¨ã‚‚)
 
 		us = opna.GetNextEvent();
 		opna.Count(us);
@@ -8396,7 +8396,7 @@ void WINAPI PMDWIN::setpos(int pos)
 
 
 //=============================================================================
-//	ºÆÀ¸°ÌÃÖ¤Î°ÜÆ°(pos : count Ã±°Ì)
+//	å†ç”Ÿä½ç½®ã®ç§»å‹•(pos : count å˜ä½)
 //=============================================================================
 void WINAPI PMDWIN::setpos2(int pos)
 {
@@ -8404,8 +8404,8 @@ void WINAPI PMDWIN::setpos2(int pos)
 
 	if(open_work.syousetu_lng * open_work.syousetu + open_work.opncount > pos) {
 		mstart();
-		pos2 = (char *)wavbuf2;	// buf ¤ËÍ¾¤Ã¤Æ¤¤¤ë¥µ¥ó¥×¥ë¤ÎÀèÆ¬°ÌÃÖ
-		us2	= 0;				// buf ¤ËÍ¾¤Ã¤Æ¤¤¤ë¥µ¥ó¥×¥ë¿ô
+		pos2 = (char *)wavbuf2;	// buf ã«ä½™ã£ã¦ã„ã‚‹ã‚µãƒ³ãƒ—ãƒ«ã®å…ˆé ­ä½ç½®
+		us2	= 0;				// buf ã«ä½™ã£ã¦ã„ã‚‹ã‚µãƒ³ãƒ—ãƒ«æ•°
 	}
 
 	while(open_work.syousetu_lng * open_work.syousetu + open_work.opncount < pos) {
@@ -8417,7 +8417,7 @@ void WINAPI PMDWIN::setpos2(int pos)
 			TimerB_main();
 		}
 
-		opna.SetReg(0x27, open_work.ch3mode | 0x30);	// TIMER RESET(timerA,B¤È¤â)
+		opna.SetReg(0x27, open_work.ch3mode | 0x30);	// TIMER RESET(timerA,Bã¨ã‚‚)
 
 		us = opna.GetNextEvent();
 		opna.Count(us);
@@ -8431,7 +8431,7 @@ void WINAPI PMDWIN::setpos2(int pos)
 
 
 //=============================================================================
-//	ºÆÀ¸°ÌÃÖ¤Î¼èÆÀ(pos : ms)
+//	å†ç”Ÿä½ç½®ã®å–å¾—(pos : ms)
 //=============================================================================
 int WINAPI PMDWIN::getpos(void)
 {
@@ -8440,7 +8440,7 @@ int WINAPI PMDWIN::getpos(void)
 
 
 //=============================================================================
-//	ºÆÀ¸°ÌÃÖ¤Î¼èÆÀ(pos : count Ã±°Ì)
+//	å†ç”Ÿä½ç½®ã®å–å¾—(pos : count å˜ä½)
 //=============================================================================
 int WINAPI PMDWIN::getpos2(void)
 {
@@ -8449,7 +8449,7 @@ int WINAPI PMDWIN::getpos2(void)
 
 
 //=============================================================================
-//	¶Ê¤ÎÄ¹¤µ¤Î¼èÆÀ(pos : ms)
+//	æ›²ã®é•·ã•ã®å–å¾—(pos : ms)
 //=============================================================================
 bool WINAPI PMDWIN::getlength(char *filename, int *length, int *loop)
 {
@@ -8465,7 +8465,7 @@ bool WINAPI PMDWIN::getlength(char *filename, int *length, int *loop)
 									result == ERR_OUT_OF_MEMORY) return false;
 
 	mstart();
-	upos = 0;				// ±éÁÕ³«»Ï¤«¤é¤Î»ş´Ö(¦Ìsec)
+	upos = 0;				// æ¼”å¥é–‹å§‹ã‹ã‚‰ã®æ™‚é–“(Î¼sec)
 	*length = 0;
 
 	fmwaittemp		= opna.GetFMWait();
@@ -8487,14 +8487,14 @@ bool WINAPI PMDWIN::getlength(char *filename, int *length, int *loop)
 			TimerB_main();
 		}
 
-		opna.SetReg(0x27, open_work.ch3mode | 0x30);	// TIMER RESET(timerA,B¤È¤â)
+		opna.SetReg(0x27, open_work.ch3mode | 0x30);	// TIMER RESET(timerA,Bã¨ã‚‚)
 
 		us = opna.GetNextEvent();
 		opna.Count(us);
 		upos += us;
-		if(open_work.status2 == 1 && *length == 0) {	// ¥ë¡¼¥×»ş
+		if(open_work.status2 == 1 && *length == 0) {	// ãƒ«ãƒ¼ãƒ—æ™‚
 			*length = (int)(upos / 1000);
-		} else if(open_work.status2 == -1) {			// ¥ë¡¼¥×¤Ê¤·½ªÎ»»ş
+		} else if(open_work.status2 == -1) {			// ãƒ«ãƒ¼ãƒ—ãªã—çµ‚äº†æ™‚
 			*length = (int)(upos / 1000);
 			*loop = 0;
 			mstop();
@@ -8503,7 +8503,7 @@ bool WINAPI PMDWIN::getlength(char *filename, int *length, int *loop)
 			opna.SetRhythmWait(rhythmwaittemp);
 			opna.SetADPCMWait(adpcmwaittemp);
 			return true;
-		} else if(getpos2() >= 65536) {		// 65536¥¯¥í¥Ã¥¯°Ê¾å¤Ê¤é¶¯À©½ªÎ»
+		} else if(getpos2() >= 65536) {		// 65536ã‚¯ãƒ­ãƒƒã‚¯ä»¥ä¸Šãªã‚‰å¼·åˆ¶çµ‚äº†
 			*length = (int)(upos / 1000);
 			*loop = *length;
 			return true;
@@ -8521,7 +8521,7 @@ bool WINAPI PMDWIN::getlength(char *filename, int *length, int *loop)
 
 
 //=============================================================================
-//	¶Ê¤ÎÄ¹¤µ¤Î¼èÆÀ(pos : count Ã±°Ì)
+//	æ›²ã®é•·ã•ã®å–å¾—(pos : count å˜ä½)
 //=============================================================================
 bool WINAPI PMDWIN::getlength2(char *filename, int *length, int *loop)
 {
@@ -8537,7 +8537,7 @@ bool WINAPI PMDWIN::getlength2(char *filename, int *length, int *loop)
 									result == ERR_OUT_OF_MEMORY) return false;
 
 	mstart();
-	upos = 0;				// ±éÁÕ³«»Ï¤«¤é¤Î»ş´Ö(¦Ìsec)
+	upos = 0;				// æ¼”å¥é–‹å§‹ã‹ã‚‰ã®æ™‚é–“(Î¼sec)
 	*length = 0;
 
 	fmwaittemp		= opna.GetFMWait();
@@ -8559,14 +8559,14 @@ bool WINAPI PMDWIN::getlength2(char *filename, int *length, int *loop)
 			TimerB_main();
 		}
 
-		opna.SetReg(0x27, open_work.ch3mode | 0x30);	// TIMER RESET(timerA,B¤È¤â)
+		opna.SetReg(0x27, open_work.ch3mode | 0x30);	// TIMER RESET(timerA,Bã¨ã‚‚)
 
 		us = opna.GetNextEvent();
 		opna.Count(us);
 		upos += us;			
-		if(open_work.status2 == 1 && *length == 0) {	// ¥ë¡¼¥×»ş
+		if(open_work.status2 == 1 && *length == 0) {	// ãƒ«ãƒ¼ãƒ—æ™‚
 			*length = getpos2();
-		} else if(open_work.status2 == -1) {			// ¥ë¡¼¥×¤Ê¤·½ªÎ»»ş
+		} else if(open_work.status2 == -1) {			// ãƒ«ãƒ¼ãƒ—ãªã—çµ‚äº†æ™‚
 			*length = getpos2();
 			*loop = 0;
 			mstop();
@@ -8575,7 +8575,7 @@ bool WINAPI PMDWIN::getlength2(char *filename, int *length, int *loop)
 			opna.SetRhythmWait(rhythmwaittemp);
 			opna.SetADPCMWait(adpcmwaittemp);
 			return true;
-		} else if(getpos2() >= 65536) {		// 65536¥¯¥í¥Ã¥¯°Ê¾å¤Ê¤é¶¯À©½ªÎ»
+		} else if(getpos2() >= 65536) {		// 65536ã‚¯ãƒ­ãƒƒã‚¯ä»¥ä¸Šãªã‚‰å¼·åˆ¶çµ‚äº†
 			*length = getpos2();
 			*loop = *length;
 			return true;
@@ -8593,7 +8593,7 @@ bool WINAPI PMDWIN::getlength2(char *filename, int *length, int *loop)
 
 
 //=============================================================================
-//	¥ë¡¼¥×²ó¿ô¤Î¼èÆÀ
+//	ãƒ«ãƒ¼ãƒ—å›æ•°ã®å–å¾—
 //=============================================================================
 int WINAPI PMDWIN::getloopcount(void)
 {
@@ -8602,7 +8602,7 @@ int WINAPI PMDWIN::getloopcount(void)
 
 
 //=============================================================================
-//	FM ¤Î Register ½ĞÎÏ¸å¤Î wait ÀßÄê
+//	FM ã® Register å‡ºåŠ›å¾Œã® wait è¨­å®š
 //=============================================================================
 void WINAPI PMDWIN::setfmwait(int nsec)
 {
@@ -8611,7 +8611,7 @@ void WINAPI PMDWIN::setfmwait(int nsec)
 
 
 //=============================================================================
-//	SSG ¤Î Register ½ĞÎÏ¸å¤Î wait ÀßÄê
+//	SSG ã® Register å‡ºåŠ›å¾Œã® wait è¨­å®š
 //=============================================================================
 void WINAPI PMDWIN::setssgwait(int nsec)
 {
@@ -8620,7 +8620,7 @@ void WINAPI PMDWIN::setssgwait(int nsec)
 
 
 //=============================================================================
-//	rhythm ¤Î Register ½ĞÎÏ¸å¤Î wait ÀßÄê
+//	rhythm ã® Register å‡ºåŠ›å¾Œã® wait è¨­å®š
 //=============================================================================
 void WINAPI PMDWIN::setrhythmwait(int nsec)
 {
@@ -8629,7 +8629,7 @@ void WINAPI PMDWIN::setrhythmwait(int nsec)
 
 
 //=============================================================================
-//	ADPCM ¤Î Register ½ĞÎÏ¸å¤Î wait ÀßÄê
+//	ADPCM ã® Register å‡ºåŠ›å¾Œã® wait è¨­å®š
 //=============================================================================
 void WINAPI PMDWIN::setadpcmwait(int nsec)
 {
@@ -8638,7 +8638,7 @@ void WINAPI PMDWIN::setadpcmwait(int nsec)
 
 
 //=============================================================================
-//	OPEN_WORK¤Î¥İ¥¤¥ó¥¿¤Î¼èÆÀ
+//	OPEN_WORKã®ãƒã‚¤ãƒ³ã‚¿ã®å–å¾—
 //=============================================================================
 OPEN_WORK* WINAPI PMDWIN::getopenwork(void)
 {
@@ -8647,7 +8647,7 @@ OPEN_WORK* WINAPI PMDWIN::getopenwork(void)
 
 
 //=============================================================================
-//	¥Ñ¡¼¥È¥ï¡¼¥¯¤Î¥İ¥¤¥ó¥¿¤Î¼èÆÀ
+//	ãƒ‘ãƒ¼ãƒˆãƒ¯ãƒ¼ã‚¯ã®ãƒã‚¤ãƒ³ã‚¿ã®å–å¾—
 //=============================================================================
 QQ* WINAPI PMDWIN::getpartwork(int ch)
 {
@@ -8744,7 +8744,7 @@ extern "C" {
 
 
 //=============================================================================
-//	¥Ğ¡¼¥·¥ç¥ó¼èÆÀ
+//	ãƒãƒ¼ã‚·ãƒ§ãƒ³å–å¾—
 //=============================================================================
 __declspec(dllexport) int WINAPI getversion(void)
 {
@@ -8753,7 +8753,7 @@ __declspec(dllexport) int WINAPI getversion(void)
 
 
 //=============================================================================
-//	¥¤¥ó¥¿¡¼¥Õ¥§¥¤¥¹¤Î¥Ğ¡¼¥·¥ç¥ó¼èÆÀ
+//	ã‚¤ãƒ³ã‚¿ãƒ¼ãƒ•ã‚§ã‚¤ã‚¹ã®ãƒãƒ¼ã‚·ãƒ§ãƒ³å–å¾—
 //=============================================================================
 __declspec(dllexport) int WINAPI getinterfaceversion(void)
 {
@@ -8762,7 +8762,7 @@ __declspec(dllexport) int WINAPI getinterfaceversion(void)
 
 
 //=============================================================================
-//	COM É÷¥¤¥ó¥¿¡¼¥Õ¥§¥¤¥¹(PMDWIN ¥¤¥ó¥¹¥¿¥ó¥¹¤Î¼èÆÀ)	
+//	COM é¢¨ã‚¤ãƒ³ã‚¿ãƒ¼ãƒ•ã‚§ã‚¤ã‚¹(PMDWIN ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã®å–å¾—)	
 //=============================================================================
 #ifdef ENABLE_COM_INTERFACE
 __declspec(dllexport) HRESULT WINAPI pmd_CoCreateInstance(
@@ -8778,9 +8778,9 @@ __declspec(dllexport) HRESULT WINAPI pmd_CoCreateInstance(
 	IUnknown* pUnknown;
 
 	if(rclsid != CLSID_PMDWIN) {
-		return REGDB_E_CLASSNOTREG;		// CLSID ¤¬°ã¤¦
+		return REGDB_E_CLASSNOTREG;		// CLSID ãŒé•ã†
 	} else if(riid != IID_IPCMMUSICDRIVER && riid != IID_IFMPMD && riid != IID_IPMDWIN) {
-		return REGDB_E_CLASSNOTREG;		// IID ¤¬°ã¤¦
+		return REGDB_E_CLASSNOTREG;		// IID ãŒé•ã†
 	} else {
 		pUnknown = (IUnknown*)new(PMDWIN);
 		*ppv = (void **)pUnknown;
@@ -8791,7 +8791,7 @@ __declspec(dllexport) HRESULT WINAPI pmd_CoCreateInstance(
 #endif
 
 //=============================================================================
-//	½é´ü²½
+//	åˆæœŸåŒ–
 //=============================================================================
 __declspec(dllexport) bool WINAPI pmdwininit(char *path)
 {
@@ -8805,17 +8805,17 @@ __declspec(dllexport) bool WINAPI pmdwininit(char *path)
 	pmdwin2->init(path);
 	result = pmdwin->init(path);
 /*
-	pmdwin2->setfmwait(0);			// ¶ÊÄ¹·×»»¹âÂ®²½¤Î¤¿¤á
-	pmdwin2->setssgwait(0);			// ¶ÊÄ¹·×»»¹âÂ®²½¤Î¤¿¤á
-	pmdwin2->setrhythmwait(0);		// ¶ÊÄ¹·×»»¹âÂ®²½¤Î¤¿¤á
-	pmdwin2->setadpcmwait(0);		// ¶ÊÄ¹·×»»¹âÂ®²½¤Î¤¿¤á
+	pmdwin2->setfmwait(0);			// æ›²é•·è¨ˆç®—é«˜é€ŸåŒ–ã®ãŸã‚
+	pmdwin2->setssgwait(0);			// æ›²é•·è¨ˆç®—é«˜é€ŸåŒ–ã®ãŸã‚
+	pmdwin2->setrhythmwait(0);		// æ›²é•·è¨ˆç®—é«˜é€ŸåŒ–ã®ãŸã‚
+	pmdwin2->setadpcmwait(0);		// æ›²é•·è¨ˆç®—é«˜é€ŸåŒ–ã®ãŸã‚
 */
 	return result;
 }
 
 
 //=============================================================================
-//	¥ê¥º¥à²»¤ÎºÆÆÉ¤ß¹ş¤ß
+//	ãƒªã‚ºãƒ éŸ³ã®å†èª­ã¿è¾¼ã¿
 //=============================================================================
 __declspec(dllexport) bool WINAPI loadrhythmsample(char *path)
 {
@@ -8824,7 +8824,7 @@ __declspec(dllexport) bool WINAPI loadrhythmsample(char *path)
 
 
 //=============================================================================
-//	PCM ¸¡º÷¥Ç¥£¥ì¥¯¥È¥ê¤ÎÀßÄê
+//	PCM æ¤œç´¢ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªã®è¨­å®š
 //=============================================================================
 __declspec(dllexport) bool WINAPI setpcmdir(char **path)
 {
@@ -8833,7 +8833,7 @@ __declspec(dllexport) bool WINAPI setpcmdir(char **path)
 
 
 //=============================================================================
-//	¹çÀ®¼şÇÈ¿ô¤ÎÀßÄê
+//	åˆæˆå‘¨æ³¢æ•°ã®è¨­å®š
 //=============================================================================
 __declspec(dllexport) void WINAPI setpcmrate(int rate)
 {
@@ -8842,7 +8842,7 @@ __declspec(dllexport) void WINAPI setpcmrate(int rate)
 
 
 //=============================================================================
-//	PPZ ¹çÀ®¼şÇÈ¿ô¤ÎÀßÄê
+//	PPZ åˆæˆå‘¨æ³¢æ•°ã®è¨­å®š
 //=============================================================================
 __declspec(dllexport) void WINAPI setppzrate(int rate)
 {
@@ -8851,7 +8851,7 @@ __declspec(dllexport) void WINAPI setppzrate(int rate)
 
 
 //=============================================================================
-//	PPS ¤òÌÄ¤é¤¹¤«¡©
+//	PPS ã‚’é³´ã‚‰ã™ã‹ï¼Ÿ
 //=============================================================================
 __declspec(dllexport) void WINAPI setppsuse(bool value)
 {
@@ -8860,7 +8860,7 @@ __declspec(dllexport) void WINAPI setppsuse(bool value)
 
 
 //=============================================================================
-//	SSG ¸ú²Ì²»¤Ç OPNA Rhythm ¤âÌÄ¤é¤¹¤«¡©
+//	SSG åŠ¹æœéŸ³ã§ OPNA Rhythm ã‚‚é³´ã‚‰ã™ã‹ï¼Ÿ
 //=============================================================================
 __declspec(dllexport) void WINAPI setrhythmwithssgeffect(bool value)
 {
@@ -8869,7 +8869,7 @@ __declspec(dllexport) void WINAPI setrhythmwithssgeffect(bool value)
 
 
 //=============================================================================
-//	PMD86 ¤Î PCM ¤ò PMDB2 ¸ß´¹¤Ë¤¹¤ë¤«¡©
+//	PMD86 ã® PCM ã‚’ PMDB2 äº’æ›ã«ã™ã‚‹ã‹ï¼Ÿ
 //=============================================================================
 __declspec(dllexport) void WINAPI setpmd86pcmmode(bool value)
 {
@@ -8878,7 +8878,7 @@ __declspec(dllexport) void WINAPI setpmd86pcmmode(bool value)
 
 
 //=============================================================================
-//	PMD86 ¤Î PCM ¤¬ PMDB2 ¸ß´¹¤«¤É¤¦¤«¤ò¼èÆÀ¤¹¤ë
+//	PMD86 ã® PCM ãŒ PMDB2 äº’æ›ã‹ã©ã†ã‹ã‚’å–å¾—ã™ã‚‹
 //=============================================================================
 __declspec(dllexport) bool WINAPI getpmd86pcmmode(void)
 {
@@ -8887,7 +8887,7 @@ __declspec(dllexport) bool WINAPI getpmd86pcmmode(void)
 
 
 //=============================================================================
-//	¶Ê¤ÎÆÉ¤ß¹ş¤ß¤½¤Î£±¡Ê¥Õ¥¡¥¤¥ë¤«¤é¡Ë
+//	æ›²ã®èª­ã¿è¾¼ã¿ãã®ï¼‘ï¼ˆãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰ï¼‰
 //=============================================================================
 __declspec(dllexport) int WINAPI music_load(char *filename)
 {
@@ -8896,7 +8896,7 @@ __declspec(dllexport) int WINAPI music_load(char *filename)
 
 
 //=============================================================================
-//	¶Ê¤ÎÆÉ¤ß¹ş¤ß¤½¤Î£²¡Ê¥á¥â¥ê¤«¤é¡Ë
+//	æ›²ã®èª­ã¿è¾¼ã¿ãã®ï¼’ï¼ˆãƒ¡ãƒ¢ãƒªã‹ã‚‰ï¼‰
 //=============================================================================
 __declspec(dllexport) int WINAPI music_load2(uchar *musdata, int size)
 {
@@ -8905,7 +8905,7 @@ __declspec(dllexport) int WINAPI music_load2(uchar *musdata, int size)
 
 
 //=============================================================================
-//	±éÁÕ³«»Ï
+//	æ¼”å¥é–‹å§‹
 //=============================================================================
 __declspec(dllexport) void WINAPI music_start(void)
 {
@@ -8914,7 +8914,7 @@ __declspec(dllexport) void WINAPI music_start(void)
 
 
 //=============================================================================
-//	±éÁÕÄä»ß
+//	æ¼”å¥åœæ­¢
 //=============================================================================
 __declspec(dllexport) void WINAPI music_stop(void)
 {
@@ -8923,7 +8923,7 @@ __declspec(dllexport) void WINAPI music_stop(void)
 
 
 //=============================================================================
-//	¥Õ¥§¡¼¥É¥¢¥¦¥È(PMD¸ß´¹)
+//	ãƒ•ã‚§ãƒ¼ãƒ‰ã‚¢ã‚¦ãƒˆ(PMDäº’æ›)
 //=============================================================================
 __declspec(dllexport) void WINAPI fadeout(int speed)
 {
@@ -8932,7 +8932,7 @@ __declspec(dllexport) void WINAPI fadeout(int speed)
 
 
 //=============================================================================
-//	¥Õ¥§¡¼¥É¥¢¥¦¥È(¹â²»¼Á)
+//	ãƒ•ã‚§ãƒ¼ãƒ‰ã‚¢ã‚¦ãƒˆ(é«˜éŸ³è³ª)
 //=============================================================================
 __declspec(dllexport) void WINAPI fadeout2(int speed)
 {
@@ -8941,7 +8941,7 @@ __declspec(dllexport) void WINAPI fadeout2(int speed)
 
 
 //=============================================================================
-//	PCM ¥Ç¡¼¥¿¡Êwave ¥Ç¡¼¥¿¡Ë¤Î¼èÆÀ
+//	PCM ãƒ‡ãƒ¼ã‚¿ï¼ˆwave ãƒ‡ãƒ¼ã‚¿ï¼‰ã®å–å¾—
 //=============================================================================
 __declspec(dllexport) void WINAPI getpcmdata(short *buf, int nsamples)
 {
@@ -8950,7 +8950,7 @@ __declspec(dllexport) void WINAPI getpcmdata(short *buf, int nsamples)
 
 
 //=============================================================================
-//	FM ¤Ç 55kHz¹çÀ®¡¢°ì¼¡Êä´°¤¹¤ë¤«¤É¤¦¤«¤ÎÀßÄê
+//	FM ã§ 55kHzåˆæˆã€ä¸€æ¬¡è£œå®Œã™ã‚‹ã‹ã©ã†ã‹ã®è¨­å®š
 //=============================================================================
 __declspec(dllexport) void WINAPI setfmcalc55k(bool flag)
 {
@@ -8959,7 +8959,7 @@ __declspec(dllexport) void WINAPI setfmcalc55k(bool flag)
 
 
 //=============================================================================
-//	PPS ¤Ç°ì¼¡Êä´°¤¹¤ë¤«¤É¤¦¤«¤ÎÀßÄê
+//	PPS ã§ä¸€æ¬¡è£œå®Œã™ã‚‹ã‹ã©ã†ã‹ã®è¨­å®š
 //=============================================================================
 __declspec(dllexport) void WINAPI setppsinterpolation(bool ip)
 {
@@ -8968,7 +8968,7 @@ __declspec(dllexport) void WINAPI setppsinterpolation(bool ip)
 
 
 //=============================================================================
-//	P86 ¤Ç°ì¼¡Êä´°¤¹¤ë¤«¤É¤¦¤«¤ÎÀßÄê
+//	P86 ã§ä¸€æ¬¡è£œå®Œã™ã‚‹ã‹ã©ã†ã‹ã®è¨­å®š
 //=============================================================================
 __declspec(dllexport) void WINAPI setp86interpolation(bool ip)
 {
@@ -8977,7 +8977,7 @@ __declspec(dllexport) void WINAPI setp86interpolation(bool ip)
 
 
 //=============================================================================
-//	PPZ8 ¤Ç°ì¼¡Êä´°¤¹¤ë¤«¤É¤¦¤«¤ÎÀßÄê
+//	PPZ8 ã§ä¸€æ¬¡è£œå®Œã™ã‚‹ã‹ã©ã†ã‹ã®è¨­å®š
 //=============================================================================
 __declspec(dllexport) void WINAPI setppzinterpolation(bool ip)
 {
@@ -8986,7 +8986,7 @@ __declspec(dllexport) void WINAPI setppzinterpolation(bool ip)
 
 
 //=============================================================================
-//	¥á¥â¤Î¼èÆÀ
+//	ãƒ¡ãƒ¢ã®å–å¾—
 //=============================================================================
 __declspec(dllexport) char * WINAPI getmemo(char *dest, uchar *musdata, int size, int al)
 {
@@ -8995,7 +8995,7 @@ __declspec(dllexport) char * WINAPI getmemo(char *dest, uchar *musdata, int size
 
 
 //=============================================================================
-//	¥á¥â¤Î¼èÆÀ¡Ê£²¥Ğ¥¤¥ÈÈ¾³Ñ¢ªÈ¾³ÑÊ¸»ú¤ËÊÑ´¹¡Ë
+//	ãƒ¡ãƒ¢ã®å–å¾—ï¼ˆï¼’ãƒã‚¤ãƒˆåŠè§’â†’åŠè§’æ–‡å­—ã«å¤‰æ›ï¼‰
 //=============================================================================
 __declspec(dllexport) char * WINAPI getmemo2(char *dest, uchar *musdata, int size, int al)
 {
@@ -9004,7 +9004,7 @@ __declspec(dllexport) char * WINAPI getmemo2(char *dest, uchar *musdata, int siz
 
 
 //=============================================================================
-//	¥á¥â¤Î¼èÆÀ¡Ê£²¥Ğ¥¤¥ÈÈ¾³Ñ¢ªÈ¾³ÑÊ¸»ú¤ËÊÑ´¹¡ÜESC¥·¡¼¥±¥ó¥¹¤Î½üµî¡Ë
+//	ãƒ¡ãƒ¢ã®å–å¾—ï¼ˆï¼’ãƒã‚¤ãƒˆåŠè§’â†’åŠè§’æ–‡å­—ã«å¤‰æ›ï¼‹ESCã‚·ãƒ¼ã‚±ãƒ³ã‚¹ã®é™¤å»ï¼‰
 //=============================================================================
 __declspec(dllexport) char * WINAPI getmemo3(char *dest, uchar *musdata, int size, int al)
 {
@@ -9013,7 +9013,7 @@ __declspec(dllexport) char * WINAPI getmemo3(char *dest, uchar *musdata, int siz
 
 
 //=============================================================================
-//	¥á¥â¤Î¼èÆÀ¡Ê¥Õ¥¡¥¤¥ëÌ¾¤«¤é¡Ë
+//	ãƒ¡ãƒ¢ã®å–å¾—ï¼ˆãƒ•ã‚¡ã‚¤ãƒ«åã‹ã‚‰ï¼‰
 //=============================================================================
 __declspec(dllexport) int WINAPI fgetmemo(char *dest, char *filename, int al)
 {
@@ -9022,7 +9022,7 @@ __declspec(dllexport) int WINAPI fgetmemo(char *dest, char *filename, int al)
 
 
 //=============================================================================
-//	¥á¥â¤Î¼èÆÀ¡Ê¥Õ¥¡¥¤¥ëÌ¾¤«¤é¡¿£²¥Ğ¥¤¥ÈÈ¾³Ñ¢ªÈ¾³ÑÊ¸»ú¤ËÊÑ´¹¡Ë
+//	ãƒ¡ãƒ¢ã®å–å¾—ï¼ˆãƒ•ã‚¡ã‚¤ãƒ«åã‹ã‚‰ï¼ï¼’ãƒã‚¤ãƒˆåŠè§’â†’åŠè§’æ–‡å­—ã«å¤‰æ›ï¼‰
 //=============================================================================
 __declspec(dllexport) int WINAPI fgetmemo2(char *dest, char *filename, int al)
 {
@@ -9031,7 +9031,7 @@ __declspec(dllexport) int WINAPI fgetmemo2(char *dest, char *filename, int al)
 
 
 //=============================================================================
-//	¥á¥â¤Î¼èÆÀ¡Ê¥Õ¥¡¥¤¥ëÌ¾¤«¤é¡¿È¾³ÑÊ¸»ú¤ËÊÑ´¹¡ÜESC¥·¡¼¥±¥ó¥¹¤Î½üµî¡Ë
+//	ãƒ¡ãƒ¢ã®å–å¾—ï¼ˆãƒ•ã‚¡ã‚¤ãƒ«åã‹ã‚‰ï¼åŠè§’æ–‡å­—ã«å¤‰æ›ï¼‹ESCã‚·ãƒ¼ã‚±ãƒ³ã‚¹ã®é™¤å»ï¼‰
 //=============================================================================
 __declspec(dllexport) int WINAPI fgetmemo3(char *dest, char *filename, int al)
 {
@@ -9040,7 +9040,7 @@ __declspec(dllexport) int WINAPI fgetmemo3(char *dest, char *filename, int al)
 
 
 //=============================================================================
-//	¶Ê¤Î filename ¤Î¼èÆÀ
+//	æ›²ã® filename ã®å–å¾—
 //=============================================================================
 __declspec(dllexport) char * WINAPI getmusicfilename(char *dest)
 {
@@ -9049,7 +9049,7 @@ __declspec(dllexport) char * WINAPI getmusicfilename(char *dest)
 
 
 //=============================================================================
-//	PPC / P86 filename ¤Î¼èÆÀ
+//	PPC / P86 filename ã®å–å¾—
 //=============================================================================
 __declspec(dllexport) char * WINAPI getpcmfilename(char *dest)
 {
@@ -9058,7 +9058,7 @@ __declspec(dllexport) char * WINAPI getpcmfilename(char *dest)
 
 
 //=============================================================================
-//	PPC filename ¤Î¼èÆÀ
+//	PPC filename ã®å–å¾—
 //=============================================================================
 __declspec(dllexport) char * WINAPI getppcfilename(char *dest)
 {
@@ -9067,7 +9067,7 @@ __declspec(dllexport) char * WINAPI getppcfilename(char *dest)
 
 
 //=============================================================================
-//	PPS filename ¤Î¼èÆÀ
+//	PPS filename ã®å–å¾—
 //=============================================================================
 __declspec(dllexport) char * WINAPI getppsfilename(char *dest)
 {
@@ -9076,7 +9076,7 @@ __declspec(dllexport) char * WINAPI getppsfilename(char *dest)
 
 
 //=============================================================================
-//	P86 filename ¤Î¼èÆÀ
+//	P86 filename ã®å–å¾—
 //=============================================================================
 __declspec(dllexport) char * WINAPI getp86filename(char *dest)
 {
@@ -9085,7 +9085,7 @@ __declspec(dllexport) char * WINAPI getp86filename(char *dest)
 
 
 //=============================================================================
-//	PPZ filename ¤Î¼èÆÀ
+//	PPZ filename ã®å–å¾—
 //=============================================================================
 __declspec(dllexport) char * WINAPI getppzfilename(char *dest, int bufnum)
 {
@@ -9094,7 +9094,7 @@ __declspec(dllexport) char * WINAPI getppzfilename(char *dest, int bufnum)
 
 
 //=============================================================================
-//	.PPC ¤ÎÆÉ¤ß¹ş¤ß¡Ê¥Õ¥¡¥¤¥ë¤«¤é¡Ë
+//	.PPC ã®èª­ã¿è¾¼ã¿ï¼ˆãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰ï¼‰
 //=============================================================================
 __declspec(dllexport) int WINAPI ppc_load(char *filename)
 {
@@ -9103,7 +9103,7 @@ __declspec(dllexport) int WINAPI ppc_load(char *filename)
 
 
 //=============================================================================
-//	.PPS ¤ÎÆÉ¤ß¹ş¤ß¡Ê¥Õ¥¡¥¤¥ë¤«¤é¡Ë
+//	.PPS ã®èª­ã¿è¾¼ã¿ï¼ˆãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰ï¼‰
 //=============================================================================
 __declspec(dllexport) int WINAPI pps_load(char *filename)
 {
@@ -9112,7 +9112,7 @@ __declspec(dllexport) int WINAPI pps_load(char *filename)
 
 
 //=============================================================================
-//	.P86 ¤ÎÆÉ¤ß¹ş¤ß¡Ê¥Õ¥¡¥¤¥ë¤«¤é¡Ë
+//	.P86 ã®èª­ã¿è¾¼ã¿ï¼ˆãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰ï¼‰
 //=============================================================================
 __declspec(dllexport) int WINAPI p86_load(char *filename)
 {
@@ -9121,7 +9121,7 @@ __declspec(dllexport) int WINAPI p86_load(char *filename)
 
 
 //=============================================================================
-//	.PZI, .PVI ¤ÎÆÉ¤ß¹ş¤ß¡Ê¥Õ¥¡¥¤¥ë¤«¤é¡Ë
+//	.PZI, .PVI ã®èª­ã¿è¾¼ã¿ï¼ˆãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰ï¼‰
 //=============================================================================
 __declspec(dllexport) int WINAPI ppz_load(char *filename, int bufnum)
 {
@@ -9130,7 +9130,7 @@ __declspec(dllexport) int WINAPI ppz_load(char *filename, int bufnum)
 
 
 //=============================================================================
-//	¥Ñ¡¼¥È¤Î¥Ş¥¹¥¯
+//	ãƒ‘ãƒ¼ãƒˆã®ãƒã‚¹ã‚¯
 //=============================================================================
 __declspec(dllexport) int WINAPI maskon(int ch)
 {
@@ -9139,7 +9139,7 @@ __declspec(dllexport) int WINAPI maskon(int ch)
 
 
 //=============================================================================
-//	¥Ñ¡¼¥È¤Î¥Ş¥¹¥¯²ò½ü
+//	ãƒ‘ãƒ¼ãƒˆã®ãƒã‚¹ã‚¯è§£é™¤
 //=============================================================================
 __declspec(dllexport) int WINAPI maskoff(int ch)
 {
@@ -9148,7 +9148,7 @@ __declspec(dllexport) int WINAPI maskoff(int ch)
 
 
 //=============================================================================
-//	FM Volume Down ¤ÎÀßÄê
+//	FM Volume Down ã®è¨­å®š
 //=============================================================================
 __declspec(dllexport) void WINAPI setfmvoldown(int voldown)
 {
@@ -9157,7 +9157,7 @@ __declspec(dllexport) void WINAPI setfmvoldown(int voldown)
 
 
 //=============================================================================
-//	SSG Volume Down ¤ÎÀßÄê
+//	SSG Volume Down ã®è¨­å®š
 //=============================================================================
 __declspec(dllexport) void WINAPI setssgvoldown(int voldown)
 {
@@ -9166,7 +9166,7 @@ __declspec(dllexport) void WINAPI setssgvoldown(int voldown)
 
 
 //=============================================================================
-//	Rhythm Volume Down ¤ÎÀßÄê
+//	Rhythm Volume Down ã®è¨­å®š
 //=============================================================================
 __declspec(dllexport) void WINAPI setrhythmvoldown(int voldown)
 {
@@ -9175,7 +9175,7 @@ __declspec(dllexport) void WINAPI setrhythmvoldown(int voldown)
 
 
 //=============================================================================
-//	ADPCM Volume Down ¤ÎÀßÄê
+//	ADPCM Volume Down ã®è¨­å®š
 //=============================================================================
 __declspec(dllexport) void WINAPI setadpcmvoldown(int voldown)
 {
@@ -9184,7 +9184,7 @@ __declspec(dllexport) void WINAPI setadpcmvoldown(int voldown)
 
 
 //=============================================================================
-//	PPZ8 Volume Down ¤ÎÀßÄê
+//	PPZ8 Volume Down ã®è¨­å®š
 //=============================================================================
 __declspec(dllexport) void WINAPI setppzvoldown(int voldown)
 {
@@ -9193,7 +9193,7 @@ __declspec(dllexport) void WINAPI setppzvoldown(int voldown)
 
 
 //=============================================================================
-//	FM Volume Down ¤Î¼èÆÀ
+//	FM Volume Down ã®å–å¾—
 //=============================================================================
 __declspec(dllexport) int WINAPI getfmvoldown(void)
 {
@@ -9202,7 +9202,7 @@ __declspec(dllexport) int WINAPI getfmvoldown(void)
 
 
 //=============================================================================
-//	FM Volume Down ¤Î¼èÆÀ¡Ê¤½¤Î£²¡Ë
+//	FM Volume Down ã®å–å¾—ï¼ˆãã®ï¼’ï¼‰
 //=============================================================================
 __declspec(dllexport) int WINAPI getfmvoldown2(void)
 {
@@ -9211,7 +9211,7 @@ __declspec(dllexport) int WINAPI getfmvoldown2(void)
 
 
 //=============================================================================
-//	SSG Volume Down ¤Î¼èÆÀ
+//	SSG Volume Down ã®å–å¾—
 //=============================================================================
 __declspec(dllexport) int WINAPI getssgvoldown(void)
 {
@@ -9220,7 +9220,7 @@ __declspec(dllexport) int WINAPI getssgvoldown(void)
 
 
 //=============================================================================
-//	SSG Volume Down ¤Î¼èÆÀ¡Ê¤½¤Î£²¡Ë
+//	SSG Volume Down ã®å–å¾—ï¼ˆãã®ï¼’ï¼‰
 //=============================================================================
 __declspec(dllexport) int WINAPI getssgvoldown2(void)
 {
@@ -9229,7 +9229,7 @@ __declspec(dllexport) int WINAPI getssgvoldown2(void)
 
 
 //=============================================================================
-//	Rhythm Volume Down ¤Î¼èÆÀ
+//	Rhythm Volume Down ã®å–å¾—
 //=============================================================================
 __declspec(dllexport) int WINAPI getrhythmvoldown(void)
 {
@@ -9238,7 +9238,7 @@ __declspec(dllexport) int WINAPI getrhythmvoldown(void)
 
 
 //=============================================================================
-//	Rhythm Volume Down ¤Î¼èÆÀ¡Ê¤½¤Î£²¡Ë
+//	Rhythm Volume Down ã®å–å¾—ï¼ˆãã®ï¼’ï¼‰
 //=============================================================================
 __declspec(dllexport) int WINAPI getrhythmvoldown2(void)
 {
@@ -9247,7 +9247,7 @@ __declspec(dllexport) int WINAPI getrhythmvoldown2(void)
 
 
 //=============================================================================
-//	ADPCM Volume Down ¤Î¼èÆÀ
+//	ADPCM Volume Down ã®å–å¾—
 //=============================================================================
 __declspec(dllexport) int WINAPI getadpcmvoldown(void)
 {
@@ -9256,7 +9256,7 @@ __declspec(dllexport) int WINAPI getadpcmvoldown(void)
 
 
 //=============================================================================
-//	ADPCM Volume Down ¤Î¼èÆÀ¡Ê¤½¤Î£²¡Ë
+//	ADPCM Volume Down ã®å–å¾—ï¼ˆãã®ï¼’ï¼‰
 //=============================================================================
 __declspec(dllexport) int WINAPI getadpcmvoldown2(void)
 {
@@ -9265,7 +9265,7 @@ __declspec(dllexport) int WINAPI getadpcmvoldown2(void)
 
 
 //=============================================================================
-//	PPZ8 Volume Down ¤Î¼èÆÀ
+//	PPZ8 Volume Down ã®å–å¾—
 //=============================================================================
 __declspec(dllexport) int WINAPI getppzvoldown(void)
 {
@@ -9274,7 +9274,7 @@ __declspec(dllexport) int WINAPI getppzvoldown(void)
 
 
 //=============================================================================
-//	PPZ8 Volume Down ¤Î¼èÆÀ¡Ê¤½¤Î£²¡Ë
+//	PPZ8 Volume Down ã®å–å¾—ï¼ˆãã®ï¼’ï¼‰
 //=============================================================================
 __declspec(dllexport) int WINAPI getppzvoldown2(void)
 {
@@ -9283,7 +9283,7 @@ __declspec(dllexport) int WINAPI getppzvoldown2(void)
 
 
 //=============================================================================
-//	ºÆÀ¸°ÌÃÖ¤Î°ÜÆ°(pos : ms)
+//	å†ç”Ÿä½ç½®ã®ç§»å‹•(pos : ms)
 //=============================================================================
 __declspec(dllexport) void WINAPI setpos(int pos)
 {
@@ -9292,7 +9292,7 @@ __declspec(dllexport) void WINAPI setpos(int pos)
 
 
 //=============================================================================
-//	ºÆÀ¸°ÌÃÖ¤Î°ÜÆ°(pos : count Ã±°Ì)
+//	å†ç”Ÿä½ç½®ã®ç§»å‹•(pos : count å˜ä½)
 //=============================================================================
 __declspec(dllexport) void WINAPI setpos2(int pos)
 {
@@ -9301,7 +9301,7 @@ __declspec(dllexport) void WINAPI setpos2(int pos)
 
 
 //=============================================================================
-//	ºÆÀ¸°ÌÃÖ¤Î¼èÆÀ(pos : ms)
+//	å†ç”Ÿä½ç½®ã®å–å¾—(pos : ms)
 //=============================================================================
 __declspec(dllexport) int WINAPI getpos(void)
 {
@@ -9310,7 +9310,7 @@ __declspec(dllexport) int WINAPI getpos(void)
 
 
 //=============================================================================
-//	ºÆÀ¸°ÌÃÖ¤Î¼èÆÀ(pos : count Ã±°Ì)
+//	å†ç”Ÿä½ç½®ã®å–å¾—(pos : count å˜ä½)
 //=============================================================================
 __declspec(dllexport) int WINAPI getpos2(void)
 {
@@ -9319,7 +9319,7 @@ __declspec(dllexport) int WINAPI getpos2(void)
 
 
 //=============================================================================
-//	¶Ê¤ÎÄ¹¤µ¤Î¼èÆÀ(pos : ms)
+//	æ›²ã®é•·ã•ã®å–å¾—(pos : ms)
 //=============================================================================
 __declspec(dllexport) bool WINAPI getlength(char *filename, int *length, int *loop)
 {
@@ -9328,7 +9328,7 @@ __declspec(dllexport) bool WINAPI getlength(char *filename, int *length, int *lo
 
 
 //=============================================================================
-//	¶Ê¤ÎÄ¹¤µ¤Î¼èÆÀ(pos : count Ã±°Ì)
+//	æ›²ã®é•·ã•ã®å–å¾—(pos : count å˜ä½)
 //=============================================================================
 __declspec(dllexport) bool WINAPI getlength2(char *filename, int *length, int *loop)
 {
@@ -9336,7 +9336,7 @@ __declspec(dllexport) bool WINAPI getlength2(char *filename, int *length, int *l
 }
 
 //=============================================================================
-//	¥ë¡¼¥×²ó¿ô¤Î¼èÆÀ
+//	ãƒ«ãƒ¼ãƒ—å›æ•°ã®å–å¾—
 //=============================================================================
 __declspec(dllexport) int WINAPI getloopcount(void)
 {
@@ -9345,7 +9345,7 @@ __declspec(dllexport) int WINAPI getloopcount(void)
 
 
 //=============================================================================
-//	FM ¤Î Register ½ĞÎÏ¸å¤Î wait ÀßÄê
+//	FM ã® Register å‡ºåŠ›å¾Œã® wait è¨­å®š
 //=============================================================================
 __declspec(dllexport) void WINAPI setfmwait(int nsec)
 {
@@ -9354,7 +9354,7 @@ __declspec(dllexport) void WINAPI setfmwait(int nsec)
 
 
 //=============================================================================
-//	SSG ¤Î Register ½ĞÎÏ¸å¤Î wait ÀßÄê
+//	SSG ã® Register å‡ºåŠ›å¾Œã® wait è¨­å®š
 //=============================================================================
 __declspec(dllexport) void WINAPI setssgwait(int nsec)
 {
@@ -9363,7 +9363,7 @@ __declspec(dllexport) void WINAPI setssgwait(int nsec)
 
 
 //=============================================================================
-//	rhythm ¤Î Register ½ĞÎÏ¸å¤Î wait ÀßÄê
+//	rhythm ã® Register å‡ºåŠ›å¾Œã® wait è¨­å®š
 //=============================================================================
 __declspec(dllexport) void WINAPI setrhythmwait(int nsec)
 {
@@ -9372,7 +9372,7 @@ __declspec(dllexport) void WINAPI setrhythmwait(int nsec)
 
 
 //=============================================================================
-//	ADPCM ¤Î Register ½ĞÎÏ¸å¤Î wait ÀßÄê
+//	ADPCM ã® Register å‡ºåŠ›å¾Œã® wait è¨­å®š
 //=============================================================================
 __declspec(dllexport) void WINAPI setadpcmwait(int nsec)
 {
@@ -9381,7 +9381,7 @@ __declspec(dllexport) void WINAPI setadpcmwait(int nsec)
 
 
 //=============================================================================
-//	OPEN_WORK¤Î¥İ¥¤¥ó¥¿¤Î¼èÆÀ
+//	OPEN_WORKã®ãƒã‚¤ãƒ³ã‚¿ã®å–å¾—
 //=============================================================================
 __declspec(dllexport) OPEN_WORK * WINAPI getopenwork(void)
 {
@@ -9390,7 +9390,7 @@ __declspec(dllexport) OPEN_WORK * WINAPI getopenwork(void)
 
 
 //=============================================================================
-//	¥Ñ¡¼¥È¥ï¡¼¥¯¤Î¥İ¥¤¥ó¥¿¤Î¼èÆÀ
+//	ãƒ‘ãƒ¼ãƒˆãƒ¯ãƒ¼ã‚¯ã®ãƒã‚¤ãƒ³ã‚¿ã®å–å¾—
 //=============================================================================
 __declspec(dllexport) QQ * WINAPI getpartwork(int ch)
 {

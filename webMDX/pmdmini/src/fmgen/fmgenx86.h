@@ -77,7 +77,7 @@ static void __declspec(naked) FM_EGCD()
 	EGCALC(edi, 3);
 }
 
-#if 0					// opna.cpp ¤Î FM_USE_CALC_2E ¤ËÂĞ±ş
+#if 0					// opna.cpp ã® FM_USE_CALC_2E ã«å¯¾å¿œ
 static void __declspec(naked) FM_EGCS1()
 {
 	EGCALC(esi, 1);

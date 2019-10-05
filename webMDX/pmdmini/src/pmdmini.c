@@ -186,12 +186,34 @@ void pmd_get_current_notes ( int *notes , int len )
 int pmd_length_sec ( void )
 {
 	return pmd_length / 1000;
-} 
+}
+
+
+int pmd_length_msec ( void )
+{
+	return pmd_length;
+}
 
 int pmd_loop_sec ( void )
 {
 	return pmd_loop / 1000;
 }
+
+int pmd_loop_msec ( void )
+{
+	return pmd_loop;
+}
+
+void pmd_set_pos ( int pos )
+{
+    setpos(pos);
+}
+
+int pmd_get_pos( void )
+{
+    return getpos();
+}
+
 
 void pmd_renderer ( short *buf , int len )
 {
@@ -215,3 +237,11 @@ void pmd_get_compo( char *dest )
 	strcpy( dest , pmd_compo );
 }
 
+void pmd_set_rhythm_path( char *path )
+{
+    loadrhythmsample(path);
+//    setrhythmvoldown(0);
+//    setfmvoldown(128);
+//    setssgvoldown(128);
+
+}

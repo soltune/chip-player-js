@@ -122,6 +122,9 @@ t_mdxmini mdxmini;
 int max_play_len= -1;
 double play_len= 0;
 int initialized= 0;
+int mdx_loop_count = 2;
+
+char* internalRhythmPath = "/rhythm";
 
 static void do_init() {
 	if (mdx_mode) {	
@@ -129,45 +132,55 @@ static void do_init() {
 		mdx_set_rate(SAMPLE_FREQ);	
 	} else {
 		pmd_init();
+		pmd_set_rhythm_path(internalRhythmPath);
 		pmd_setrate( SAMPLE_FREQ );
 	}
 	initialized= 1;
 }
 
-static void do_song_init(int len) {
-	if (mdx_mode) {	
-		if (len<0)
-			len = mdx_get_length(&mdxmini);	// len in secs: use to stop playback
-
-		mdx_set_max_loop(&mdxmini, 0);
+static void do_song_init() {
+	if (mdx_mode) {
+		mdx_set_max_loop(&mdxmini, (mdx_loop_count - 1));
 		mdx_get_title(&mdxmini, mdx_raw_info_buffer);
 
+		max_play_len = mdx_get_length(&mdxmini) * 1000;
+
 	} else {
-		if (len<0)
-			len= pmd_length_sec ( );
-		
 		pmd_get_compo(mdx_raw_info_buffer);
 		std::string encArtist= mdx_base64_encode((unsigned char*)mdx_raw_info_buffer, strlen(mdx_raw_info_buffer));
 		snprintf(mdx_artist_str, TEXT_MAX, "%s", encArtist.c_str());
 
 		pmd_get_title( mdx_raw_info_buffer );
+		max_play_len = pmd_length_msec() + pmd_loop_msec() * (mdx_loop_count - 1);
+
 	}
 	std::string encTitle= mdx_base64_encode((unsigned char*)mdx_raw_info_buffer, strlen(mdx_raw_info_buffer));
 	snprintf(mdx_title_str, TEXT_MAX, "%s", encTitle.c_str());
 
-	max_play_len= len;
+}
+
+static int do_get_current_position() {
+    if (mdx_mode) {
+        return play_len;
+    } else {
+        return pmd_get_pos();
+    }
+}
+
+static int do_get_max_position() {
+    return max_play_len;
 }
 
 static int mdx_compute_samples() {
-	if ((max_play_len > 0) && (play_len >= max_play_len)) return 1;	// stop song
+	if (do_get_current_position() >= do_get_max_position()) return 1;
 
-	if (mdx_mode) {	
+	if (mdx_mode) {
 		mdx_calc_sample(&mdxmini, mdx_sample_buffer, SAMPLE_BUF_SIZE);
 	} else {
 		pmd_renderer ( mdx_sample_buffer, SAMPLE_BUF_SIZE );
 	}
 	mdx_samples_available= SAMPLE_BUF_SIZE;
-	play_len += ((double)mdx_samples_available)/SAMPLE_FREQ;
+	play_len += ((double)mdx_samples_available)/SAMPLE_FREQ * 1000;
 	return 0;
 }
 
@@ -224,9 +237,8 @@ extern "C"  int EMSCRIPTEN_KEEPALIVE mdx_load_file(char *filename, void * inBuff
 		// error
 		return 1;
 	} else {
-		// success 
-		int len= -1;
-		do_song_init(len);
+		// success
+		do_song_init();
 		return 0;					
 	}
 }
@@ -263,17 +275,29 @@ extern "C" int EMSCRIPTEN_KEEPALIVE mdx_compute_audio_samples() {
 
 extern "C" int mdx_get_current_position() __attribute__((noinline));
 extern "C" int EMSCRIPTEN_KEEPALIVE mdx_get_current_position() {
-//	return -1;
-	return play_len;
+    return do_get_current_position();
 }
 
 extern "C" void mdx_seek_position(int pos) __attribute__((noinline));
-extern "C" void EMSCRIPTEN_KEEPALIVE mdx_seek_position(int frames) {
+extern "C" void EMSCRIPTEN_KEEPALIVE mdx_seek_position(int pos) {
+    if (mdx_mode) {
+        while (do_get_current_position() < pos) {
+            mdx_compute_samples();
+        }
+    } else {
+        pmd_set_pos(pos);
+    }
 }
 
 extern "C" int mdx_get_max_position() __attribute__((noinline));
 extern "C" int EMSCRIPTEN_KEEPALIVE mdx_get_max_position() {
-//	return -1;
-	return max_play_len;
+    return do_get_max_position();
 }
+
+extern "C" int mdx_get_mdx_mode() __attribute__((noinline));
+extern "C" int EMSCRIPTEN_KEEPALIVE mdx_get_mdx_mode() {
+    return mdx_mode;
+}
+
+
 

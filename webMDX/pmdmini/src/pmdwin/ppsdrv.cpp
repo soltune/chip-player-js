@@ -1,5 +1,5 @@
 //=============================================================================
-//		SSG PCM Driver ¡ÖPPSDRV¡× Unit
+//		SSG PCM Driver ã€ŒPPSDRVã€ Unit
 //			Original Programmed	by NaoNeko.
 //			Modified		by Kaja.
 //			Windows Converted by C60
@@ -13,15 +13,15 @@
 #include	"util.h"
 
 //-----------------------------------------------------------------------------
-//	¥³¥ó¥¹¥È¥é¥¯¥¿¡¦¥Ç¥¹¥È¥é¥¯¥¿
+//	ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿ãƒ»ãƒ‡ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 //-----------------------------------------------------------------------------
 PPSDRV::PPSDRV()
 {
-	rate = SOUND_44K;			// ºÆÀ¸¼şÇÈ¿ô
+	rate = SOUND_44K;			// å†ç”Ÿå‘¨æ³¢æ•°
 	dataarea1 = NULL;			// PPS buffer
 	interpolation = false;
 	single_flag = false;
-//	single_flag = true;		// £²½ÅºÆÀ¸¶Ø»ß(@»ÃÄê)
+//	single_flag = true;		// ï¼’é‡å†ç”Ÿç¦æ­¢(@æš«å®š)
 	keyon_flag = false;
 	data_offset1 = NULL;
 	data_offset2 = NULL;
@@ -40,7 +40,7 @@ PPSDRV::PPSDRV()
 	memset(&ppsheader, 0, sizeof(PPSHEADER));
 	memset(pps_file, 0, sizeof(pps_file));
 //	psg.SetClock(3993600 / 4, SOUND_44K);
-//	psg.SetReg(0x07, 4);						// Tone C ¤Î¤ß
+//	psg.SetReg(0x07, 4);						// Tone C ã®ã¿
 	SetVolume(-10);
 }
 
@@ -48,13 +48,13 @@ PPSDRV::PPSDRV()
 PPSDRV::~PPSDRV()
 {
 	if(dataarea1 != NULL) {
-		free(dataarea1);		// ¥á¥â¥ê³«Êü
+		free(dataarea1);		// ãƒ¡ãƒ¢ãƒªé–‹æ”¾
 	}
 }
 
 
 //-----------------------------------------------------------------------------
-//	½é´ü²½
+//	åˆæœŸåŒ–
 //-----------------------------------------------------------------------------
 bool PPSDRV::Init(uint r, bool ip)
 {
@@ -64,7 +64,7 @@ bool PPSDRV::Init(uint r, bool ip)
 
 
 //-----------------------------------------------------------------------------
-//	00H PDR Ää»ß
+//	00H PDR åœæ­¢
 //-----------------------------------------------------------------------------
 bool PPSDRV::Stop(void)
 {
@@ -77,7 +77,7 @@ bool PPSDRV::Stop(void)
 
 
 //-----------------------------------------------------------------------------
-//	01H PDR ºÆÀ¸
+//	01H PDR å†ç”Ÿ
 //-----------------------------------------------------------------------------
 bool PPSDRV::Play(int num, int shift, int volshift)
 {
@@ -99,25 +99,25 @@ bool PPSDRV::Play(int num, int shift, int volshift)
 	}
 	
 	if(ppsheader.pcmnum[num].volumeofs + volshift >= 15) return false;
-			// ²»ÎÌ¤¬£°°Ê²¼¤Î»ş¤ÏºÆÀ¸¤·¤Ê¤¤
+			// éŸ³é‡ãŒï¼ä»¥ä¸‹ã®æ™‚ã¯å†ç”Ÿã—ãªã„
 	
 	if(single_flag == false && keyon_flag) {
-		//	£²½ÅÈ¯²»½èÍı
-		volume2 = volume1;					// £±²»ÌÜ¤ò£²²»ÌÜ¤Ë°ÜÆ°
+		//	ï¼’é‡ç™ºéŸ³å‡¦ç†
+		volume2 = volume1;					// ï¼‘éŸ³ç›®ã‚’ï¼’éŸ³ç›®ã«ç§»å‹•
 		data_offset2 = data_offset1;
 		data_size2 = data_size1;
 		data_xor2 = data_xor1;
 		tick2 = tick1;
 		tick_xor2 = tick_xor1;
 	} else {
-		//	£±²»ÌÜ¤ÇºÆÀ¸
-		data_size2 = 0;						// £²²»ÌÜ¤ÏÄä»ßÃæ
+		//	ï¼‘éŸ³ç›®ã§å†ç”Ÿ
+		data_size2 = 0;						// ï¼’éŸ³ç›®ã¯åœæ­¢ä¸­
 	}
 	
 	volume1 = ppsheader.pcmnum[num].volumeofs + volshift;
 	data_offset1
 			= &dataarea1[(ppsheader.pcmnum[num].address - sizeof(ppsheader)) * 2];
-	data_size1 = ppsheader.pcmnum[num].leng * 2;	// £±²»ÌÜ¤ò¾Ã¤·¤ÆºÆÀ¸
+	data_size1 = ppsheader.pcmnum[num].leng * 2;	// ï¼‘éŸ³ç›®ã‚’æ¶ˆã—ã¦å†ç”Ÿ
 	data_xor1 = 0;
 	if(low_cpu_check_flag) {
 		tick1 = ((8000 * al / 225) << 16) / rate;
@@ -130,13 +130,13 @@ bool PPSDRV::Play(int num, int shift, int volshift)
 	}
 
 //	psg.SetReg(0x07, psg.GetReg(0x07) | 0x24);	// Tone/Noise C off
-	keyon_flag = true;						// È¯²»³«»Ï
+	keyon_flag = true;						// ç™ºéŸ³é–‹å§‹
 	return true;
 }
 
 
 //-----------------------------------------------------------------------------
-//	ºÆÀ¸Ãæ¤«¤É¤¦¤«¤Î¥Á¥§¥Ã¥¯
+//	å†ç”Ÿä¸­ã‹ã©ã†ã‹ã®ãƒã‚§ãƒƒã‚¯
 //-----------------------------------------------------------------------------
 bool PPSDRV::Check(void)
 {
@@ -145,7 +145,7 @@ bool PPSDRV::Check(void)
 
 
 //-----------------------------------------------------------------------------
-//	PPS ÆÉ¤ß¹ş¤ß
+//	PPS èª­ã¿è¾¼ã¿
 //-----------------------------------------------------------------------------
 int PPSDRV::Load(char *filename)
 {
@@ -161,23 +161,23 @@ int PPSDRV::Load(char *filename)
 	pps_file[0] = '\0';	
 	if((fp = fopen(filename, "rb")) == NULL) {
 		if(dataarea1 != NULL) {
-			free(dataarea1);		// ³«Êü
+			free(dataarea1);		// é–‹æ”¾
 			dataarea1 = NULL;
 			memset(&ppsheader, 0, sizeof(ppsheader));
 		}
-		return _ERR_OPEN_PPS_FILE;						//	¥Õ¥¡¥¤¥ë¤¬³«¤±¤Ê¤¤
+		return _ERR_OPEN_PPS_FILE;						//	ãƒ•ã‚¡ã‚¤ãƒ«ãŒé–‹ã‘ãªã„
 	}
 	
-		size = (int)GetFileSize_s(filename);		// ¥Õ¥¡¥¤¥ë¥µ¥¤¥º
+		size = (int)GetFileSize_s(filename);		// ãƒ•ã‚¡ã‚¤ãƒ«ã‚µã‚¤ã‚º
 		fread(&ppsheader2, 1, sizeof(ppsheader2), fp);
 		
 		if(memcmp(&ppsheader, &ppsheader2, sizeof(ppsheader)) == 0) {
 			strcpy(pps_file, filename);
-			return _WARNING_PPS_ALREADY_LOAD;		// Æ±¤¸¥Õ¥¡¥¤¥ë
+			return _WARNING_PPS_ALREADY_LOAD;		// åŒã˜ãƒ•ã‚¡ã‚¤ãƒ«
 		}
 		
 		if(dataarea1 != NULL) {
-			free(dataarea1);		// ¤¤¤Ã¤¿¤ó³«Êü
+			free(dataarea1);		// ã„ã£ãŸã‚“é–‹æ”¾
 			dataarea1 = NULL;
 		}
 		
@@ -187,14 +187,14 @@ int PPSDRV::Load(char *filename)
 
 		if((pdst = dataarea1
 			= (Sample *)malloc(size * sizeof(Sample) * 2 / sizeof(uchar))) == NULL) {
-			return _ERR_OUT_OF_MEMORY;			// ¥á¥â¥ê¤¬³ÎÊİ¤Ç¤­¤Ê¤¤
+			return _ERR_OUT_OF_MEMORY;			// ãƒ¡ãƒ¢ãƒªãŒç¢ºä¿ã§ããªã„
 		}
 
 		if((psrc = psrc2 = (uchar *)malloc(size)) == NULL) {
-			return _ERR_OUT_OF_MEMORY;			// ¥á¥â¥ê¤¬³ÎÊİ¤Ç¤­¤Ê¤¤¡Ê¥Æ¥ó¥İ¥é¥ê¡Ë
+			return _ERR_OUT_OF_MEMORY;			// ãƒ¡ãƒ¢ãƒªãŒç¢ºä¿ã§ããªã„ï¼ˆãƒ†ãƒ³ãƒãƒ©ãƒªï¼‰
 		}
 
-		//	²¾¥Ğ¥Ã¥Õ¥¡¤ËÆÉ¤ß¹ş¤ß
+		//	ä»®ãƒãƒƒãƒ•ã‚¡ã«èª­ã¿è¾¼ã¿
 		fread(psrc, size, 1, fp);
 
 		for(i = 0; i < size / (int)sizeof(uchar); i++) {
@@ -203,7 +203,7 @@ int PPSDRV::Load(char *filename)
 		}
 
 
-		//	PPS ÊäÀµ(¥×¥Á¥Î¥¤¥ºÂĞºö¡Ë¡¿160 ¥µ¥ó¥×¥ë¤Ç¸º¿ê¤µ¤»¤ë
+		//	PPS è£œæ­£(ãƒ—ãƒãƒã‚¤ã‚ºå¯¾ç­–ï¼‰ï¼160 ã‚µãƒ³ãƒ—ãƒ«ã§æ¸›è¡°ã•ã›ã‚‹
 		for(i = 0; i < MAX_PPS; i++) {
 			end_pps = ppsheader.pcmnum[i].address - sizeof(ppsheader) * 2
 				+ ppsheader.pcmnum[i].leng * 2;
@@ -218,10 +218,10 @@ int PPSDRV::Load(char *filename)
 			}
 		}
 
-		//	²¾¥Ğ¥Ã¥Õ¥¡³«Êü
+		//	ä»®ãƒãƒƒãƒ•ã‚¡é–‹æ”¾
 		free(psrc2);
 
-		//	¥Õ¥¡¥¤¥ëÌ¾ÅĞÏ¿
+		//	ãƒ•ã‚¡ã‚¤ãƒ«åç™»éŒ²
 		strcpy(pps_file, filename);
 	
 		fclose(fp);
@@ -233,7 +233,7 @@ int PPSDRV::Load(char *filename)
 
 
 //-----------------------------------------------------------------------------
-//	05H PDR¥Ñ¥é¥á¡¼¥¿¤ÎÀßÄê
+//	05H PDRãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã®è¨­å®š
 //-----------------------------------------------------------------------------
 bool PPSDRV::SetParam(int paramno, bool data)
 {
@@ -250,7 +250,7 @@ bool PPSDRV::SetParam(int paramno, bool data)
 
 
 //-----------------------------------------------------------------------------
-//	06H PDR¥Ñ¥é¥á¡¼¥¿¤Î¼èÆÀ
+//	06H PDRãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã®å–å¾—
 //-----------------------------------------------------------------------------
 bool PPSDRV::GetParam(int paramno)
 {
@@ -263,9 +263,9 @@ bool PPSDRV::GetParam(int paramno)
 
 
 //-----------------------------------------------------------------------------
-//	ºÆÀ¸¼şÇÈ¿ô¡¢°ì¼¡Êä´°ÀßÄêÀßÄê
+//	å†ç”Ÿå‘¨æ³¢æ•°ã€ä¸€æ¬¡è£œå®Œè¨­å®šè¨­å®š
 //-----------------------------------------------------------------------------
-bool PPSDRV::SetRate(uint r, bool ip)			// ¥ì¡¼¥ÈÀßÄê
+bool PPSDRV::SetRate(uint r, bool ip)			// ãƒ¬ãƒ¼ãƒˆè¨­å®š
 {
 	rate = r;
 	interpolation = ip;
@@ -274,9 +274,9 @@ bool PPSDRV::SetRate(uint r, bool ip)			// ¥ì¡¼¥ÈÀßÄê
 
 
 //-----------------------------------------------------------------------------
-//	²»ÎÌÀßÄê
+//	éŸ³é‡è¨­å®š
 //-----------------------------------------------------------------------------
-void PPSDRV::SetVolume(int vol)					// ²»ÎÌÀßÄê
+void PPSDRV::SetVolume(int vol)					// éŸ³é‡è¨­å®š
 {
 //	psg.SetVolume(vol);
 
@@ -291,9 +291,9 @@ void PPSDRV::SetVolume(int vol)					// ²»ÎÌÀßÄê
 
 
 //-----------------------------------------------------------------------------
-//	¹çÀ®
+//	åˆæˆ
 //-----------------------------------------------------------------------------
-void PPSDRV::Mix(Sample* dest, int nsamples)	// ¹çÀ®
+void PPSDRV::Mix(Sample* dest, int nsamples)	// åˆæˆ
 {
 	int		i, al1, al2, ah1, ah2;
 	Sample	data;
@@ -360,7 +360,7 @@ void PPSDRV::Mix(Sample* dest, int nsamples)	// ¹çÀ®
 //		psg.Mix(dest, 1);
 //		dest += 2;
 		
-		if(data_size2 > 1) {	// £²²»¹çÀ®ºÆÀ¸
+		if(data_size2 > 1) {	// ï¼’éŸ³åˆæˆå†ç”Ÿ
 			data_xor2 += tick_xor2;
 			if(data_xor2 >= 0x10000) {
 				data_size2--;
@@ -402,14 +402,14 @@ void PPSDRV::Mix(Sample* dest, int nsamples)	// ¹çÀ®
 			data_offset1 += tick1;
 		}
 
-		if(data_size1 <= 1 && data_size2 <= 1) {		// Î¾ÊıÄä»ß
+		if(data_size1 <= 1 && data_size2 <= 1) {		// ä¸¡æ–¹åœæ­¢
 			if(keyon_flag) {
 				keyoff_vol += EmitTable[data_offset1[data_size1-1]];
 			}
-			keyon_flag = false;		// È¯²»Ää»ß
-//			psg.SetReg(0x0a, 0);	// Volume ¤ò0¤Ë
+			keyon_flag = false;		// ç™ºéŸ³åœæ­¢
+//			psg.SetReg(0x0a, 0);	// Volume ã‚’0ã«
 //			return;
-		} else if(data_size1 <= 1 && data_size2 > 1) {	// £±²»ÌÜ¤Î¤ß¤¬Ää»ß
+		} else if(data_size1 <= 1 && data_size2 > 1) {	// ï¼‘éŸ³ç›®ã®ã¿ãŒåœæ­¢
 			volume1 = volume2;
 			data_size1 = data_size2;
 			data_offset1 = data_offset2;
@@ -422,7 +422,7 @@ void PPSDRV::Mix(Sample* dest, int nsamples)	// ¹çÀ®
 				keyoff_vol += EmitTable[data_offset1[data_size1-1]];
 			}
 */
-		} else if(data_size1 > 1 && data_size2 < 1) {	// £²²»ÌÜ¤Î¤ß¤¬Ää»ß
+		} else if(data_size1 > 1 && data_size2 < 1) {	// ï¼’éŸ³ç›®ã®ã¿ãŒåœæ­¢
 			if(data_offset2 != NULL) {
 				keyoff_vol += EmitTable[data_offset2[data_size2-1]];
 				data_offset2 = NULL;

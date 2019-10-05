@@ -17,9 +17,9 @@
 #define BUILD_OPNB
 
 // ---------------------------------------------------------------------------
-//	OPNA: ADPCM ¥Ç¡¼¥¿¤Î³ÊÇ¼Êı¼°¤Î°ã¤¤ (8bit/1bit) ¤ò¥¨¥ß¥å¥ì¡¼¥È¤·¤Ê¤¤
-//	¤³¤Î¥ª¥×¥·¥ç¥ó¤òÍ­¸ú¤Ë¤¹¤ë¤È ADPCM ¥á¥â¥ê¤Ø¤Î¥¢¥¯¥»¥¹(ÆÃ¤Ë 8bit ¥â¡¼¥É)¤¬
-//	Â¿¾¯·Ú¤¯¤Ê¤ë¤«¤â
+//	OPNA: ADPCM ãƒ‡ãƒ¼ã‚¿ã®æ ¼ç´æ–¹å¼ã®é•ã„ (8bit/1bit) ã‚’ã‚¨ãƒŸãƒ¥ãƒ¬ãƒ¼ãƒˆã—ãªã„
+//	ã“ã®ã‚ªãƒ—ã‚·ãƒ§ãƒ³ã‚’æœ‰åŠ¹ã«ã™ã‚‹ã¨ ADPCM ãƒ¡ãƒ¢ãƒªã¸ã®ã‚¢ã‚¯ã‚»ã‚¹(ç‰¹ã« 8bit ãƒ¢ãƒ¼ãƒ‰)ãŒ
+//	å¤šå°‘è»½ããªã‚‹ã‹ã‚‚
 //
 //#define NO_BITTYPE_EMULATION
 
@@ -35,7 +35,7 @@ namespace FM
 
 #if defined(BUILD_OPN) || defined(BUILD_OPNA) || defined (BUILD_OPNB)
 
-uint32	OPNBase::lfotable[8];			// OPNA/B ÍÑ
+uint32	OPNBase::lfotable[8];			// OPNA/B ç”¨
 
 OPNBase::OPNBase()
 {
@@ -43,7 +43,7 @@ OPNBase::OPNBase()
 	fbch = 0;
 }
 
-//	¥Ñ¥é¥á¡¼¥¿¥»¥Ã¥È
+//	ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆ
 void OPNBase::SetParameter(Channel4* ch, uint addr, uint data)
 {
 	const static uint slottable[4] = { 0, 2, 1, 3 };
@@ -95,7 +95,7 @@ void OPNBase::SetParameter(Channel4* ch, uint addr, uint data)
 	}
 }
 
-//	¥ê¥»¥Ã¥È
+//	ãƒªã‚»ãƒƒãƒˆ
 void OPNBase::Reset()
 {
 	status = 0;
@@ -104,7 +104,7 @@ void OPNBase::Reset()
 	psg.Reset();
 }
 
-//	¥×¥ê¥¹¥±¡¼¥éÀßÄê
+//	ãƒ—ãƒªã‚¹ã‚±ãƒ¼ãƒ©è¨­å®š
 void OPNBase::SetPrescaler(uint p)
 {
 	static const char table[3][2] = { { 6, 4 }, { 3, 2 }, { 2, 1 } };
@@ -119,8 +119,8 @@ void OPNBase::SetPrescaler(uint p)
 		
 		if (interpolation)
 		{
-			// ¹çÀ®¼şÇÈ¿ô¤Ï2^(-n)ÇÜ¤Ê¤é¤½¤ì¤Û¤É²»¤¬¶¸¤ï¤Ê¤¤¤è¤¦¤Ê¤Î¤Ç
-			// ½ĞÎÏ¼şÇÈ¿ô¤ËºÇ¤â¶á¤¤ÃÍ¤Ë¤Ê¤ë¤Ş¤Ç1/2ÇÜ¤¹¤ë
+			// åˆæˆå‘¨æ³¢æ•°ã¯2^(-n)å€ãªã‚‰ãã‚Œã»ã©éŸ³ãŒç‹‚ã‚ãªã„ã‚ˆã†ãªã®ã§
+			// å‡ºåŠ›å‘¨æ³¢æ•°ã«æœ€ã‚‚è¿‘ã„å€¤ã«ãªã‚‹ã¾ã§1/2å€ã™ã‚‹
 			rate = fmclock * 2;
 			do
 			{
@@ -133,7 +133,7 @@ void OPNBase::SetPrescaler(uint p)
 			rate = psgrate;
 		}
 		
-		// ¹çÀ®¼şÇÈ¿ô¤È½ĞÎÏ¼şÇÈ¿ô¤ÎÈæ
+		// åˆæˆå‘¨æ³¢æ•°ã¨å‡ºåŠ›å‘¨æ³¢æ•°ã®æ¯”
 		assert(fmclock < (0x80000000 >> FM_RATIOBITS));
 		uint ratio = ((fmclock << FM_RATIOBITS) + rate/2) / rate;
 		
@@ -149,7 +149,7 @@ void OPNBase::SetPrescaler(uint p)
 	}
 }
 
-//	½é´ü²½
+//	åˆæœŸåŒ–
 bool OPNBase::Init(uint c, uint r)
 {
 	clock = c;
@@ -157,7 +157,7 @@ bool OPNBase::Init(uint c, uint r)
 	return true;
 }
 
-//	²»ÎÌÀßÄê
+//	éŸ³é‡è¨­å®š
 void OPNBase::SetVolumeFM(int db)
 {
 	db = Min(db, 20);
@@ -167,7 +167,7 @@ void OPNBase::SetVolumeFM(int db)
 		fmvolume = 0;
 }
 
-//	¥¿¥¤¥Ş¡¼»ş´Ö½èÍı
+//	ã‚¿ã‚¤ãƒãƒ¼æ™‚é–“å‡¦ç†
 void OPNBase::TimerA()
 {
 	if (regtc & 0x80)
@@ -200,7 +200,7 @@ OPN::OPN()
 		ch[i].SetType(typeN);
 }
 
-//	½é´ü²½
+//	åˆæœŸåŒ–
 bool OPN::Init(uint c, uint r, bool ip, const char*)
 {
 	if (!SetRate(c, r, ip))
@@ -214,7 +214,7 @@ bool OPN::Init(uint c, uint r, bool ip, const char*)
 	return true;
 }
 
-//	¥µ¥ó¥×¥ê¥ó¥°¥ì¡¼¥ÈÊÑ¹¹
+//	ã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°ãƒ¬ãƒ¼ãƒˆå¤‰æ›´
 bool OPN::SetRate(uint c, uint r, bool ip)
 {
 	interpolation = ip;
@@ -227,7 +227,7 @@ bool OPN::SetRate(uint c, uint r, bool ip)
 }
 
 
-//	¥ê¥»¥Ã¥È
+//	ãƒªã‚»ãƒƒãƒˆ
 void OPN::Reset()
 {
 	int i;
@@ -240,7 +240,7 @@ void OPN::Reset()
 }
 
 
-//	¥ì¥¸¥¹¥¿ÆÉ¤ß¹ş¤ß
+//	ãƒ¬ã‚¸ã‚¹ã‚¿èª­ã¿è¾¼ã¿
 uint OPN::GetReg(uint addr)
 {
 	if (addr < 0x10)
@@ -250,7 +250,7 @@ uint OPN::GetReg(uint addr)
 }
 
 
-//	¥ì¥¸¥¹¥¿¥¢¥ì¥¤¤Ë¥Ç¡¼¥¿¤òÀßÄê
+//	ãƒ¬ã‚¸ã‚¹ã‚¿ã‚¢ãƒ¬ã‚¤ã«ãƒ‡ãƒ¼ã‚¿ã‚’è¨­å®š
 void OPN::SetReg(uint addr, uint data)
 {
 //	LOG2("reg[%.2x] <- %.2x\n", addr, data);
@@ -319,7 +319,7 @@ void OPN::SetReg(uint addr, uint data)
 	}
 }
 
-//	¥¹¥Æ¡¼¥¿¥¹¥Õ¥é¥°ÀßÄê
+//	ã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹ãƒ•ãƒ©ã‚°è¨­å®š
 void OPN::SetStatus(uint bits)
 {
 	if (!(status & bits))
@@ -336,7 +336,7 @@ void OPN::ResetStatus(uint bit)
 		Intr(false);
 }
 
-//	¥Ş¥¹¥¯ÀßÄê
+//	ãƒã‚¹ã‚¯è¨­å®š
 void OPN::SetChannelMask(uint mask)
 {
 	for (int i=0; i<3; i++)
@@ -345,7 +345,7 @@ void OPN::SetChannelMask(uint mask)
 }
 
 
-//	¹çÀ®(2ch)
+//	åˆæˆ(2ch)
 void OPN::Mix(Sample* buffer, int nsamples)
 {
 #define IStoSample(s)	((Limit((s) >> (FM_ISHIFT+3), 0xffff, -0x10000) * fmvolume) >> 14)
@@ -358,7 +358,7 @@ void OPN::Mix(Sample* buffer, int nsamples)
 	if (!(regtc & 0xc0))
 		ch[2].SetFNum(fnum[2]);
 	else
-	{	// ¸ú²Ì²»
+	{	// åŠ¹æœéŸ³
 		ch[2].op[0].SetFNum(fnum3[1]);
 		ch[2].op[1].SetFNum(fnum3[2]);
 		ch[2].op[2].SetFNum(fnum3[0]);
@@ -473,7 +473,7 @@ OPNABase::~OPNABase()
 }
 
 // ---------------------------------------------------------------------------
-//	½é´ü²½
+//	åˆæœŸåŒ–
 //
 bool OPNABase::Init(uint c, uint r, bool ipflag)
 {
@@ -488,7 +488,7 @@ bool OPNABase::Init(uint c, uint r, bool ipflag)
 }
 
 // ---------------------------------------------------------------------------
-//	¥ê¥»¥Ã¥È
+//	ãƒªã‚»ãƒƒãƒˆ
 //
 void OPNABase::Reset()
 {
@@ -520,12 +520,12 @@ void OPNABase::Reset()
 }
 
 // ---------------------------------------------------------------------------
-//	¥µ¥ó¥×¥ê¥ó¥°¥ì¡¼¥ÈÊÑ¹¹
+//	ã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°ãƒ¬ãƒ¼ãƒˆå¤‰æ›´
 //
 bool OPNABase::SetRate(uint c, uint r, bool ipflag)
 {
 	interpolation = ipflag;
-	c /= 2;		// ½¾ÍèÈÇ¤È¤Î¸ß´¹À­¤ò½Å»ë¤·¤¿¤±¤ê¤ã¥³¥á¥ó¥È¥¢¥¦¥È¤·¤è¤¦
+	c /= 2;		// å¾“æ¥ç‰ˆã¨ã®äº’æ›æ€§ã‚’é‡è¦–ã—ãŸã‘ã‚Šã‚ƒã‚³ãƒ¡ãƒ³ãƒˆã‚¢ã‚¦ãƒˆã—ã‚ˆã†
 	
 	OPNBase::Init(c, r);
 
@@ -543,7 +543,7 @@ bool OPNABase::SetRate(uint c, uint r, bool ipflag)
 
 
 // ---------------------------------------------------------------------------
-//	¥Á¥ã¥ó¥Í¥ë¥Ş¥¹¥¯¤ÎÀßÄê
+//	ãƒãƒ£ãƒ³ãƒãƒ«ãƒã‚¹ã‚¯ã®è¨­å®š
 //
 void OPNABase::SetChannelMask(uint mask)
 {
@@ -553,7 +553,7 @@ void OPNABase::SetChannelMask(uint mask)
 }
 
 // ---------------------------------------------------------------------------
-//	¥ì¥¸¥¹¥¿¥¢¥ì¥¤¤Ë¥Ç¡¼¥¿¤òÀßÄê
+//	ãƒ¬ã‚¸ã‚¹ã‚¿ã‚¢ãƒ¬ã‚¤ã«ãƒ‡ãƒ¼ã‚¿ã‚’è¨­å®š
 //
 void OPNABase::SetReg(uint addr, uint data)
 {
@@ -654,7 +654,7 @@ void OPNABase::SetReg(uint addr, uint data)
 		psg.SetReg(addr, data);
 		break;
 
-	// ²»¿§ ------------------------------------------------------------------
+	// éŸ³è‰² ------------------------------------------------------------------
 	default:
 		if (c < 3)
 		{
@@ -757,7 +757,7 @@ void OPNABase::SetADPCMBReg(uint addr, uint data)
 
 
 // ---------------------------------------------------------------------------
-//	¥ì¥¸¥¹¥¿¼èÆÀ
+//	ãƒ¬ã‚¸ã‚¹ã‚¿å–å¾—
 //
 uint OPNA::GetReg(uint addr)
 {
@@ -789,7 +789,7 @@ uint OPNA::GetReg(uint addr)
 
 
 // ---------------------------------------------------------------------------
-//	¥¹¥Æ¡¼¥¿¥¹¥Õ¥é¥°ÀßÄê
+//	ã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹ãƒ•ãƒ©ã‚°è¨­å®š
 //
 void OPNABase::SetStatus(uint bits)
 {
@@ -817,7 +817,7 @@ inline void OPNABase::UpdateStatus()
 }
 
 // ---------------------------------------------------------------------------
-//	ADPCM RAM ¤Ø¤Î½ñ¹ş¤ßÁàºî
+//	ADPCM RAM ã¸ã®æ›¸è¾¼ã¿æ“ä½œ
 //
 void OPNABase::WriteRAM(uint data)
 {
@@ -866,7 +866,7 @@ void OPNABase::WriteRAM(uint data)
 }
 
 // ---------------------------------------------------------------------------
-//	ADPCM RAM ¤«¤é¤ÎÆÉ¤ß¹ş¤ßÁàºî
+//	ADPCM RAM ã‹ã‚‰ã®èª­ã¿è¾¼ã¿æ“ä½œ
 //
 uint OPNABase::ReadRAM()
 {
@@ -936,7 +936,7 @@ inline int OPNABase::DecodeADPCMBSample(uint data)
 
 
 // ---------------------------------------------------------------------------
-//	ADPCM RAM ¤«¤é¤Î nibble ÆÉ¤ß¹ş¤ßµÚ¤Ó ADPCM Å¸³«
+//	ADPCM RAM ã‹ã‚‰ã® nibble èª­ã¿è¾¼ã¿åŠã³ ADPCM å±•é–‹
 //
 int OPNABase::ReadRAMN()
 {
@@ -1011,7 +1011,7 @@ int OPNABase::ReadRAMN()
 }
 
 // ---------------------------------------------------------------------------
-//	³ÈÄ¥¥¹¥Æ¡¼¥¿¥¹¤òÆÉ¤ß¤³¤à
+//	æ‹¡å¼µã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹ã‚’èª­ã¿ã“ã‚€
 //
 uint OPNABase::ReadStatusEx()
 {
@@ -1022,7 +1022,7 @@ uint OPNABase::ReadStatusEx()
 }
 
 // ---------------------------------------------------------------------------
-//	ADPCM Å¸³«
+//	ADPCM å±•é–‹
 //
 inline void OPNABase::DecodeADPCMB()
 {
@@ -1033,7 +1033,7 @@ inline void OPNABase::DecodeADPCMB()
 }
 
 // ---------------------------------------------------------------------------
-//	ADPCM ¹çÀ®
+//	ADPCM åˆæˆ
 //	
 void OPNABase::ADPCMBMix(Sample* dest, uint count)
 {
@@ -1106,21 +1106,21 @@ stop:
 }
 
 // ---------------------------------------------------------------------------
-//	¹çÀ®
-//	in:		buffer		¹çÀ®Àè
-//			nsamples	¹çÀ®¥µ¥ó¥×¥ë¿ô
+//	åˆæˆ
+//	in:		buffer		åˆæˆå…ˆ
+//			nsamples	åˆæˆã‚µãƒ³ãƒ—ãƒ«æ•°
 //
 void OPNABase::FMMix(Sample* buffer, int nsamples)
 {
 	if (fmvolume > 0)
 	{
-		// ½àÈ÷
+		// æº–å‚™
 		// Set F-Number
 		if (!(regtc & 0xc0))
 			csmch->SetFNum(fnum[csmch-ch]);
 		else
 		{
-			// ¸ú²Ì²»¥â¡¼¥É
+			// åŠ¹æœéŸ³ãƒ¢ãƒ¼ãƒ‰
 			csmch->op[0].SetFNum(fnum3[1]);	csmch->op[1].SetFNum(fnum3[2]);
 			csmch->op[2].SetFNum(fnum3[0]);	csmch->op[3].SetFNum(fnum[2]);
 		}
@@ -1202,7 +1202,7 @@ inline void OPNABase::LFO()
 }
 
 // ---------------------------------------------------------------------------
-//	¹çÀ®
+//	åˆæˆ
 //
 #define IStoSample(s)	((Limit((s) >> (FM_ISHIFT+3), 0xffff, -0x10000) * fmvolume) >> 14)
 //#define IStoSample(s)	((((s) >> (FM_ISHIFT+3)) * fmvolume) >> 14)
@@ -1233,7 +1233,7 @@ void OPNABase::Mix6(Sample* buffer, int nsamples, int activech)
 }
 
 // ---------------------------------------------------------------------------
-//	¹çÀ® - Àş·ÁÊä´Ö
+//	åˆæˆ - ç·šå½¢è£œé–“
 //
 void OPNABase::Mix6I(Sample* buffer, int nsamples, int activech)
 {
@@ -1316,7 +1316,7 @@ void OPNABase::Mix6I(Sample* buffer, int nsamples, int activech)
 #ifdef BUILD_OPNA
 
 // ---------------------------------------------------------------------------
-//	¹½ÃÛ
+//	æ§‹ç¯‰
 //
 OPNA::OPNA()
 {
@@ -1345,7 +1345,7 @@ OPNA::~OPNA()
 
 
 // ---------------------------------------------------------------------------
-//	½é´ü²½
+//	åˆæœŸåŒ–
 //
 bool OPNA::Init(uint c, uint r, bool ipflag, const char* path)
 {
@@ -1372,7 +1372,7 @@ bool OPNA::Init(uint c, uint r, bool ipflag, const char* path)
 }
 
 // ---------------------------------------------------------------------------
-//	¥ê¥»¥Ã¥È
+//	ãƒªã‚»ãƒƒãƒˆ
 //
 void OPNA::Reset()
 {
@@ -1383,7 +1383,7 @@ void OPNA::Reset()
 }
 
 // ---------------------------------------------------------------------------
-//	¥µ¥ó¥×¥ê¥ó¥°¥ì¡¼¥ÈÊÑ¹¹
+//	ã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°ãƒ¬ãƒ¼ãƒˆå¤‰æ›´
 //
 bool OPNA::SetRate(uint c, uint r, bool ipflag)
 {
@@ -1399,7 +1399,7 @@ bool OPNA::SetRate(uint c, uint r, bool ipflag)
 
 
 // ---------------------------------------------------------------------------
-//	¥ê¥º¥à²»¤òÆÉ¤ß¤³¤à
+//	ãƒªã‚ºãƒ éŸ³ã‚’èª­ã¿ã“ã‚€
 //
 bool OPNA::LoadRhythmSample(const char* path)
 {
@@ -1489,7 +1489,7 @@ bool OPNA::LoadRhythmSample(const char* path)
 
 
 // ---------------------------------------------------------------------------
-//	¥ì¥¸¥¹¥¿¥¢¥ì¥¤¤Ë¥Ç¡¼¥¿¤òÀßÄê
+//	ãƒ¬ã‚¸ã‚¹ã‚¿ã‚¢ãƒ¬ã‚¤ã«ãƒ‡ãƒ¼ã‚¿ã‚’è¨­å®š
 //
 void OPNA::SetReg(uint addr, uint data)
 {
@@ -1552,7 +1552,7 @@ void OPNA::SetReg(uint addr, uint data)
 
 
 // ---------------------------------------------------------------------------
-//	¥ê¥º¥à¹çÀ®
+//	ãƒªã‚ºãƒ åˆæˆ
 //
 void OPNA::RhythmMix(Sample* buffer, uint count)
 {
@@ -1582,7 +1582,7 @@ void OPNA::RhythmMix(Sample* buffer, uint count)
 }
 
 // ---------------------------------------------------------------------------
-//	²»ÎÌÀßÄê
+//	éŸ³é‡è¨­å®š
 //
 void OPNA::SetVolumeRhythmTotal(int db)
 {
@@ -1607,9 +1607,9 @@ void OPNA::SetVolumeADPCM(int db)
 }
 
 // ---------------------------------------------------------------------------
-//	¹çÀ®
-//	in:		buffer		¹çÀ®Àè
-//			nsamples	¹çÀ®¥µ¥ó¥×¥ë¿ô
+//	åˆæˆ
+//	in:		buffer		åˆæˆå…ˆ
+//			nsamples	åˆæˆã‚µãƒ³ãƒ—ãƒ«æ•°
 //
 void OPNA::Mix(Sample* buffer, int nsamples)
 {
@@ -1628,7 +1628,7 @@ void OPNA::Mix(Sample* buffer, int nsamples)
 #ifdef BUILD_OPNB
 
 // ---------------------------------------------------------------------------
-//	¹½ÃÛ
+//	æ§‹ç¯‰
 //
 OPNB::OPNB()
 {
@@ -1663,7 +1663,7 @@ OPNB::~OPNB()
 }
 
 // ---------------------------------------------------------------------------
-//	½é´ü²½
+//	åˆæœŸåŒ–
 //
 bool OPNB::Init(uint c, uint r, bool ipflag,
 				uint8 *_adpcma, int _adpcma_size,
@@ -1704,7 +1704,7 @@ bool OPNB::Init(uint c, uint r, bool ipflag,
 }
 
 // ---------------------------------------------------------------------------
-//	¥ê¥»¥Ã¥È
+//	ãƒªã‚»ãƒƒãƒˆ
 //
 void OPNB::Reset()
 {
@@ -1730,7 +1730,7 @@ void OPNB::Reset()
 }
 
 // ---------------------------------------------------------------------------
-//	¥µ¥ó¥×¥ê¥ó¥°¥ì¡¼¥ÈÊÑ¹¹
+//	ã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°ãƒ¬ãƒ¼ãƒˆå¤‰æ›´
 //
 bool OPNB::SetRate(uint c, uint r, bool ipflag)
 {
@@ -1742,7 +1742,7 @@ bool OPNB::SetRate(uint c, uint r, bool ipflag)
 }
 
 // ---------------------------------------------------------------------------
-//	¥ì¥¸¥¹¥¿¥¢¥ì¥¤¤Ë¥Ç¡¼¥¿¤òÀßÄê
+//	ãƒ¬ã‚¸ã‚¹ã‚¿ã‚¢ãƒ¬ã‚¤ã«ãƒ‡ãƒ¼ã‚¿ã‚’è¨­å®š
 //
 void OPNB::SetReg(uint addr, uint data)
 {
@@ -1871,7 +1871,7 @@ void OPNB::SetReg(uint addr, uint data)
 }
 
 // ---------------------------------------------------------------------------
-//	¥ì¥¸¥¹¥¿¼èÆÀ
+//	ãƒ¬ã‚¸ã‚¹ã‚¿å–å¾—
 //
 uint OPNB::GetReg(uint addr)
 {
@@ -1882,7 +1882,7 @@ uint OPNB::GetReg(uint addr)
 }
 
 // ---------------------------------------------------------------------------
-//	³ÈÄ¥¥¹¥Æ¡¼¥¿¥¹¤òÆÉ¤ß¤³¤à
+//	æ‹¡å¼µã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹ã‚’èª­ã¿ã“ã‚€
 //
 uint OPNB::ReadStatusEx()
 {
@@ -1913,7 +1913,7 @@ void OPNB::InitADPCMATable()
 }
 
 // ---------------------------------------------------------------------------
-//	ADPCMA ¹çÀ®
+//	ADPCMA åˆæˆ
 //
 void OPNB::ADPCMAMix(Sample* buffer, uint count)
 {
@@ -1976,7 +1976,7 @@ void OPNB::ADPCMAMix(Sample* buffer, uint count)
 }
 
 // ---------------------------------------------------------------------------
-//	²»ÎÌÀßÄê
+//	éŸ³é‡è¨­å®š
 //
 void OPNB::SetVolumeADPCMATotal(int db)
 {
@@ -2001,9 +2001,9 @@ void OPNB::SetVolumeADPCMB(int db)
 }
 
 // ---------------------------------------------------------------------------
-//	¹çÀ®
-//	in:		buffer		¹çÀ®Àè
-//			nsamples	¹çÀ®¥µ¥ó¥×¥ë¿ô
+//	åˆæˆ
+//	in:		buffer		åˆæˆå…ˆ
+//			nsamples	åˆæˆã‚µãƒ³ãƒ—ãƒ«æ•°
 //
 void OPNB::Mix(Sample* buffer, int nsamples)
 {

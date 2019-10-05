@@ -8,7 +8,7 @@
 
 #include	"opna.h"
 
-// wait ¤Ç·×»»¤·¤¿Ê¬¤òÂåÆş¤¹¤ë buffer size(samples)
+// wait ã§è¨ˆç®—ã—ãŸåˆ†ã‚’ä»£å…¥ã™ã‚‹ buffer size(samples)
 #define		WAIT_PCM_BUFFER_SIZE  65536
 
 
@@ -32,13 +32,13 @@ namespace FM {
 		int		GetRhythmWait(void);				// Rhythm wait(nsec)
 		int		GetADPCMWait(void);					// ADPCM wait(nsec)
 
-		void	SetReg(uint addr, uint data);		// ¥ì¥¸¥¹¥¿ÀßÄê
-		void	Mix(Sample* buffer, int nsamples);	// ¹çÀ®
-		void	ClearBuffer(void);					// ÆâÉô¥Ğ¥Ã¥Õ¥¡¥¯¥ê¥¢
+		void	SetReg(uint addr, uint data);		// ãƒ¬ã‚¸ã‚¹ã‚¿è¨­å®š
+		void	Mix(Sample* buffer, int nsamples);	// åˆæˆ
+		void	ClearBuffer(void);					// å†…éƒ¨ãƒãƒƒãƒ•ã‚¡ã‚¯ãƒªã‚¢
 	
 	private:
 		Sample	pre_buffer[WAIT_PCM_BUFFER_SIZE * 2];
-												// wait »ş¤Î¹çÀ®²»¤ÎÂàÈò
+												// wait æ™‚ã®åˆæˆéŸ³ã®é€€é¿
 		int		fmwait;								// FM Wait(nsec)
 		int		ssgwait;							// SSG Wait(nsec)
 		int		rhythmwait;							// Rhythm Wait(nsec)
@@ -49,11 +49,11 @@ namespace FM {
 		int		rhythmwaitcount;					// Rhythm Wait(count*1000)
 		int		adpcmwaitcount;						// ADPCM Wait(count*1000)
 	
-		int		read_pos;							// ½ñ¤­¹ş¤ß°ÌÃÖ
-		int		write_pos;							// ÆÉ¤ß½Ğ¤·°ÌÃÖ
-		int		count2;								// count ¾®¿ôÉôÊ¬(*1000)	
+		int		read_pos;							// æ›¸ãè¾¼ã¿ä½ç½®
+		int		write_pos;							// èª­ã¿å‡ºã—ä½ç½®
+		int		count2;								// count å°æ•°éƒ¨åˆ†(*1000)	
 	
-		void	CalcWaitPCM(int waitcount);			// SetReg() wait »ş¤Î PCM ¤ò·×»»
+		void	CalcWaitPCM(int waitcount);			// SetReg() wait æ™‚ã® PCM ã‚’è¨ˆç®—
 	};
 }
 

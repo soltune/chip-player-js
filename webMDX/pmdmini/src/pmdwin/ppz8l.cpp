@@ -1,5 +1,5 @@
 //=============================================================================
-//		8 Channel PCM Driver ¡ÖPPZ8¡× Unit(Light Version)
+//		8 Channel PCM Driver ã€ŒPPZ8ã€ Unit(Light Version)
 //			Programmed by UKKY
 //			Windows Converted by C60
 //=============================================================================
@@ -16,20 +16,20 @@
 #include	"misc.h"
 
 //-----------------------------------------------------------------------------
-//	¥³¥ó¥¹¥È¥é¥¯¥¿¡¦¥Ç¥¹¥È¥é¥¯¥¿
+//	ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿ãƒ»ãƒ‡ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 //-----------------------------------------------------------------------------
 PPZ8::PPZ8()
 {	
-	DIST_F = RATE_DEF;	 		// ºÆÀ¸¼şÇÈ¿ô
-	XMS_FRAME_ADR[0] = NULL;	// XMS¤Ç³ÎÊİ¤·¤¿¥á¥â¥ê¥¢¥É¥ì¥¹¡Ê¥ê¥Ë¥¢¡Ë
-	XMS_FRAME_ADR[1] = NULL;	// XMS¤Ç³ÎÊİ¤·¤¿¥á¥â¥ê¥¢¥É¥ì¥¹¡Ê¥ê¥Ë¥¢¡Ë
+	DIST_F = RATE_DEF;	 		// å†ç”Ÿå‘¨æ³¢æ•°
+	XMS_FRAME_ADR[0] = NULL;	// XMSã§ç¢ºä¿ã—ãŸãƒ¡ãƒ¢ãƒªã‚¢ãƒ‰ãƒ¬ã‚¹ï¼ˆãƒªãƒ‹ã‚¢ï¼‰
+	XMS_FRAME_ADR[1] = NULL;	// XMSã§ç¢ºä¿ã—ãŸãƒ¡ãƒ¢ãƒªã‚¢ãƒ‰ãƒ¬ã‚¹ï¼ˆãƒªãƒ‹ã‚¢ï¼‰
 	pviflag[0] = false;
 	pviflag[1] = false;
 	memset(PCME_WORK, 0, sizeof(PCME_WORK));
 	memset(PVI_FILE, 0, sizeof(PVI_FILE));
 	volume = 0;
 	PCM_VOLUME = 0;		
-	SetAllVolume(VNUM_DEF);		// Á´ÂÎ¥Ü¥ê¥å¡¼¥à(DEF=12)
+	SetAllVolume(VNUM_DEF);		// å…¨ä½“ãƒœãƒªãƒ¥ãƒ¼ãƒ (DEF=12)
 	interpolation = false;
 }
 
@@ -46,30 +46,30 @@ PPZ8::~PPZ8()
 
 
 //-----------------------------------------------------------------------------
-//	00H ½é´ü²½
+//	00H åˆæœŸåŒ–
 //-----------------------------------------------------------------------------
 bool PPZ8::Init(uint rate, bool ip)
 {	
-	WORK_INIT();		// ¥ï¡¼¥¯½é´ü²½
+	WORK_INIT();		// ãƒ¯ãƒ¼ã‚¯åˆæœŸåŒ–
 	SetVolume(volume);
 	return SetRate(rate, ip);
 }
 
 
 //-----------------------------------------------------------------------------
-//	01H PCM È¯²»
+//	01H PCM ç™ºéŸ³
 //-----------------------------------------------------------------------------
 bool PPZ8::Play(int ch, int bufnum, int num)
 {
 	if(ch >= PCM_CNL_MAX) return false;
 	if(XMS_FRAME_ADR[bufnum] == NULL) return false;
 
-	// PVI¤ÎÄêµÁ¿ô¤è¤êÂç¤­¤¤¤È¥¹¥­¥Ã¥×
+	// PVIã®å®šç¾©æ•°ã‚ˆã‚Šå¤§ãã„ã¨ã‚¹ã‚­ãƒƒãƒ—
 	//if(num >= PCME_WORK[bufnum].pzinum) return false;
 
 	channelwork[ch].pviflag = pviflag[bufnum];
-	channelwork[ch].PCM_FLG = 1;		// ºÆÀ¸³«»Ï
-	channelwork[ch].PCM_NOW_XOR = 0;	// ¾®¿ôÅÀÉô
+	channelwork[ch].PCM_FLG = 1;		// å†ç”Ÿé–‹å§‹
+	channelwork[ch].PCM_NOW_XOR = 0;	// å°æ•°ç‚¹éƒ¨
 	channelwork[ch].PCM_NUM = num;
 
 	channelwork[ch].PCM_NOW
@@ -77,10 +77,10 @@ bool PPZ8::Play(int ch, int bufnum, int num)
 	channelwork[ch].PCM_END_S
 			= &XMS_FRAME_ADR[bufnum][PCME_WORK[bufnum].pcmnum[num].startaddress + PCME_WORK[bufnum].pcmnum[num].size];
 	if(channelwork[ch].PCM_LOOP_FLG == 0) {
-		// ¥ë¡¼¥×¤Ê¤·
+		// ãƒ«ãƒ¼ãƒ—ãªã—
 		channelwork[ch].PCM_END = channelwork[ch].PCM_END_S;
 	} else {
-		// ¥ë¡¼¥×¤¢¤ê
+		// ãƒ«ãƒ¼ãƒ—ã‚ã‚Š
 		if(channelwork[ch].PCM_LOOP_START >= PCME_WORK[bufnum].pcmnum[num].size) {
 			channelwork[ch].PCM_LOOP
 				= &XMS_FRAME_ADR[bufnum][PCME_WORK[bufnum].pcmnum[num].startaddress + PCME_WORK[bufnum].pcmnum[num].size - 1];
@@ -103,19 +103,19 @@ bool PPZ8::Play(int ch, int bufnum, int num)
 
 
 //-----------------------------------------------------------------------------
-//	02H PCM Ää»ß
+//	02H PCM åœæ­¢
 //-----------------------------------------------------------------------------
 bool PPZ8::Stop(int ch)
 {
 	if(ch >= PCM_CNL_MAX) return false;
 	
-	channelwork[ch].PCM_FLG = 0;	// ºÆÀ¸Ää»ß
+	channelwork[ch].PCM_FLG = 0;	// å†ç”Ÿåœæ­¢
 	return true;
 }
 
 
 //-----------------------------------------------------------------------------
-//	03H PVI/PZI¥Õ¥¡¥¤¥ë¤ÎÆÉ¤ß¹ş¤ß
+//	03H PVI/PZIãƒ•ã‚¡ã‚¤ãƒ«ã®èª­ã¿è¾¼ã¿
 //-----------------------------------------------------------------------------
 int PPZ8::Load(char *filename, int bufnum)
 {
@@ -133,11 +133,11 @@ int PPZ8::Load(char *filename, int bufnum)
 	uchar	*psrc, *psrc2;
 	uchar	*pdst;
 	char	*p;
-	bool	NOW_PCM_CATE;						// ¸½ºß¤ÎPCM¤Î·Á¼°(true : PZI)
+	bool	NOW_PCM_CATE;						// ç¾åœ¨ã®PCMã®å½¢å¼(true : PZI)
 	PZIHEADER	pziheader;
 	PVIHEADER	pviheader;
-	int		X_N;								// Xn     (ADPCM>PCM ÊÑ´¹ÍÑ)
-	int		DELTA_N;							// DELTA_N(ADPCM>PCM ÊÑ´¹ÍÑ)
+	int		X_N;								// Xn     (ADPCM>PCM å¤‰æ›ç”¨)
+	int		DELTA_N;							// DELTA_N(ADPCM>PCM å¤‰æ›ç”¨)
 
 
 	p = strrchr(filename, '.');
@@ -148,40 +148,40 @@ int PPZ8::Load(char *filename, int bufnum)
 			NOW_PCM_CATE = false;
 		}
 	} else {
-		NOW_PCM_CATE = true;					// ¤È¤ê¤¢¤¨¤º pzi
+		NOW_PCM_CATE = true;					// ã¨ã‚Šã‚ãˆãš pzi
 	}
 	
-	WORK_INIT();								// ¥ï¡¼¥¯½é´ü²½
+	WORK_INIT();								// ãƒ¯ãƒ¼ã‚¯åˆæœŸåŒ–
 
 	PVI_FILE[bufnum][0] = '\0';
 	
 	if((fp = fopen(filename, "rb")) == NULL) {
 		if(XMS_FRAME_ADR[bufnum] != NULL) {
-			free(XMS_FRAME_ADR[bufnum]);		// ³«Êü
+			free(XMS_FRAME_ADR[bufnum]);		// é–‹æ”¾
 			XMS_FRAME_ADR[bufnum] = NULL;
 			memset(&PCME_WORK[bufnum], 0, sizeof(PZIHEADER));
 		}
-		return _ERR_OPEN_PPZ_FILE;				//	¥Õ¥¡¥¤¥ë¤¬³«¤±¤Ê¤¤
+		return _ERR_OPEN_PPZ_FILE;				//	ãƒ•ã‚¡ã‚¤ãƒ«ãŒé–‹ã‘ãªã„
 	}
 
-		size = (int)GetFileSize_s(filename);	// ¥Õ¥¡¥¤¥ë¥µ¥¤¥º
+		size = (int)GetFileSize_s(filename);	// ãƒ•ã‚¡ã‚¤ãƒ«ã‚µã‚¤ã‚º
 
-		if(NOW_PCM_CATE) {	// PZI ÆÉ¤ß¹ş¤ß
+		if(NOW_PCM_CATE) {	// PZI èª­ã¿è¾¼ã¿
 			fread(&pziheader, 1, sizeof(PZIHEADER), fp);
 
 			if(memcmp(&PCME_WORK[bufnum], &pziheader, sizeof(PZIHEADER)) == 0) {
 				strcpy(PVI_FILE[bufnum], filename);
-				return _WARNING_PPZ_ALREADY_LOAD;		// Æ±¤¸¥Õ¥¡¥¤¥ë
+				return _WARNING_PPZ_ALREADY_LOAD;		// åŒã˜ãƒ•ã‚¡ã‚¤ãƒ«
 			}
 			
 			if(XMS_FRAME_ADR[bufnum] != NULL) {
-				free(XMS_FRAME_ADR[bufnum]);		// ¤¤¤Ã¤¿¤ó³«Êü
+				free(XMS_FRAME_ADR[bufnum]);		// ã„ã£ãŸã‚“é–‹æ”¾
 				XMS_FRAME_ADR[bufnum] = NULL;
 				memset(&PCME_WORK[bufnum], 0, sizeof(PZIHEADER));
 			}
 
 			if(strncmp(pziheader.header, "PZI", 3)) {
-				return _ERR_WRONG_PPZ_FILE;		// ¥Ç¡¼¥¿·Á¼°¤¬°ã¤¦
+				return _ERR_WRONG_PPZ_FILE;		// ãƒ‡ãƒ¼ã‚¿å½¢å¼ãŒé•ã†
 			}
 		
 			memcpy(&PCME_WORK[bufnum], &pziheader, sizeof(PZIHEADER));
@@ -190,18 +190,18 @@ int PPZ8::Load(char *filename, int bufnum)
 
 			if((pdst = XMS_FRAME_ADR[bufnum]
 						= (uchar *)malloc(size)) == NULL) {
-				return _ERR_OUT_OF_MEMORY;			// ¥á¥â¥ê¤¬³ÎÊİ¤Ç¤­¤Ê¤¤
+				return _ERR_OUT_OF_MEMORY;			// ãƒ¡ãƒ¢ãƒªãŒç¢ºä¿ã§ããªã„
 			}
 			
-			//	ÆÉ¤ß¹ş¤ß
+			//	èª­ã¿è¾¼ã¿
 			fread(pdst, size, 1, fp);
 
-			//	¥Õ¥¡¥¤¥ëÌ¾ÅĞÏ¿
+			//	ãƒ•ã‚¡ã‚¤ãƒ«åç™»éŒ²
 			strcpy(PVI_FILE[bufnum], filename);
 
 			pviflag[bufnum] = false;
 
-		} else {			// PVI ÆÉ¤ß¹ş¤ß
+		} else {			// PVI èª­ã¿è¾¼ã¿
 			fread(&pviheader, 1, sizeof(PVIHEADER), fp);
 
 			strncpy(pziheader.header, "PZI1", 4);
@@ -218,17 +218,17 @@ int PPZ8::Load(char *filename, int bufnum)
 			
 			if(memcmp(&PCME_WORK[bufnum]. pcmnum, &pziheader.pcmnum, sizeof(PZIHEADER)-0x20) == 0) {
 				strcpy(PVI_FILE[bufnum], filename);
-				return _WARNING_PPZ_ALREADY_LOAD;		// Æ±¤¸¥Õ¥¡¥¤¥ë
+				return _WARNING_PPZ_ALREADY_LOAD;		// åŒã˜ãƒ•ã‚¡ã‚¤ãƒ«
 			}
 
 			if(XMS_FRAME_ADR[bufnum] != NULL) {
-				free(XMS_FRAME_ADR[bufnum]);		// ¤¤¤Ã¤¿¤ó³«Êü
+				free(XMS_FRAME_ADR[bufnum]);		// ã„ã£ãŸã‚“é–‹æ”¾
 				XMS_FRAME_ADR[bufnum] = NULL;
 				memset(&PCME_WORK[bufnum], 0, sizeof(PZIHEADER));
 			}
 
 			if(strncmp(pviheader.header, "PVI", 3)) {
-				return _ERR_WRONG_PPZ_FILE;		// ¥Ç¡¼¥¿·Á¼°¤¬°ã¤¦
+				return _ERR_WRONG_PPZ_FILE;		// ãƒ‡ãƒ¼ã‚¿å½¢å¼ãŒé•ã†
 			}
 		
 			memcpy(&PCME_WORK[bufnum], &pziheader, sizeof(PZIHEADER));
@@ -237,17 +237,17 @@ int PPZ8::Load(char *filename, int bufnum)
 
 			if((pdst = XMS_FRAME_ADR[bufnum]
 						= (uchar *)malloc(size * 2)) == NULL) {
-				return _ERR_OUT_OF_MEMORY;			// ¥á¥â¥ê¤¬³ÎÊİ¤Ç¤­¤Ê¤¤
+				return _ERR_OUT_OF_MEMORY;			// ãƒ¡ãƒ¢ãƒªãŒç¢ºä¿ã§ããªã„
 			}
 
 			if((psrc = psrc2 = (uchar *)malloc(size)) == NULL) {
-				return _ERR_OUT_OF_MEMORY;			// ¥á¥â¥ê¤¬³ÎÊİ¤Ç¤­¤Ê¤¤¡Ê¥Æ¥ó¥İ¥é¥ê¡Ë
+				return _ERR_OUT_OF_MEMORY;			// ãƒ¡ãƒ¢ãƒªãŒç¢ºä¿ã§ããªã„ï¼ˆãƒ†ãƒ³ãƒãƒ©ãƒªï¼‰
 			}
 
-			//	²¾¥Ğ¥Ã¥Õ¥¡¤ËÆÉ¤ß¹ş¤ß
+			//	ä»®ãƒãƒƒãƒ•ã‚¡ã«èª­ã¿è¾¼ã¿
 			fread(psrc, size, 1, fp);
 
-			// ADPCM > PCM ¤ËÊÑ´¹
+			// ADPCM > PCM ã«å¤‰æ›
 			for(i = 0; i < pviheader.pvinum; i++) {
 				X_N = X_N0;
 				DELTA_N = DELTA_N0;
@@ -264,10 +264,10 @@ int PPZ8::Load(char *filename, int bufnum)
 
 			}
 	
-			//	¥Ğ¥Ã¥Õ¥¡³«Êü
+			//	ãƒãƒƒãƒ•ã‚¡é–‹æ”¾
 			free(psrc2);
 			
-			//	¥Õ¥¡¥¤¥ëÌ¾ÅĞÏ¿
+			//	ãƒ•ã‚¡ã‚¤ãƒ«åç™»éŒ²
 			strcpy(PVI_FILE[bufnum], filename);
 
 			pviflag[bufnum] = true;
@@ -278,7 +278,7 @@ int PPZ8::Load(char *filename, int bufnum)
 
 
 //-----------------------------------------------------------------------------
-//	07H ¥Ü¥ê¥å¡¼¥àÀßÄê
+//	07H ãƒœãƒªãƒ¥ãƒ¼ãƒ è¨­å®š
 //-----------------------------------------------------------------------------
 bool PPZ8::SetVol(int ch, int vol)
 {
@@ -290,7 +290,7 @@ bool PPZ8::SetVol(int ch, int vol)
 
 
 //-----------------------------------------------------------------------------
-//	0BH ²»Äø¼şÇÈ¿ô¤ÎÀßÄê
+//	0BH éŸ³ç¨‹å‘¨æ³¢æ•°ã®è¨­å®š
 //-----------------------------------------------------------------------------
 bool PPZ8::SetOntei(int ch, uint ontei)
 {
@@ -311,21 +311,21 @@ bool PPZ8::SetOntei(int ch, uint ontei)
 
 
 //-----------------------------------------------------------------------------
-//	0EH ¥ë¡¼¥×¥İ¥¤¥ó¥¿¤ÎÀßÄê
+//	0EH ãƒ«ãƒ¼ãƒ—ãƒã‚¤ãƒ³ã‚¿ã®è¨­å®š
 //-----------------------------------------------------------------------------
 bool PPZ8::SetLoop(int ch, uint loop_start, uint loop_end)
 {
 	if(ch >= PCM_CNL_MAX) return false;
 	
 	if(loop_start != 0xffff && loop_end > loop_start) {
-		// ¥ë¡¼¥×ÀßÄê
+		// ãƒ«ãƒ¼ãƒ—è¨­å®š
 		// PCM_LPS_02:
 
 		channelwork[ch].PCM_LOOP_FLG = 1;
 		channelwork[ch].PCM_LOOP_START = loop_start;
 		channelwork[ch].PCM_LOOP_END = loop_end;
 	} else {
-		// ¥ë¡¼¥×²ò½ü
+		// ãƒ«ãƒ¼ãƒ—è§£é™¤
 		// PCM_LPS_01:
 	
 		channelwork[ch].PCM_LOOP_FLG = 0;
@@ -336,13 +336,13 @@ bool PPZ8::SetLoop(int ch, uint loop_start, uint loop_end)
 
 
 //-----------------------------------------------------------------------------
-//	12H (PPZ8)Á´Ää»ß
+//	12H (PPZ8)å…¨åœæ­¢
 //-----------------------------------------------------------------------------
 void PPZ8::AllStop(void)
 {
 	int		i;
 
-	// ¤È¤ê¤¢¤¨¤º³Æ¥Ñ¡¼¥ÈÄä»ß¤ÇÂĞ±ş
+	// ã¨ã‚Šã‚ãˆãšå„ãƒ‘ãƒ¼ãƒˆåœæ­¢ã§å¯¾å¿œ
 	for(i = 0; i < PCM_CNL_MAX; i++) {
 		Stop(i);
 	}
@@ -350,7 +350,7 @@ void PPZ8::AllStop(void)
 
 
 //-----------------------------------------------------------------------------
-//	13H (PPZ8)PAN»ØÄê
+//	13H (PPZ8)PANæŒ‡å®š
 //-----------------------------------------------------------------------------
 bool PPZ8::SetPan(int ch, int pan)
 {
@@ -362,7 +362,7 @@ bool PPZ8::SetPan(int ch, int pan)
 
 
 //-----------------------------------------------------------------------------
-//	14H (PPZ8)¥ì¡¼¥ÈÀßÄê
+//	14H (PPZ8)ãƒ¬ãƒ¼ãƒˆè¨­å®š
 //-----------------------------------------------------------------------------
 bool PPZ8::SetRate(uint rate, bool ip)
 {
@@ -373,7 +373,7 @@ bool PPZ8::SetRate(uint rate, bool ip)
 
 
 //-----------------------------------------------------------------------------
-//	15H (PPZ8)¸µ¥Ç¡¼¥¿¼şÇÈ¿ôÀßÄê
+//	15H (PPZ8)å…ƒãƒ‡ãƒ¼ã‚¿å‘¨æ³¢æ•°è¨­å®š
 //-----------------------------------------------------------------------------
 bool PPZ8::SetSourceRate(int ch, int rate)
 {
@@ -385,7 +385,7 @@ bool PPZ8::SetSourceRate(int ch, int rate)
 
 
 //-----------------------------------------------------------------------------
-//	16H (PPZ8)Á´ÂÎ¥Ü¥ê¥æ¡¼¥à¤ÎÀßÄê¡Ê86B Mixer)
+//	16H (PPZ8)å…¨ä½“ãƒœãƒªãƒ¦ãƒ¼ãƒ ã®è¨­å®šï¼ˆ86B Mixer)
 //-----------------------------------------------------------------------------
 void PPZ8::SetAllVolume(int vol)
 {
@@ -397,7 +397,7 @@ void PPZ8::SetAllVolume(int vol)
 
 
 //-----------------------------------------------------------------------------
-//	²»ÎÌÄ´À°ÍÑ
+//	éŸ³é‡èª¿æ•´ç”¨
 //-----------------------------------------------------------------------------
 void PPZ8::SetVolume(int vol)
 {
@@ -407,7 +407,7 @@ void PPZ8::SetVolume(int vol)
 }
 
 //-----------------------------------------------------------------------------
-//	²»ÎÌ¥Æ¡¼¥Ö¥ëºîÀ®
+//	éŸ³é‡ãƒ†ãƒ¼ãƒ–ãƒ«ä½œæˆ
 //-----------------------------------------------------------------------------
 void PPZ8::MakeVolumeTable(int vol)
 {
@@ -427,7 +427,7 @@ void PPZ8::MakeVolumeTable(int vol)
 
 
 //-----------------------------------------------------------------------------
-//	¥ï¡¼¥¯½é´ü²½
+//	ãƒ¯ãƒ¼ã‚¯åˆæœŸåŒ–
 //-----------------------------------------------------------------------------
 void PPZ8::WORK_INIT(void)
 {
@@ -440,17 +440,17 @@ void PPZ8::WORK_INIT(void)
 		channelwork[i].PCM_ADD_L = 0;
 		channelwork[i].PCM_ADDS_H = 1;
 		channelwork[i].PCM_ADDS_L = 0;
-		channelwork[i].PCM_SORC_F = 16000;		// ¸µ¥Ç¡¼¥¿¤ÎºÆÀ¸¥ì¡¼¥È
-		channelwork[i].PCM_PAN = 5;			// PANÃæ¿´
-		channelwork[i].PCM_VOL = 8;			// ¥Ü¥ê¥å¡¼¥à¥Ç¥Õ¥©¥ë¥È
+		channelwork[i].PCM_SORC_F = 16000;		// å…ƒãƒ‡ãƒ¼ã‚¿ã®å†ç”Ÿãƒ¬ãƒ¼ãƒˆ
+		channelwork[i].PCM_PAN = 5;			// PANä¸­å¿ƒ
+		channelwork[i].PCM_VOL = 8;			// ãƒœãƒªãƒ¥ãƒ¼ãƒ ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆ
 	}
 	
-	// MOV	PCME_WORK0+PVI_NUM_MAX,0	;@ PVI¤ÎMAX¤ò£°¤Ë¤¹¤ë
+	// MOV	PCME_WORK0+PVI_NUM_MAX,0	;@ PVIã®MAXã‚’ï¼ã«ã™ã‚‹
 }
 
 
 //-----------------------------------------------------------------------------
-//	¹çÀ®¡¢½ĞÎÏ
+//	åˆæˆã€å‡ºåŠ›
 //-----------------------------------------------------------------------------
 void PPZ8::Mix(Sample* dest, int nsamples)
 {
@@ -462,15 +462,15 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 		if(PCM_VOLUME == 0) break;
 		if(channelwork[i].PCM_FLG == 0) continue;
 		if(channelwork[i].PCM_VOL == 0) {
-			// PCM_NOW ¥İ¥¤¥ó¥¿¤Î°ÜÆ°(¥ë¡¼¥×¡¢end Åù¤â¹ÍÎ¸¤·¤Æ)
+			// PCM_NOW ãƒã‚¤ãƒ³ã‚¿ã®ç§»å‹•(ãƒ«ãƒ¼ãƒ—ã€end ç­‰ã‚‚è€ƒæ…®ã—ã¦)
 			channelwork[i].PCM_NOW_XOR += channelwork[i].PCM_ADD_L * nsamples;
 			channelwork[i].PCM_NOW += channelwork[i].PCM_ADD_H * nsamples + channelwork[i].PCM_NOW_XOR / 0x10000;
 			channelwork[i].PCM_NOW_XOR %= 0x10000;
 
 			while(channelwork[i].PCM_NOW >= channelwork[i].PCM_END-1) {
-				// @°ì¼¡Êä´°¤Î¤È¤­¤â¤Á¤ã¤ó¤ÈÆ°¤¯¤è¤¦¤Ë¼ÂÁõ        ^^
+				// @ä¸€æ¬¡è£œå®Œã®ã¨ãã‚‚ã¡ã‚ƒã‚“ã¨å‹•ãã‚ˆã†ã«å®Ÿè£…        ^^
 				if(channelwork[i].PCM_LOOP_FLG) {
-					// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+					// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 					channelwork[i].PCM_NOW -= (channelwork[i].PCM_END - 1 - channelwork[i].PCM_LOOP);
 				} else {
 					channelwork[i].PCM_FLG = 0;
@@ -491,7 +491,7 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 					while(di < &dest[nsamples * 2]) {
 						*di++ += (VolumeTable[channelwork[i].PCM_VOL][*channelwork[i].PCM_NOW] * (0x10000-channelwork[i].PCM_NOW_XOR)
 							+ VolumeTable[channelwork[i].PCM_VOL][*(channelwork[i].PCM_NOW+1)] * channelwork[i].PCM_NOW_XOR) >> 16;
-						di++;		// º¸¤Î¤ß
+						di++;		// å·¦ã®ã¿
 						
 						channelwork[i].PCM_NOW += channelwork[i].PCM_ADD_H;
 						channelwork[i].PCM_NOW_XOR += channelwork[i].PCM_ADD_L;
@@ -501,10 +501,10 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 						}
 						
 						if(channelwork[i].PCM_NOW>=channelwork[i].PCM_END-1) {
-							// @°ì¼¡Êä´°¤Î¤È¤­¤â¤Á¤ã¤ó¤ÈÆ°¤¯¤è¤¦¤Ë¼ÂÁõ   ^^
+							// @ä¸€æ¬¡è£œå®Œã®ã¨ãã‚‚ã¡ã‚ƒã‚“ã¨å‹•ãã‚ˆã†ã«å®Ÿè£…   ^^
 						
 							if(channelwork[i].PCM_LOOP_FLG) {
-								// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+								// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 								channelwork[i].PCM_NOW
 										= channelwork[i].PCM_LOOP;
 							} else {
@@ -531,10 +531,10 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 						}
 						
 						if(channelwork[i].PCM_NOW>=channelwork[i].PCM_END-1) {
-							// @°ì¼¡Êä´°¤Î¤È¤­¤â¤Á¤ã¤ó¤ÈÆ°¤¯¤è¤¦¤Ë¼ÂÁõ   ^^
+							// @ä¸€æ¬¡è£œå®Œã®ã¨ãã‚‚ã¡ã‚ƒã‚“ã¨å‹•ãã‚ˆã†ã«å®Ÿè£…   ^^
 						
 							if(channelwork[i].PCM_LOOP_FLG) {
-								// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+								// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 								channelwork[i].PCM_NOW
 										= channelwork[i].PCM_LOOP;
 							} else {
@@ -561,10 +561,10 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 						}
 						
 						if(channelwork[i].PCM_NOW>=channelwork[i].PCM_END-1) {
-							// @°ì¼¡Êä´°¤Î¤È¤­¤â¤Á¤ã¤ó¤ÈÆ°¤¯¤è¤¦¤Ë¼ÂÁõ   ^^
+							// @ä¸€æ¬¡è£œå®Œã®ã¨ãã‚‚ã¡ã‚ƒã‚“ã¨å‹•ãã‚ˆã†ã«å®Ÿè£…   ^^
 						
 							if(channelwork[i].PCM_LOOP_FLG) {
-								// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+								// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 								channelwork[i].PCM_NOW
 										= channelwork[i].PCM_LOOP;
 							} else {
@@ -591,10 +591,10 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 						}
 						
 						if(channelwork[i].PCM_NOW>=channelwork[i].PCM_END-1) {
-							// @°ì¼¡Êä´°¤Î¤È¤­¤â¤Á¤ã¤ó¤ÈÆ°¤¯¤è¤¦¤Ë¼ÂÁõ   ^^
+							// @ä¸€æ¬¡è£œå®Œã®ã¨ãã‚‚ã¡ã‚ƒã‚“ã¨å‹•ãã‚ˆã†ã«å®Ÿè£…   ^^
 						
 							if(channelwork[i].PCM_LOOP_FLG) {
-								// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+								// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 								channelwork[i].PCM_NOW
 										= channelwork[i].PCM_LOOP;
 							} else {
@@ -621,10 +621,10 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 						}
 						
 						if(channelwork[i].PCM_NOW>=channelwork[i].PCM_END-1) {
-							// @°ì¼¡Êä´°¤Î¤È¤­¤â¤Á¤ã¤ó¤ÈÆ°¤¯¤è¤¦¤Ë¼ÂÁõ   ^^
+							// @ä¸€æ¬¡è£œå®Œã®ã¨ãã‚‚ã¡ã‚ƒã‚“ã¨å‹•ãã‚ˆã†ã«å®Ÿè£…   ^^
 						
 							if(channelwork[i].PCM_LOOP_FLG) {
-								// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+								// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 								channelwork[i].PCM_NOW
 										= channelwork[i].PCM_LOOP;
 							} else {
@@ -651,10 +651,10 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 						}
 						
 						if(channelwork[i].PCM_NOW>=channelwork[i].PCM_END-1) {
-							// @°ì¼¡Êä´°¤Î¤È¤­¤â¤Á¤ã¤ó¤ÈÆ°¤¯¤è¤¦¤Ë¼ÂÁõ   ^^
+							// @ä¸€æ¬¡è£œå®Œã®ã¨ãã‚‚ã¡ã‚ƒã‚“ã¨å‹•ãã‚ˆã†ã«å®Ÿè£…   ^^
 						
 							if(channelwork[i].PCM_LOOP_FLG) {
-								// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+								// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 								channelwork[i].PCM_NOW
 										= channelwork[i].PCM_LOOP;
 							} else {
@@ -681,10 +681,10 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 						}
 						
 						if(channelwork[i].PCM_NOW>=channelwork[i].PCM_END-1) {
-							// @°ì¼¡Êä´°¤Î¤È¤­¤â¤Á¤ã¤ó¤ÈÆ°¤¯¤è¤¦¤Ë¼ÂÁõ   ^^
+							// @ä¸€æ¬¡è£œå®Œã®ã¨ãã‚‚ã¡ã‚ƒã‚“ã¨å‹•ãã‚ˆã†ã«å®Ÿè£…   ^^
 						
 							if(channelwork[i].PCM_LOOP_FLG) {
-								// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+								// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 								channelwork[i].PCM_NOW
 										= channelwork[i].PCM_LOOP;
 							} else {
@@ -711,10 +711,10 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 						}
 						
 						if(channelwork[i].PCM_NOW>=channelwork[i].PCM_END-1) {
-							// @°ì¼¡Êä´°¤Î¤È¤­¤â¤Á¤ã¤ó¤ÈÆ°¤¯¤è¤¦¤Ë¼ÂÁõ   ^^
+							// @ä¸€æ¬¡è£œå®Œã®ã¨ãã‚‚ã¡ã‚ƒã‚“ã¨å‹•ãã‚ˆã†ã«å®Ÿè£…   ^^
 						
 							if(channelwork[i].PCM_LOOP_FLG) {
-								// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+								// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 								channelwork[i].PCM_NOW
 										= channelwork[i].PCM_LOOP;
 							} else {
@@ -728,7 +728,7 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 				case 9 :	//  0 , 1
 					while(di < &dest[nsamples * 2]) {
 						
-						di++;		// ±¦¤Î¤ß
+						di++;		// å³ã®ã¿
 						*di++ += (VolumeTable[channelwork[i].PCM_VOL][*channelwork[i].PCM_NOW] * (0x10000-channelwork[i].PCM_NOW_XOR)
 							+ VolumeTable[channelwork[i].PCM_VOL][*(channelwork[i].PCM_NOW+1)] * channelwork[i].PCM_NOW_XOR) >> 16;
 						
@@ -740,10 +740,10 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 						}
 						
 						if(channelwork[i].PCM_NOW>=channelwork[i].PCM_END-1) {
-							// @°ì¼¡Êä´°¤Î¤È¤­¤â¤Á¤ã¤ó¤ÈÆ°¤¯¤è¤¦¤Ë¼ÂÁõ   ^^
+							// @ä¸€æ¬¡è£œå®Œã®ã¨ãã‚‚ã¡ã‚ƒã‚“ã¨å‹•ãã‚ˆã†ã«å®Ÿè£…   ^^
 						
 							if(channelwork[i].PCM_LOOP_FLG) {
-								// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+								// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 								channelwork[i].PCM_NOW
 										= channelwork[i].PCM_LOOP;
 							} else {
@@ -760,7 +760,7 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 				case 1 :	//  1 , 0
 					while(di < &dest[nsamples * 2]) {
 						*di++ += VolumeTable[channelwork[i].PCM_VOL][*channelwork[i].PCM_NOW];
-						di++;		// º¸¤Î¤ß
+						di++;		// å·¦ã®ã¿
 						
 						channelwork[i].PCM_NOW += channelwork[i].PCM_ADD_H;
 						channelwork[i].PCM_NOW_XOR += channelwork[i].PCM_ADD_L;
@@ -771,7 +771,7 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 						
 						if(channelwork[i].PCM_NOW>=channelwork[i].PCM_END) {
 							if(channelwork[i].PCM_LOOP_FLG) {
-								// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+								// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 								channelwork[i].PCM_NOW
 										= channelwork[i].PCM_LOOP;
 							} else {
@@ -797,7 +797,7 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 						
 						if(channelwork[i].PCM_NOW>=channelwork[i].PCM_END) {
 							if(channelwork[i].PCM_LOOP_FLG) {
-								// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+								// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 								channelwork[i].PCM_NOW
 										= channelwork[i].PCM_LOOP;
 							} else {
@@ -823,7 +823,7 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 						
 						if(channelwork[i].PCM_NOW>=channelwork[i].PCM_END) {
 							if(channelwork[i].PCM_LOOP_FLG) {
-								// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+								// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 								channelwork[i].PCM_NOW
 										= channelwork[i].PCM_LOOP;
 							} else {
@@ -849,7 +849,7 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 						
 						if(channelwork[i].PCM_NOW>=channelwork[i].PCM_END) {
 							if(channelwork[i].PCM_LOOP_FLG) {
-								// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+								// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 								channelwork[i].PCM_NOW
 										= channelwork[i].PCM_LOOP;
 							} else {
@@ -875,7 +875,7 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 						
 						if(channelwork[i].PCM_NOW>=channelwork[i].PCM_END) {
 							if(channelwork[i].PCM_LOOP_FLG) {
-								// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+								// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 								channelwork[i].PCM_NOW
 										= channelwork[i].PCM_LOOP;
 							} else {
@@ -901,7 +901,7 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 						
 						if(channelwork[i].PCM_NOW>=channelwork[i].PCM_END) {
 							if(channelwork[i].PCM_LOOP_FLG) {
-								// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+								// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 								channelwork[i].PCM_NOW
 										= channelwork[i].PCM_LOOP;
 							} else {
@@ -927,7 +927,7 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 						
 						if(channelwork[i].PCM_NOW>=channelwork[i].PCM_END) {
 							if(channelwork[i].PCM_LOOP_FLG) {
-								// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+								// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 								channelwork[i].PCM_NOW
 										= channelwork[i].PCM_LOOP;
 							} else {
@@ -953,7 +953,7 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 						
 						if(channelwork[i].PCM_NOW>=channelwork[i].PCM_END) {
 							if(channelwork[i].PCM_LOOP_FLG) {
-								// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+								// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 								channelwork[i].PCM_NOW
 										= channelwork[i].PCM_LOOP;
 							} else {
@@ -966,7 +966,7 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 					
 				case 9 :	//  0 , 1
 					while(di < &dest[nsamples * 2]) {
-						di++;			// ±¦¤Î¤ß
+						di++;			// å³ã®ã¿
 						*di++ += VolumeTable[channelwork[i].PCM_VOL][*channelwork[i].PCM_NOW];
 						
 						channelwork[i].PCM_NOW += channelwork[i].PCM_ADD_H;
@@ -978,7 +978,7 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 						
 						if(channelwork[i].PCM_NOW>=channelwork[i].PCM_END) {
 							if(channelwork[i].PCM_LOOP_FLG) {
-								// ¥ë¡¼¥×¤¹¤ë¾ì¹ç
+								// ãƒ«ãƒ¼ãƒ—ã™ã‚‹å ´åˆ
 								channelwork[i].PCM_NOW
 										= channelwork[i].PCM_LOOP;
 							} else {
@@ -996,7 +996,7 @@ void PPZ8::Mix(Sample* dest, int nsamples)
 
 /*
 //-----------------------------------------------------------------------------
-//	¥Æ¡¼¥Ö¥ë
+//	ãƒ†ãƒ¼ãƒ–ãƒ«
 //-----------------------------------------------------------------------------
 Sample PPZ8::VolumeTable[16][256] = {0,};
 */

@@ -4,25 +4,25 @@
 // ---------------------------------------------------------------------------
 //	$Id: fmgen.cpp,v 1.1 2001/04/23 22:25:33 kaoru-k Exp $
 // ---------------------------------------------------------------------------
-//	»²¹Í:
+//	å‚è€ƒ:
 //		FM sound generator for M.A.M.E., written by Tatsuyuki Satoh.
 //
-//	Ì¤¼ÂÁõ:
+//	æœªå®Ÿè£…:
 //		OPN SSG-Type Envelop
 //
-//	Ææ:
-//		OPNB ¤Î CSM ¥â¡¼¥É(»ÅÍÍ¤¬¤è¤¯¤ï¤«¤é¤Ê¤¤)
+//	è¬:
+//		OPNB ã® CSM ãƒ¢ãƒ¼ãƒ‰(ä»•æ§˜ãŒã‚ˆãã‚ã‹ã‚‰ãªã„)
 //
-//	À©¸Â:
-//		¡¦¹çÀ®¼şÇÈ¿ô¤È½ĞÎÏ¼şÇÈ¿ô¤ÎÈæ¤ÏÁ´¥¤¥ó¥¹¥¿¥ó¥¹¤ÇÅı°ì¤·¤Ê¤±¤ì¤Ğ¤Ê¤é¤Ê¤¤
-//		¡¦LFO ¤ò»È¤¦¾ì¹ç¡¤°Û¤Ê¤ë¥¤¥ó¥¹¥¿¥ó¥¹´Ö¤Ç¤â¥¹¥ì¥Ã¥É¥»¡¼¥Õ¤Ç¤Ï¤Ê¤¯¤Ê¤ë
+//	åˆ¶é™:
+//		ãƒ»åˆæˆå‘¨æ³¢æ•°ã¨å‡ºåŠ›å‘¨æ³¢æ•°ã®æ¯”ã¯å…¨ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã§çµ±ä¸€ã—ãªã‘ã‚Œã°ãªã‚‰ãªã„
+//		ãƒ»LFO ã‚’ä½¿ã†å ´åˆï¼Œç•°ãªã‚‹ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹é–“ã§ã‚‚ã‚¹ãƒ¬ãƒƒãƒ‰ã‚»ãƒ¼ãƒ•ã§ã¯ãªããªã‚‹
 //
-//	¼Õ¼­:
-//		Tatsuyuki Satoh ¤µ¤ó(fm.c)
-//		Hiromitsu Shioya ¤µ¤ó(ADPCM-A)
-//		DMP-SOFT. ¤µ¤ó(OPNB)
-//		KAJA ¤µ¤ó(test program)
-//		¤Û¤«·Ç¼¨ÈÄÅù¤ÇÍÍ¡¹¤Ê¤´½õ¸À¡¤¤´»Ù±ç¤ò¤ª´ó¤»¤¤¤¿¤À¤¤¤¿³§ÍÍ¤Ë
+//	è¬è¾:
+//		Tatsuyuki Satoh ã•ã‚“(fm.c)
+//		Hiromitsu Shioya ã•ã‚“(ADPCM-A)
+//		DMP-SOFT. ã•ã‚“(OPNB)
+//		KAJA ã•ã‚“(test program)
+//		ã»ã‹æ²ç¤ºæ¿ç­‰ã§æ§˜ã€…ãªã”åŠ©è¨€ï¼Œã”æ”¯æ´ã‚’ãŠå¯„ã›ã„ãŸã ã„ãŸçš†æ§˜ã«
 // ---------------------------------------------------------------------------
 
 #include "headers.h"
@@ -38,8 +38,8 @@
 #endif
 
 // ---------------------------------------------------------------------------
-//	X86 ÈÇ¥³¡¼¥É¤ò»ÈÍÑ¤¹¤ë¾ì¹ç¡¤
-//	Äê¿ô¤ÎÃÍ¤ò sizeof(Channel4) ¤ÈÅù¤·¤¯¤Ê¤ë¤è¤¦¤ËÀßÄê¤¹¤ë¤³¤È¡¥
+//	X86 ç‰ˆã‚³ãƒ¼ãƒ‰ã‚’ä½¿ç”¨ã™ã‚‹å ´åˆï¼Œ
+//	å®šæ•°ã®å€¤ã‚’ sizeof(Channel4) ã¨ç­‰ã—ããªã‚‹ã‚ˆã†ã«è¨­å®šã™ã‚‹ã“ã¨ï¼
 //
 #define CH4S	496				// = sizeof(Channel4)
 
@@ -105,7 +105,7 @@ namespace FM
 {
 
 // ---------------------------------------------------------------------------
-//	¥Æ¡¼¥Ö¥ëºîÀ®
+//	ãƒ†ãƒ¼ãƒ–ãƒ«ä½œæˆ
 //
 void MakeTable()
 {
@@ -136,7 +136,7 @@ void MakeTable()
 	{
 		int c = int(((1 << (16 + FM_ISHIFT)) - 1) * pow(2.0, -i / double(64 << FM_SINEPRESIS)));
 #if 1
-		// ÀºÅÙÍŞÀ©
+		// ç²¾åº¦æŠ‘åˆ¶
 //		c += 1 << (3 + FM_ISHIFT);
 //		c &= ~1 << (3 + FM_ISHIFT);
 		for (int j=16+FM_ISHIFT; j>11; j--)
@@ -225,7 +225,7 @@ void MakeTable()
 	}
 }
 
-//	¥Á¥Ã¥×¤Î¥µ¥ó¥×¥ê¥ó¥°¥ì¡¼¥È¤ÈÀ¸À®¤¹¤ë²»¤Î¥µ¥ó¥×¥ê¥ó¥°¥ì¡¼¥È¤È¤ÎÈæ¤òÀßÄê
+//	ãƒãƒƒãƒ—ã®ã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°ãƒ¬ãƒ¼ãƒˆã¨ç”Ÿæˆã™ã‚‹éŸ³ã®ã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°ãƒ¬ãƒ¼ãƒˆã¨ã®æ¯”ã‚’è¨­å®š
 void MakeTimeTable(uint ratio)
 {
 	if (ratio != currentratio)
@@ -239,7 +239,7 @@ void MakeTimeTable(uint ratio)
 //	Operator
 //
 
-//	¹½ÃÛ
+//	æ§‹ç¯‰
 FM::Operator::Operator()
 {
 	// EG Part
@@ -259,7 +259,7 @@ FM::Operator::Operator()
 	Reset();
 }
 
-//	½é´ü²½
+//	åˆæœŸåŒ–
 void FM::Operator::Reset()
 {
 	// EG part
@@ -277,7 +277,7 @@ void FM::Operator::Reset()
 }
 
 
-//	¥¯¥í¥Ã¥¯¡¦¥µ¥ó¥×¥ê¥ó¥°¥ì¡¼¥ÈÈæ¤Ë°ÍÂ¸¤¹¤ë¥Æ¡¼¥Ö¥ë¤òºîÀ®
+//	ã‚¯ãƒ­ãƒƒã‚¯ãƒ»ã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°ãƒ¬ãƒ¼ãƒˆæ¯”ã«ä¾å­˜ã™ã‚‹ãƒ†ãƒ¼ãƒ–ãƒ«ã‚’ä½œæˆ
 void Operator::MakeTimeTable(uint ratio)
 {
 	int h, l;
@@ -316,7 +316,7 @@ inline void FM::Operator::SetDPBN(uint _dp, uint _bn)
 }
 
 
-//	½àÈ÷
+//	æº–å‚™
 void Operator::Prepare()
 {
 	if (paramchanged)
@@ -355,7 +355,7 @@ void Operator::Prepare()
 		EGUpdate();
 	}
 }
-//	envelope ¤Î phase ÊÑ¹¹
+//	envelope ã® phase å¤‰æ›´
 void Operator::ShiftPhase(EGPhase nextphase)
 {
 	switch (nextphase)
@@ -409,7 +409,7 @@ void Operator::ShiftPhase(EGPhase nextphase)
 }
 
 
-//	envelope ¤Î phase ÊÑ¹¹ (for x86 engine)
+//	envelope ã® phase å¤‰æ›´ (for x86 engine)
 inline void Operator::ShiftPhase2()
 {
 	switch (phase)
@@ -474,7 +474,7 @@ Channel4::Channel4()
 	pms = pmtable[0][0];
 }
 
-// ¥ê¥»¥Ã¥È
+// ãƒªã‚»ãƒƒãƒˆ
 void Channel4::Reset()
 {
 	op[0].Reset();
@@ -483,7 +483,7 @@ void Channel4::Reset()
 	op[3].Reset();
 }
 
-//	Calc ¤ÎÍÑ°Õ
+//	Calc ã®ç”¨æ„
 int Channel4::Prepare()
 {
 	op[0].Prepare();
@@ -497,7 +497,7 @@ int Channel4::Prepare()
 	return key | lfo;
 }
 
-//	F-Number/BLOCK ¤òÀßÄê
+//	F-Number/BLOCK ã‚’è¨­å®š
 void Channel4::SetFNum(uint f)
 {
 	uint dp = (f & 2047) << ((f >> 11) & 7);
@@ -508,18 +508,18 @@ void Channel4::SetFNum(uint f)
 	op[3].SetDPBN(dp, bn);
 }
 
-//	KC/KF ¤òÀßÄê
+//	KC/KF ã‚’è¨­å®š
 void Channel4::SetKCKF(uint kc, uint kf)
 {
 #if 1
-	// ÍıÏÀÃÍ
+	// ç†è«–å€¤
 	const static uint kctable[16] = 
 	{ 
 		5197, 5506, 5833, 6180, 6180, 6547, 6937, 7349, 
 		7349, 7786, 8249, 8740, 8740, 9259, 9810, 10394, 
 	};
 #else
-	// °úÍÑ(X68Sound.dll)
+	// å¼•ç”¨(X68Sound.dll)
 	const static uint kctable[16] = 
 	{ 
 		5196, 5504, 5832, 6180, 6180, 6548, 6936, 7348, 
@@ -536,7 +536,7 @@ void Channel4::SetKCKF(uint kc, uint kf)
 	op[3].SetDPBN(dp, bn);
 }
 
-//	¥­¡¼À©¸æ
+//	ã‚­ãƒ¼åˆ¶å¾¡
 void Channel4::KeyControl(uint key)
 {
 	if (key & 0x1) op[0].KeyOn(); else op[0].KeyOff();
@@ -545,7 +545,7 @@ void Channel4::KeyControl(uint key)
 	if (key & 0x8) op[3].KeyOn(); else op[3].KeyOff();
 }
 
-//	¥¢¥ë¥´¥ê¥º¥à¤òÀßÄê
+//	ã‚¢ãƒ«ã‚´ãƒªã‚ºãƒ ã‚’è¨­å®š
 void Channel4::SetAlgorithm(uint algo)
 {
 	static const uint8 table1[8][6] = 
@@ -567,12 +567,12 @@ void Channel4::SetAlgorithm(uint algo)
 
 // ---------------------------------------------------------------------------
 //	4-op Channel 
-//	£±¥µ¥ó¥×¥ë¹çÀ®
+//	ï¼‘ã‚µãƒ³ãƒ—ãƒ«åˆæˆ
 
-//	ISample ¤ò envelop count (2¦Ğ) ¤ËÊÑ´¹¤¹¤ë¥·¥Õ¥ÈÎÌ
+//	ISample ã‚’ envelop count (2Ï€) ã«å¤‰æ›ã™ã‚‹ã‚·ãƒ•ãƒˆé‡
 #define IS2EC_SHIFT		((20 + FM_PGBITS) - (16 + FM_ISHIFT))
 
-// ÆşÎÏ: s = 20+FM_PGBITS = 29
+// å…¥åŠ›: s = 20+FM_PGBITS = 29
 #define Sine(s)	sinetable[((s) >> (20+FM_PGBITS-FM_OPSINBITS))&(FM_OPSINENTS-1)]
 
 static inline FM::ISample LogToLin(uint a)
@@ -600,7 +600,7 @@ inline void Operator::EGUpdate()
 #endif
 }
 
-//	EG ·×»»
+//	EG è¨ˆç®—
 void FM::Operator::EGCalc()
 {
 	egstep += 3L << (11 + FM_EGBITS);
@@ -619,7 +619,7 @@ void FM::Operator::EGCalc()
 	EGUpdate();
 }
 
-//	PG ·×»»
+//	PG è¨ˆç®—
 //	ret:2^(20+PGBITS) / cycle
 inline uint32 FM::Operator::PGCalc()
 {
@@ -635,8 +635,8 @@ inline uint32 FM::Operator::PGCalcL()
 	return ret;
 }
 
-//	OP ·×»»
-//	in: ISample (ºÇÂç 8¦Ğ)
+//	OP è¨ˆç®—
+//	in: ISample (æœ€å¤§ 8Ï€)
 inline FM::ISample FM::Operator::Calc(ISample in)
 {
 	if ((egstep -= egstepd) < 0)
@@ -660,14 +660,14 @@ inline FM::ISample FM::Operator::CalcN(uint noise)
 	
 	int lv = Max(0, 0x3ff - (tlout + eglevel)) << (4 + FM_ISHIFT);
 	
-	// noise & 1 ? lv : -lv ¤ÈÅù²Á 
+	// noise & 1 ? lv : -lv ã¨ç­‰ä¾¡ 
 	noise = (noise & 1) - 1;
 	out = (lv + noise) ^ noise;
 	return out;
 }
 
-//	OP (FB) ·×»»
-//	Self Feedback ¤ÎÊÑÄ´ºÇÂç = 4¦Ğ
+//	OP (FB) è¨ˆç®—
+//	Self Feedback ã®å¤‰èª¿æœ€å¤§ = 4Ï€
 inline FM::ISample FM::Operator::CalcFB(uint fb)
 {
 	if ((egstep -= egstepd) < 0)
@@ -702,7 +702,7 @@ inline FM::ISample FM::Operator::CalcFBL(uint fb)
 
 #ifndef FM_USE_X86_CODE
 
-//  ¹çÀ®
+//  åˆæˆ
 ISample Channel4::Calc()
 {
 	buf[1] = buf[2] = buf[3] = 0;
@@ -715,7 +715,7 @@ ISample Channel4::Calc()
 	return *out[2] + o;
 }
 
-//  ¹çÀ®
+//  åˆæˆ
 ISample Channel4::CalcL()
 {
 	pmv = pms[pml];
@@ -731,7 +731,7 @@ ISample Channel4::CalcL()
 
 #endif
 
-//  ¹çÀ®
+//  åˆæˆ
 ISample Channel4::CalcN(uint noise)
 {
 	buf[1] = buf[2] = buf[3] = 0;
@@ -744,7 +744,7 @@ ISample Channel4::CalcN(uint noise)
 	return *out[2] + o;
 }
 
-//  ¹çÀ®
+//  åˆæˆ
 ISample Channel4::CalcLN(uint noise)
 {
 	pmv = pms[pml];

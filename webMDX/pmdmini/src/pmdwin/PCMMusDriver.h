@@ -19,7 +19,7 @@ typedef unsigned char bool;
 
 
 //=============================================================================
-// IPCMMUSICDRIVER : ▓╗╕╗е╔ещеде╨д╬┤Ё╦▄┼кд╩едеєе┐б╝е╒езеде╣дЄ─ъ╡┴д╖д┐епеще╣
+// IPCMMUSICDRIVER : щЯ│ц║РуГЙуГйуВдуГРуБохЯ║цЬмчЪДуБкуВдуГ│уВ┐уГ╝уГХуВзуВдуВ╣уВТхоЪч╛йуБЧуБЯуВпуГйуВ╣
 //=============================================================================
 
 interface IPCMMUSICDRIVER : public IUnknown {
@@ -38,7 +38,7 @@ interface IPCMMUSICDRIVER : public IUnknown {
 
 
 //=============================================================================
-// IFMPMD : WinFMP, PMDWin д╦╢ж─╠д╩едеєе┐б╝е╒езеде╣дЄ─ъ╡┴д╖д┐епеще╣
+// IFMPMD : WinFMP, PMDWin уБлхЕ▒щАЪуБкуВдуГ│уВ┐уГ╝уГХуВзуВдуВ╣уВТхоЪч╛йуБЧуБЯуВпуГйуВ╣
 //=============================================================================
 interface IFMPMD : public IPCMMUSICDRIVER {
 	virtual bool WINAPI loadrhythmsample(char *path) = 0;
@@ -70,7 +70,7 @@ extern "C" {
 #endif
 
 // GUID of IPCmMUSICDRIVER Interface ID
-interface	__declspec(uuid("9D4D6317-F40A-455E-9E2C-CB517556BA02")) IPCMMUSICDRIVER;	
+interface	__declspec(uuid("9D4D6317-F40A-455E-9E2C-CB517556BA02")) IPCMMUSICDRIVER;
 
 // GUID of IFMPMD Interface ID
 interface	__declspec(uuid("81977D60-9496-4F20-A3BB-19B19943DA6D")) IFMPMD;
