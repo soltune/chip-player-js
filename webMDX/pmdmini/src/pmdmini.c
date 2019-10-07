@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 
 #include "pmdwin/pmdwinimport.h"
 #include "pmdmini.h"
@@ -240,8 +241,39 @@ void pmd_get_compo( char *dest )
 void pmd_set_rhythm_path( char *path )
 {
     loadrhythmsample(path);
-//    setrhythmvoldown(0);
-//    setfmvoldown(128);
-//    setssgvoldown(128);
+}
 
+void pmd_set_rhythm_with_ssg( int value )
+{
+    setrhythmwithssgeffect(value == 1);
+}
+
+char* pmd_get_memo(char *dest, unsigned char *musdata, int size, int al)
+{
+    return getmemo(dest, musdata, size, al);
+}
+
+int pmd_load_pcm_and_restart( char* filename )
+{
+    int result;
+    const char* ext = strrchr(filename, '.');
+
+    if (strcmp(ext, (const char*)".P86") == 0 || strcmp(ext, (const char*)".p86") == 0)
+    {
+        result = p86_load(filename);
+    }
+    else if (strcmp(ext, (const char*)".PPC") == 0 || strcmp(ext, (const char*)".ppc") == 0)
+    {
+        result = ppc_load(filename);
+    }
+    else if (strcmp(ext, (const char*)".PPS") == 0 || strcmp(ext, (const char*)".pps") == 0)
+    {
+        result = pps_load(filename);
+    }
+    else    // PZI / PVI
+    {
+        result = ppz_load(filename, 0);
+    }
+    music_start();
+    return result;
 }

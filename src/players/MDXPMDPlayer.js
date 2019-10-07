@@ -1,13 +1,12 @@
 import Player from "./Player.js";
-import promisify from "../promisifyXhr";
+import {CATALOG_PREFIX} from "../config";
 
 const fileExtensions = [
   'mdx', 'm', 'm2', 'mz'   // MDX, PMD
 ];
 
 const rhythmPath = '/rhythm';
-const remotePCMPath = '';
-const internalPCMPath = '/MDXPMDPCM';
+const internalPCMPath = '/mdxpcm';  // on the remote, pcm files should be located where mdx/pmd files are
 
 const SAMPLES_PER_BUFFER = 16384; // allowed: buffer sizes: 256, 512, 1024, 2048, 4096, 8192, 16384
 
@@ -48,20 +47,78 @@ class MDXPMDLibWrapper {
     return this.mdxpmdlib.ccall('mdx_get_mdx_mode', 'number') === 1;
   }
 
-  // registerFileData(pathFilenameArray, data) {
-  //   return this.registerEmscriptenFileData(pathFilenameArray, data);
-  // }
+  getPcmFilename() {
+    for (let i = 0; i < 3; i++ ) {
+      const file = this.mdxpmdlib.ccall('mdx_get_pcm_filename', 'string', ['number'], [i]);
+      if (file) {
+        return file;
+      }
+    }
+    return undefined;
+  }
 
-  loadMusicData(sampleRate, filename, data) {
+  getAbsolutePath(paths) {
+    const delimiter = '/';
+    let absolutePath = '';
+
+    paths.forEach((path, index) => {
+      if (index === 0) {
+        if (path.startsWith('http') || path.startsWith(delimiter)) {
+          absolutePath += path;
+        } else {
+          absolutePath += delimiter + path;
+        }
+      } else {
+        if (absolutePath.endsWith(delimiter) || path.startsWith(delimiter)) {
+          absolutePath += path;
+        } else {
+          absolutePath += delimiter + path;
+        }
+      }
+    });
+    return absolutePath;
+  }
+
+  loadMusicData(sampleRate, path, filename, data, onMusicLoadFinished) {
     let buf = this.mdxpmdlib._malloc(data.length);
     this.mdxpmdlib.HEAPU8.set(data, buf);
     const result = this.mdxpmdlib.ccall('mdx_load_file', 'number',
       ['string', 'number', 'number'], [filename, buf, data.length]);
     this.mdxpmdlib._free(buf);
-
     if (result === 0) { // result -> 0: success, 1: error
       this.currentFile = filename;
     }
+
+    const pcmFileName = this.getPcmFilename();
+    if (pcmFileName) {
+      const remotePcmAbsolutePath = this.getAbsolutePath([CATALOG_PREFIX, path, pcmFileName]);
+      if (!this.existsFileData(internalPCMPath, pcmFileName)) {
+        fetch(remotePcmAbsolutePath, {method: 'GET',})
+          .then(response => {
+            if (!response.ok) { // 404, 500.. missing pcm can be ignored for playing
+              throw Error(response.statusText);
+            }
+            return response.arrayBuffer();
+          })
+          .then(buffer => {
+            this.registerFileData(internalPCMPath, pcmFileName, buffer);
+            this.mdxpmdlib.ccall('mdx_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
+            onMusicLoadFinished(result);
+
+          }).catch(e => {
+            console.log(e);
+            onMusicLoadFinished(result);
+        });
+      } else {
+        // file already exists
+        this.mdxpmdlib.ccall('mdx_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
+        onMusicLoadFinished(result);
+      }
+    } else {
+      // no additional PCM required
+      onMusicLoadFinished(result);
+    }
+
     return result;
   }
 
@@ -106,8 +163,49 @@ class MDXPMDLibWrapper {
     return this.currentFile === null;
   }
 
+  hasLoop() {
+    return this.mdxpmdlib.ccall('mdx_has_loop', 'number') === 1;
+  }
+
+  setRhythmWithSSG(value) {
+    value = value? 1 : 0;
+    this.mdxpmdlib.ccall('mdx_set_rhythm_with_ssg', null, ['number'], [value]);
+  }
+
+  getRhythmWithSSG() {
+    return this.mdxpmdlib.ccall('mdx_get_rhythm_with_ssg', 'number') === 0;
+  }
+
   getDelegate() {
     return this.mdxpmdlib;
+  }
+
+  existsFileData(path, filename) {
+    try {
+      return this.fs.readdir(path).includes(filename);
+    } catch (e) {
+      return false; // given path does not exist
+    }
+  }
+
+  registerFileData(path, filename, data) {
+    try {
+      let parent = '.';
+      path.split('/').forEach((pathToken) => {  // create directories recursive
+        if (pathToken.length > 0 && this.fs.readdir(parent).indexOf(pathToken) < 0) {
+          this.fs.mkdir(parent + '/' + pathToken);
+        }
+        parent += '/' + pathToken;
+      });
+    } catch (ignore) {
+    }
+    try {
+      this.fs.writeFile(path + '/' + filename, new Uint8Array(data));
+    } catch (e) {
+      // file may already exist, e.g. drag/dropped again.. just keep entry
+      return false;
+    }
+    return true;
   }
 }
 
@@ -168,7 +266,10 @@ export default class MDXPMDPlayer extends Player {
             finished = true;  // detected the termination of non-looped tune
           } else {
             finished = (this.lib.computeAudioSamples() === 1);
-            if (!this.lib.isMdxMode() && !this.isFadingOut && this.getDurationMs() - this.currentPlaytime <= 2000) {
+            if (!this.lib.isMdxMode() && !this.isFadingOut && this.lib.hasLoop() &&
+              this.getDurationMs() - this.currentPlaytime <= 2000) {
+              // set fadeout only if the file is pmd and has loop
+              // MDXWin has its own fade out function
               this.setFadeout(this.currentPlaytime);
             }
           }
@@ -216,45 +317,23 @@ export default class MDXPMDPlayer extends Player {
       '2608_TOM.WAV',
       '2608_TOP.WAV',
     ].forEach((rhythmFile) => {
-      if (!this.existsFileData(rhythmPath, rhythmFile)) {
-        const fileRequest = promisify(new XMLHttpRequest());
-        fileRequest.responseType = 'arraybuffer';
-        fileRequest.open('GET', rhythmPath + '/' + rhythmFile);
-        fileRequest.send()
-          .then(xhr => xhr.response)
+      if (!this.lib.existsFileData(rhythmPath, rhythmFile)) {
+        const remoteRhythmAbsolutePath = this.lib.getAbsolutePath([rhythmPath, rhythmFile]);
+        fetch(remoteRhythmAbsolutePath, {method: 'GET',})
+          .then(response => {
+            if (!response.ok) {
+              throw Error(response.statusText);
+            }
+            return response.arrayBuffer();
+          })
           .then(buffer => {
-            this.registerFileData(rhythmPath, rhythmFile, buffer);
+            this.lib.registerFileData(rhythmPath, rhythmFile, buffer);
+          })
+          .catch(e => {
+            //console.log(e);
           });
       }
     });
-  }
-
-  existsFileData(path, filename) {
-    try {
-      return this.fs.readdir(path).includes(filename);
-    } catch (e) {
-      return false; // given path does not exist
-    }
-  }
-
-  registerFileData(path, filename, data) {
-    try {
-      let parent = '.';
-      path.split('/').forEach((pathToken) => {  // create directories recursive
-        if (pathToken.length > 0 && this.fs.readdir(parent).indexOf(pathToken) < 0) {
-          this.fs.mkdir(parent + '/' + pathToken);
-        }
-        parent += '/' + pathToken;
-      });
-    } catch (ignore) {
-    }
-    try {
-      this.fs.writeFile(path + '/' + filename, new Uint8Array(data));
-    } catch (e) {
-      // file may already exist, e.g. drag/dropped again.. just keep entry
-      return false;
-    }
-    return true;
   }
 
   getResampledAudio(input, len) {
@@ -428,19 +507,20 @@ export default class MDXPMDPlayer extends Player {
       this.lib.teardown();
     }
 
-    // Cの内部的にはすべて小文字と思っているので、ここで一律直してしまう
-    filepath = filepath.toLowerCase();
     const [path, filename] = this.lib.getPathAndFilename(filepath);
-    this.registerFileData(path, filename,  data);
+    this.lib.registerFileData(path, filename,  data);
 
-    const status = this.lib.loadMusicData(this.sampleRate, filepath, data);
-    if (status === 0) {
-      this.init(filepath, data);
-      this.connect();
-      this.resume();
+    const _onMusicLoadFinished = (status) => {
+      // we will get also PCM asynchronously in `loadMusicData()` so the following impl should be given as a callback
+      if (status === 0) {
+        this.init(filepath, data);
+        this.connect();
+        this.resume();
 
-      this.onPlayerStateUpdate(!this.isPlaying());
-    }
+        this.onPlayerStateUpdate(!this.isPlaying());
+      }
+    };
+    this.lib.loadMusicData(this.sampleRate, path, filepath, data, _onMusicLoadFinished);
   }
 
   createMetadata(fullFilename) {
@@ -498,6 +578,17 @@ export default class MDXPMDPlayer extends Player {
 
   getParamDefs() {
     let params = {};
+    if (!this.lib.isClosed()) {
+      if (!this.lib.isMdxMode()) {
+        params = {
+          id: 'rhythmwssg',
+          label: 'Rhythm with SSG Drums',
+          hint: 'Play rhythm samples with SSG drums',
+          type: 'toggle',
+          defaultValue: true,
+        };
+      }
+    }
     return [
       params,
     ];
@@ -505,9 +596,9 @@ export default class MDXPMDPlayer extends Player {
 
   setParameter(id, value) {
     switch (id) {
-      // case 'pc98fix':
-      //   this.setVolumeFix(value);
-      //   break;
+      case 'rhythmwssg':
+        this.lib.setRhythmWithSSG(value);
+        break;
       default:
         console.warn('S98Player has no parameter with id "%s".', id);
     }

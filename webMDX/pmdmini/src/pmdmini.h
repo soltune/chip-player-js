@@ -22,6 +22,9 @@ void pmd_setrate( int freq );
 void pmd_set_pos( int pos );
 int pmd_get_pos( void );
 void pmd_set_rhythm_path( char *path );
+void pmd_set_rhythm_with_ssg( int value );
+char* pmd_get_memo(char *dest, unsigned char *musdata, int size, int al);
+int pmd_load_pcm_and_restart( char* filename );
 
 int pmd_get_tracks( void );
 void pmd_get_current_notes ( int *notes , int len );

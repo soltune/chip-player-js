@@ -31,7 +31,7 @@
 
 #include <emscripten.h>
 #include <stdio.h>
-#include <stdlib.h>     
+#include <stdlib.h>
 
 #include <iostream>
 #include <fstream>
@@ -123,8 +123,15 @@ int max_play_len= -1;
 double play_len= 0;
 int initialized= 0;
 int mdx_loop_count = 2;
+int pmd_loop_length = 0;
+char pmd_pcm_filenames[3][256];
 
 char* internalRhythmPath = "/rhythm";
+
+
+static void do_set_rhythm_with_ssg(int value) {
+    pmd_set_rhythm_with_ssg(value);
+}
 
 static void do_init() {
 	if (mdx_mode) {	
@@ -151,7 +158,10 @@ static void do_song_init() {
 		snprintf(mdx_artist_str, TEXT_MAX, "%s", encArtist.c_str());
 
 		pmd_get_title( mdx_raw_info_buffer );
-		max_play_len = pmd_length_msec() + pmd_loop_msec() * (mdx_loop_count - 1);
+		do_set_rhythm_with_ssg(1);  // default : true
+
+		pmd_loop_length = pmd_loop_msec();
+		max_play_len = pmd_length_msec() + pmd_loop_length * (mdx_loop_count - 1);
 
 	}
 	std::string encTitle= mdx_base64_encode((unsigned char*)mdx_raw_info_buffer, strlen(mdx_raw_info_buffer));
@@ -231,12 +241,24 @@ extern "C"  int EMSCRIPTEN_KEEPALIVE mdx_load_file(char *filename, void * inBuff
 	mdx_teardown();
 	do_init();
 
-	mdx_mode= ends_with(std::string(filename), std::string(".mdx"));
+	mdx_mode = ends_with(std::string(filename), std::string(".mdx")) || ends_with(std::string(filename), std::string(".MDX"));
 	
 	if (!file_open(filename)) {
 		// error
 		return 1;
 	} else {
+	    if (mdx_mode) {
+	        // MDX
+	    } else {
+	        unsigned char* copiedBuff = (unsigned char*) malloc(inBufSize);
+            memcpy(copiedBuff, inBuffer, inBufSize);
+
+	        pmd_get_memo(pmd_pcm_filenames[0], copiedBuff, inBufSize, 0); // p86 or ppc
+	        pmd_get_memo(pmd_pcm_filenames[1], copiedBuff, inBufSize, -1); // pps
+	        pmd_get_memo(pmd_pcm_filenames[2], copiedBuff, inBufSize, -2); // ppz
+
+	        free(copiedBuff);
+	    }
 		// success
 		do_song_init();
 		return 0;					
@@ -299,5 +321,31 @@ extern "C" int EMSCRIPTEN_KEEPALIVE mdx_get_mdx_mode() {
     return mdx_mode;
 }
 
+extern "C" int mdx_has_loop() __attribute__((noinline));
+extern "C" int EMSCRIPTEN_KEEPALIVE mdx_has_loop() {
+    return pmd_loop_length > 0;
+}
 
+extern "C" void mdx_set_rhythm_with_ssg(int value) __attribute__((noinline));
+extern "C" void EMSCRIPTEN_KEEPALIVE mdx_set_rhythm_with_ssg(int value) {
+    do_set_rhythm_with_ssg(value);
+}
+
+extern "C" char* mdx_get_pcm_filename(int number) __attribute__((noinline));
+extern "C" char* EMSCRIPTEN_KEEPALIVE mdx_get_pcm_filename(int number) {
+    if (mdx_mode) {
+        return "";  // TODO 実装
+    } else {
+        return (char*) &pmd_pcm_filenames[number];
+    }
+}
+
+extern "C" int mdx_reload_pcm(char* pcmFilename) __attribute__((noinline));
+extern "C" int EMSCRIPTEN_KEEPALIVE mdx_reload_pcm(char* pcmFilename) {
+    if (mdx_mode) {
+        return 1;   // TODO 実装
+    } else {
+        return pmd_load_pcm_and_restart(pcmFilename);
+    }
+}
 

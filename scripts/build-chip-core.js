@@ -342,6 +342,11 @@ var exported_functions = [
   '_mdx_get_audio_buffer',
   '_mdx_get_audio_buffer_length',
   '_mdx_compute_audio_samples',
+  '_mdx_has_loop',
+  '_mdx_set_rhythm_with_ssg',
+  '_mdx_get_pcm_filename',
+  '_mdx_reload_pcm',
+
   // '_mdx_get_device_count',
   // '_mdx_get_device_name',
   // '_mdx_set_channel_mask',
