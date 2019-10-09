@@ -192,6 +192,38 @@ source_files = source_files.concat(s98_files);
 source_files.push('webS98/src/m_s98.cpp');
 source_files.push('webS98/emscripten/adapter.cpp');
 
+const pmdmini_files = [
+  // 'fmgen/file.cpp',  // same as webS98
+  // 'fmgen/fmgen.cpp',
+  // 'fmgen/fmtimer.cpp',
+  // 'fmgen/opm.cpp',
+  // 'fmgen/opna.cpp',
+  // 'fmgen/psg.cpp',
+  'pmdwin/opnaw.cpp',
+  'pmdwin/p86drv.cpp',
+  'pmdwin/pmdwin.cpp',
+  'pmdwin/ppsdrv.cpp',
+  'pmdwin/ppz8l.cpp ',
+  'pmdwin/table.cpp',
+  'pmdwin/util.cpp',
+  'pmdmini.c',
+].map(file => 'webMDX/pmdmini/src/' + file);
+
+source_files = source_files.concat(pmdmini_files);
+
+const mdxmini_files = [
+  'mdx2151.c',
+  'mdxfile.c',
+  'mdxmini.c',
+  'mdxmml_ym2151.c',
+  'pcm8.c',
+  'pdxfile.c',
+  'ym2151.c'
+].map(file => 'webMDX/mdxmini/src/' + file);
+
+source_files = source_files.concat(mdxmini_files);
+source_files.push('webMDX/emscripten/adapter.cpp');
+
 var js_file = 'src/chip-core.js';
 var wasm_file = 'src/chip-core.wasm';
 var wasm_dir = paths.appPublic;
@@ -300,6 +332,26 @@ var exported_functions = [
   '_s98_set_channel_mask',
   '_s98_set_volumes',
 
+  '_mdx_load_file',
+  '_mdx_teardown',
+  '_mdx_get_current_position',
+  '_mdx_seek_position',
+  '_mdx_get_max_position',
+  '_mdx_get_track_info',
+  '_mdx_get_sample_rate',
+  '_mdx_get_audio_buffer',
+  '_mdx_get_audio_buffer_length',
+  '_mdx_compute_audio_samples',
+  '_mdx_has_loop',
+  '_mdx_set_rhythm_with_ssg',
+  '_mdx_get_pcm_filename',
+  '_mdx_reload_pcm',
+
+  // '_mdx_get_device_count',
+  // '_mdx_get_device_name',
+  // '_mdx_set_channel_mask',
+  // '_mdx_set_volumes',
+
   // From showcqtbar.c
   '_cqt_init',
   '_cqt_calc',
@@ -372,6 +424,10 @@ var flags = [
   '-DEMSCRIPTEN',
   '-IwebS98/src/',
   '-IwebS98/src/device',
+
+  // webMDX
+  '-IwebS98/src/device/fmgen',
+  '-IwebMDX/mdxmini/src/ ',
 ];
 var args = [].concat(flags, source_files);
 

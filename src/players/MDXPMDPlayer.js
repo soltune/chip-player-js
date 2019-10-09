@@ -1,83 +1,161 @@
 import Player from "./Player.js";
+import {CATALOG_PREFIX} from "../config";
 
 const fileExtensions = [
-  's98',
+  'mdx', 'm', 'm2', 'mz'   // MDX, PMD
 ];
+
 const rhythmPath = '/rhythm';
+const internalPCMPath = '/mdxpcm';  // on the remote, pcm files should be located where mdx/pmd files are
 
 const SAMPLES_PER_BUFFER = 16384; // allowed: buffer sizes: 256, 512, 1024, 2048, 4096, 8192, 16384
-const CHANNELS = {
-  'PSG': ['PSG 1', 'PSG 2', 'PSG 3'],                                                 // X1, MSX, many others
-  'OPN': ['FM 1', 'FM 2', 'FM 3', 'PSG 1', 'PSG 2', 'PSG 3'],                         // PC-8801(NORMAL), PC-9801(26)
-  'OPNA': ['FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6', 'PSG 1', 'PSG 2', 'PSG 3', // PC-8801(SB2), PC-9801(86)
-    'ADPCM', 'Bass drum', 'Snare', 'Cymbal', 'Hi-hat', 'Tom-tom', 'Rim shot'],
-  'OPN2': ['FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6'],                           // MegaDrive, FM-TOWNS
-  'OPM': ['FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6', 'FM 7', 'FM 8'],            // X1(FM)
-  'OPLL': ['FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6', 'FM 7', 'FM 8', 'FM 9',    // MasterSystem(FM), MSX2(FM)
-    'Hi-hat', 'Cymbal', 'Tom-tom', 'Snare', 'Bass Drum'],
-  'OPL': [],
-  'OPL2': [],
-  'OPL3': [],
-  'SNG': [],
-};
 
-class S98LibWrapper {
+class MDXPMDLibWrapper {
   constructor(chipCore) {
-    this.s98Lib = chipCore;
-    this.fs = this.s98Lib.FS;
+    this.mdxpmdlib = chipCore;
+    this.fs = this.mdxpmdlib.FS;
     this.currentFile = null;
   }
 
   getAudioBuffer() {
-    const ptr = this.s98Lib.ccall('s98_get_audio_buffer', 'number');
+    var ptr = this.mdxpmdlib.ccall('mdx_get_audio_buffer', 'number');
     // make it a this.Module.HEAP16 pointer
     return ptr >> 1;	// 2 x 16 bit samples
   }
 
   getAudioBufferLength() {
-    return this.s98Lib.ccall('s98_get_audio_buffer_length', 'number');
+    return this.mdxpmdlib.ccall('mdx_get_audio_buffer_length', 'number');
   }
 
   computeAudioSamples() {
-    return this.s98Lib.ccall('s98_compute_audio_samples', 'number');
+    return this.mdxpmdlib.ccall('mdx_compute_audio_samples', 'number');
   }
 
   getMaxPlaybackPosition() {
-    return this.s98Lib.ccall('s98_get_max_position', 'number');
+    return this.mdxpmdlib.ccall('mdx_get_max_position', 'number');
   }
 
   getPlaybackPosition() {
-    return this.s98Lib.ccall('s98_get_current_position', 'number');
+    return this.mdxpmdlib.ccall('mdx_get_current_position', 'number');
   }
 
   seekPlaybackPosition(pos) {
-    this.s98Lib.ccall('s98_seek_position', 'number', ['number'], [pos]);
+    this.mdxpmdlib.ccall('mdx_seek_position', 'number', ['number'], [pos]);
+  }
+
+  isMdxMode() {
+    return this.mdxpmdlib.ccall('mdx_get_mdx_mode', 'number') === 1;
+  }
+
+  getPcmFilename() {
+    return this.mdxpmdlib.ccall('mdx_get_pcm_filename', 'string');
+  }
+
+  getMetaData() {
+    const metaData = [];
+    //const module = this.mdxpmdlib.getDelegate();
+    const numOfInfo = 2;
+    const trackInfo = this.mdxpmdlib.ccall('mdx_get_track_info', 'number');
+
+    const info = this.mdxpmdlib.HEAP32.subarray(trackInfo >> 2, (trackInfo >> 2) + numOfInfo);
+    for (let i = 0; i < numOfInfo; i++) {
+      metaData.push(this.mdxpmdlib.UTF8ToString(info[i]));
+    }
+    return metaData;
+  }
+
+  getAbsolutePath(paths) {
+    const delimiter = '/';
+    let absolutePath = '';
+
+    paths.forEach((path, index) => {
+      if (index === 0) {
+        if (path.startsWith('http') || path.startsWith(delimiter)) {
+          absolutePath += path;
+        } else {
+          absolutePath += delimiter + path;
+        }
+      } else {
+        if (absolutePath.endsWith(delimiter) || path.startsWith(delimiter)) {
+          absolutePath += path;
+        } else {
+          absolutePath += delimiter + path;
+        }
+      }
+    });
+    return absolutePath;
+  }
+
+  loadMusicData(sampleRate, path, filename, data, onMusicLoadFinished) {
+    let buf = this.mdxpmdlib._malloc(data.length);
+    this.mdxpmdlib.HEAPU8.set(data, buf);
+    const result = this.mdxpmdlib.ccall('mdx_load_file', 'number',
+      ['string', 'number', 'number'], [filename, buf, data.length]);
+    this.mdxpmdlib._free(buf);
+    if (result === 0) { // result -> 0: success, 1: error
+      this.currentFile = filename;
+    }
+
+    const pcmFileName = this.getPcmFilename();
+    if (pcmFileName) {
+      const remotePcmAbsolutePath = this.getAbsolutePath([CATALOG_PREFIX, path, pcmFileName]);
+      if (!this.existsFileData(internalPCMPath, pcmFileName)) {
+        fetch(remotePcmAbsolutePath, {method: 'GET',})
+          .then(response => {
+            if (!response.ok) { // 404, 500.. missing pcm can be ignored for playing
+              throw Error(response.statusText);
+            }
+            return response.arrayBuffer();
+          })
+          .then(buffer => {
+            this.registerFileData(internalPCMPath, pcmFileName, buffer);
+            this.mdxpmdlib.ccall('mdx_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
+            onMusicLoadFinished(result);
+
+          })
+          .catch(e => {
+            console.log(e);
+            onMusicLoadFinished(result);
+        });
+      } else {
+        // file already exists
+        this.mdxpmdlib.ccall('mdx_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
+        onMusicLoadFinished(result);
+      }
+    } else {
+      // no additional PCM required
+      onMusicLoadFinished(result);
+    }
+
+    return result;
+  }
+
+  // evalTrackOptions(options) {
+  //   if (typeof options.timeout != 'undefined') {
+  //     ScriptNodePlayer.getInstance().setPlaybackTimeout(options.timeout*1000);
+  //   } else {
+  //     ScriptNodePlayer.getInstance().setPlaybackTimeout(-1);	// reset last songs setting
+  //   }
+  //   var id= (options && options.track) ? options.track : -1;	// by default do not set track
+  //   var boostVolume= (options && options.boostVolume) ? options.boostVolume : 0;
+  //   return this.Module.ccall('emu_set_subsong', 'number', ['number', 'number'], [id, boostVolume]);	// not used here..
+  // }
+
+  teardown() {
+    this.currentFile = null;
+    this.mdxpmdlib.ccall('mdx_teardown', 'number');	// just in case
   }
 
   getSampleRate() {
-    return this.s98Lib.ccall('s98_get_sample_rate', 'number');
-  }
-
-  getDeviceCount() {
-    return this.s98Lib.ccall('s98_get_device_count', 'number');
-  }
-
-  getDeviceName(deviceIndex) {
-    const tokens = this.s98Lib.ccall('s98_get_device_name', 'string', ['number'], [deviceIndex]).split('_');
-    return tokens[tokens.length - 1];
+    return this.mdxpmdlib.ccall('mdx_get_sample_rate', 'number');
   }
 
   setChannelMask(deviceIndex, mask) {
-    if (this.getDeviceName(deviceIndex) === 'OPN') {
-      // seem to require a padding only for OPN, according to opna.cpp
-      mask = (mask & 0b0111) + ((mask >> 3) << 6);
-    }
-    this.s98Lib.ccall('s98_set_channel_mask', null, ['number', 'number'], [deviceIndex, mask]);
-  }
-
-  setVolumes(deviceIndex, psgDb, fmDb, rhythmDb, adpcmDb) {
-    this.s98Lib.ccall('s98_set_volumes', null, ['number', 'number', 'number', 'number', 'number'],
-      [deviceIndex, psgDb, fmDb, rhythmDb, adpcmDb]);
+    // if (this.getDeviceName(deviceIndex) === 'OPN') {
+    //   // seem to require a padding only for OPN, according to opna.cpp
+    //   mask = (mask & 0b0111) + ((mask >> 3) << 6);
+    // }
+    // this.s98Lib.ccall('s98_set_channel_mask', null, ['number', 'number'], [deviceIndex, mask]);
   }
 
   getPathAndFilename(filename) {
@@ -89,51 +167,63 @@ class S98LibWrapper {
     return [path, fn];
   }
 
-  teardown() {
-    this.s98Lib.ccall('s98_teardown', 'number');	// just in case
-  }
-
-  close() {
-    this.s98Lib.ccall('s98_close');
-    this.currentFile = null;
-  }
-
   isClosed() {
     return this.currentFile === null;
   }
 
-  getDelegate() {
-    return this.s98Lib;
+  hasLoop() {
+    return this.mdxpmdlib.ccall('mdx_has_loop', 'number') === 1;
   }
 
-  loadMusicData(sampleRate, filenameWithPath, data) {
-    this.teardown();
+  setRhythmWithSSG(value) {
+    value = value? 1 : 0;
+    this.mdxpmdlib.ccall('mdx_set_rhythm_with_ssg', null, ['number'], [value]);
+  }
 
-    const filename = this.getPathAndFilename(filenameWithPath)[1];
+  getDelegate() {
+    return this.mdxpmdlib;
+  }
 
-    let buf = this.s98Lib._malloc(data.length);
-    this.s98Lib.HEAPU8.set(data, buf);
-    const result = this.s98Lib.ccall('s98_load_file', 'number', ['string', 'number', 'number'], [filename, buf, data.length]);
-    this.s98Lib._free(buf);
-
-    if (result === 0) { // result -> 0: success, 1: error
-      this.currentFile = filename;
+  existsFileData(path, filename) {
+    try {
+      return this.fs.readdir(path).includes(filename);
+    } catch (e) {
+      return false; // given path does not exist
     }
-    return result;
+  }
+
+  registerFileData(path, filename, data) {
+    try {
+      let parent = '.';
+      path.split('/').forEach((pathToken) => {  // create directories recursive
+        if (pathToken.length > 0 && this.fs.readdir(parent).indexOf(pathToken) < 0) {
+          this.fs.mkdir(parent + '/' + pathToken);
+        }
+        parent += '/' + pathToken;
+      });
+    } catch (ignore) {
+    }
+    try {
+      this.fs.writeFile(path + '/' + filename, new Uint8Array(data));
+    } catch (e) {
+      // file may already exist, e.g. drag/dropped again.. just keep entry
+      return false;
+    }
+    return true;
   }
 }
 
-export default class S98Player extends Player {
+export default class MDXPMDPlayer extends Player {
   constructor(audioCtx, destNode, chipCore, onPlayerStateUpdate) {
     super(audioCtx, destNode, chipCore, onPlayerStateUpdate);
     this.setParameter = this.setParameter.bind(this);
     this.getParameter = this.getParameter.bind(this);
     this.getParamDefs = this.getParamDefs.bind(this);
 
-    this.s98lib = new S98LibWrapper(chipCore);
-    this.fs = this.s98lib.fs;
+    this.lib = new MDXPMDLibWrapper(chipCore);
+    this.fs = this.lib.fs;
     this.sampleRate = audioCtx.sampleRate;
-    this.inputSampleRate = this.s98lib.getSampleRate();
+    this.inputSampleRate = this.lib.getSampleRate();
     this.channels = [];
 
     this.resampleBuffer = this.allocResampleBuffer(0);
@@ -179,8 +269,11 @@ export default class S98Player extends Player {
           if (this.currentPlaytime > 0 && this.getPositionMs() === 0) {
             finished = true;  // detected the termination of non-looped tune
           } else {
-            finished = (this.s98lib.computeAudioSamples() === 1);
-            if (!this.isFadingOut && this.getDurationMs() - this.currentPlaytime <= 2000) {
+            finished = (this.lib.computeAudioSamples() === 1);
+            if (!this.lib.isMdxMode() && !this.isFadingOut && this.lib.hasLoop() &&
+              this.getDurationMs() - this.currentPlaytime <= 2000) {
+              // set fadeout only if the file is pmd and has loop
+              // MDXWin has its own fade out function
               this.setFadeout(this.currentPlaytime);
             }
           }
@@ -193,8 +286,8 @@ export default class S98Player extends Player {
           }
 
           // refresh just in case they are not using one fixed buffer..
-          this.sourceBuffer = this.s98lib.getAudioBuffer();
-          this.sourceBufferLen = this.s98lib.getAudioBufferLength();
+          this.sourceBuffer = this.lib.getAudioBuffer();
+          this.sourceBufferLen = this.lib.getAudioBufferLength();
 
           this.numberOfSamplesToRender = this.getResampledAudio();
           this.sourceBufferIdx = 0;
@@ -219,29 +312,6 @@ export default class S98Player extends Player {
     });
   }
 
-
-  getAbsolutePath(paths) {
-    const delimiter = '/';
-    let absolutePath = '';
-
-    paths.forEach((path, index) => {
-      if (index === 0) {
-        if (path.startsWith('http') || path.startsWith(delimiter)) {
-          absolutePath += path;
-        } else {
-          absolutePath += delimiter + path;
-        }
-      } else {
-        if (absolutePath.endsWith(delimiter) || path.startsWith(delimiter)) {
-          absolutePath += path;
-        } else {
-          absolutePath += delimiter + path;
-        }
-      }
-    });
-    return absolutePath;
-  }
-
   registerRhythmData() {
     [
       '2608_BD.WAV',
@@ -251,8 +321,8 @@ export default class S98Player extends Player {
       '2608_TOM.WAV',
       '2608_TOP.WAV',
     ].forEach((rhythmFile) => {
-      if (!this.existsFileData(rhythmPath, rhythmFile)) {
-        const remoteRhythmAbsolutePath = this.getAbsolutePath([rhythmPath, rhythmFile]);
+      if (!this.lib.existsFileData(rhythmPath, rhythmFile)) {
+        const remoteRhythmAbsolutePath = this.lib.getAbsolutePath([rhythmPath, rhythmFile]);
         fetch(remoteRhythmAbsolutePath, {method: 'GET',})
           .then(response => {
             if (!response.ok) {
@@ -261,35 +331,13 @@ export default class S98Player extends Player {
             return response.arrayBuffer();
           })
           .then(buffer => {
-            this.registerFileData(rhythmPath, rhythmFile, buffer);
+            this.lib.registerFileData(rhythmPath, rhythmFile, buffer);
           })
           .catch(e => {
             //console.log(e);
           });
       }
     });
-  }
-
-  existsFileData(path, filename) {
-    try {
-      return this.fs.readdir(path).includes(filename);
-    } catch (e) {
-      return false; // given path does not exist
-    }
-  }
-
-  registerFileData(path, filename, data) {
-    try {
-      this.fs.mkdir(path);
-    } catch (ignore) {
-    }
-    try {
-      this.fs.writeFile(path + '/' + filename, new Uint8Array(data));
-    } catch (e) {
-      // file may already exist, e.g. drag/dropped again.. just keep entry
-      return false;
-    }
-    return true;
   }
 
   getResampledAudio(input, len) {
@@ -305,7 +353,7 @@ export default class S98Player extends Player {
   }
 
   readFloatSample(buffer, idx) {
-    return (this.s98lib.getDelegate().HEAP16[buffer + idx]) / 0x8000;
+    return (this.lib.getDelegate().HEAP16[buffer + idx]) / 0x8000;
   }
 
   allocResampleBuffer(s) {
@@ -442,83 +490,64 @@ export default class S98Player extends Player {
   }
 
   init(fullFilename, data) {
-    this.resetSampleRate(this.sampleRate, this.s98lib.getSampleRate());
+    this.resetSampleRate(this.sampleRate, this.lib.getSampleRate());
     this.currentPlaytime = 0;
     this.isFadingOut = false;
     this.fadeOutStartMs = 0;
     this.params = {};
 
-    const pathTokens = fullFilename.split('/');
-    this.metadata = this.createMetadata(pathTokens[pathTokens.length - 1]);
-    if (this.metadata.system.indexOf('9801') > -1 || this.metadata.system.indexOf('9821') > -1) {
-      // we need a tweak for the volume balance, as default setting seems to be referenced by PC-8801.
-      this.setVolumeFix(true);
-    }
-  }
-
-  setVolumeFix(isPc9801Fix) {
-    const volPsg = isPc9801Fix? -14 : 0;
-    for (let i = 0; i < this.s98lib.getDeviceCount(); i++) {
-      if (['OPN', 'OPNA'].indexOf(this.s98lib.getDeviceName(i) > -1)) {
-        this.s98lib.setVolumes(i, volPsg, 0, 0, 0);
-      }
-    }
+    this.metadata = this.createMetadata();
   }
 
   // overrided methods from Player
   restart() {
-    this.s98lib.seekPlaybackPosition(0);
+    this.lib.seekPlaybackPosition(0);
     this.resume();
   }
 
   loadData(data, filepath) {
-    if (this.s98lib.currentFile) {
-      this.s98lib.close();
+    if (!this.lib.isClosed()) {
+      this.lib.teardown();
     }
 
-    const status = this.s98lib.loadMusicData(this.sampleRate, filepath, data);
-    if (status === 0) {
-      this.init(filepath, data);
-      this.connect();
-      this.resume();
+    const [path, filename] = this.lib.getPathAndFilename(filepath);
+    this.lib.registerFileData(path, filename,  data);
 
-      this.onPlayerStateUpdate(!this.isPlaying());
-    }
+    const _onMusicLoadFinished = (status) => {
+      // we will get also PCM asynchronously in `loadMusicData()` so the following impl should be given as a callback
+      if (status === 0) {
+        this.init(filepath, data);
+        this.connect();
+        this.resume();
+
+        this.onPlayerStateUpdate(!this.isPlaying());
+      }
+    };
+    this.lib.loadMusicData(this.sampleRate, path, filepath, data, _onMusicLoadFinished);
   }
 
-  createMetadata(fullFilename) {
-    const module = this.s98lib.getDelegate();
-    const numOfInfo = 9;
-    const trackInfo = module.ccall('s98_get_track_info', 'number');
-
-    const info = module.HEAP32.subarray(trackInfo >> 2, (trackInfo >> 2) + numOfInfo);
+  createMetadata() {
+    const metaData = this.lib.getMetaData();
     return {
-      title: module.UTF8ToString(info[0]),
-      artist: module.UTF8ToString(info[1]),
-      game: module.UTF8ToString(info[2]),
-      year: module.UTF8ToString(info[3]),
-      genre: module.UTF8ToString(info[4]),
-      comment: module.UTF8ToString(info[5]),
-      copyright: module.UTF8ToString(info[6]),
-      s98by: module.UTF8ToString(info[7]),
-      system: module.UTF8ToString(info[8]),
+      title: metaData[0],
+      artist: metaData[1],
     };
   }
 
   getNumSubtunes() {
-    return 1;  // s98 should contain only one track.
+    return 1;  // MDX/PMD/FMP should contain only one track.
   }
 
   getSubtune() {
-    return 0; // S98 does not have subtunes.
+    return 0; // MDX/PMD does not have subtunes.
   }
 
   getPositionMs() {
-    return this.s98lib.getPlaybackPosition();
+    return this.lib.getPlaybackPosition();
   }
 
   getDurationMs() {
-    return this.s98lib.getMaxPlaybackPosition();
+    return this.lib.getMaxPlaybackPosition();
   }
 
   getMetadata() {
@@ -530,27 +559,27 @@ export default class S98Player extends Player {
   }
 
   getParamDefs() {
-    let px98fix = {};
-    if (! this.s98lib.isClosed()) { // avoid illegal memory access because this method is also called on end of list
-      if (['OPN', 'OPNA'].indexOf(this.s98lib.getDeviceName()) > -1 && this.metadata.system.indexOf('9801') === -1) {
-        px98fix = {
-          id: 'pc98fix',
-          label: 'PC-9801 Volume Balance Fix',
-          hint: 'Fix volume balance for PC-9801.',
+    let params = {};
+    if (!this.lib.isClosed()) {
+      if (!this.lib.isMdxMode()) {
+        params = {
+          id: 'rhythmwssg',
+          label: 'Rhythm with SSG Drums',
+          hint: 'Play rhythm samples with SSG drums',
           type: 'toggle',
-          defaultValue: false,
+          defaultValue: true,
         };
       }
     }
     return [
-      px98fix,
+      params,
     ];
   }
 
   setParameter(id, value) {
     switch (id) {
-      case 'pc98fix':
-        this.setVolumeFix(value);
+      case 'rhythmwssg':
+        this.lib.setRhythmWithSSG(value);
         break;
       default:
         console.warn('S98Player has no parameter with id "%s".', id);
@@ -559,11 +588,11 @@ export default class S98Player extends Player {
   }
 
   isPlaying() {
-    return !this.isPaused() && this.s98lib.getPlaybackPosition() < this.s98lib.getMaxPlaybackPosition();
+    return !this.isPaused() && this.lib.getPlaybackPosition() < this.lib.getMaxPlaybackPosition();
   }
 
   setTempo(val) {
-    //console.error('Unable to set speed for this file format.');
+    //TODO console.error('Unable to set speed for this file format.');
   }
 
   setFadeout(startMs) {
@@ -571,52 +600,27 @@ export default class S98Player extends Player {
     this.fadeOutStartMs = startMs;
   }
 
-  getAvailableChannelsOf(deviceIndex) {
-    const deviceName = this.s98lib.getDeviceName(deviceIndex);
-    return CHANNELS[deviceName];
-  }
-
-  getAvailableChannels() {
-    let _channels = [];
-    for (let i = 0; i < this.s98lib.getDeviceCount(); i++) {
-      Array.prototype.push.apply(_channels, this.getAvailableChannelsOf(i));
-    }
-    return _channels;
-  }
-
   getVoiceName(index) {
-    return this.getAvailableChannels()[index];
+    return 'hoge'; //TODO: 実装
   }
 
   getNumVoices() {
-    return this.getAvailableChannels().length;
+    return 1;   //TODO 実装
   }
 
   setVoices(voices) {
-    let shift = 0;
-    for (let deviceIndex = 0; deviceIndex < this.s98lib.getDeviceCount(); deviceIndex++) {
-      const availableChannels = this.getAvailableChannelsOf(deviceIndex).length;
-      let voicesOfDevice = voices.slice(shift, shift + availableChannels);
-      let mask = 0;
-      voicesOfDevice.forEach((isEnabled, j) => {
-        if (!isEnabled) {
-          mask += (1 << j);
-        }
-      });
-      this.s98lib.setChannelMask(deviceIndex, mask);
-      shift += availableChannels;
-    }
+    // TODO 実装
   }
 
   seekMs(positionMs) {
-    this.s98lib.seekPlaybackPosition(positionMs);
+    this.lib.seekPlaybackPosition(positionMs);
   }
 
   stop() {
     this.suspend();
-    this.s98lib.close();
+    this.lib.teardown(); // loadよりも、stop()のところで呼んだ方が確実な気がする
 
-    console.debug('S98Player.stop()');
+    console.debug('MDXPMDPlayer.stop()');
     this.onPlayerStateUpdate(true);
   }
 }
