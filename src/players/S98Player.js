@@ -1,5 +1,4 @@
 import Player from "./Player.js";
-import promisify from "../promisifyXhr";
 
 const fileExtensions = [
   's98',
@@ -8,14 +7,14 @@ const rhythmPath = '/rhythm';
 
 const SAMPLES_PER_BUFFER = 16384; // allowed: buffer sizes: 256, 512, 1024, 2048, 4096, 8192, 16384
 const CHANNELS = {
-  'PSG': ['PSG1', 'PSG2', 'PSG3'],                                                    // X1, MSX, many others
-  'OPN': ['FM1', 'FM2', 'FM3', 'PSG1', 'PSG2', 'PSG3'],                               // PC-8801(NORMAL), PC-9801(26)
-  'OPNA': ['FM1', 'FM2', 'FM3', 'FM4', 'FM5', 'FM6', 'PSG1', 'PSG2', 'PSG3', 'ADPCM', // PC-8801(SB2), PC-9801(86)
-    'Bass drum', 'Snare', 'Cymbal', 'Hi-hat', 'Tom-tom', 'Rim shot'],
-  'OPN2': ['FM1', 'FM2', 'FM3', 'FM4', 'FM5', 'FM6'],                                 // MegaDrive, FM-TOWNS
-  'OPM': ['FM1', 'FM2', 'FM3', 'FM4', 'FM5', 'FM6', 'FM7', 'FM8'],                    // X1(FM)
-  'OPLL': ['FM1', 'FM2', 'FM3', 'FM4', 'FM5', 'FM6', 'FM7', 'FM8', 'FM9',
-    'Hi-hat', 'Cymbal', 'Tom-tom', 'Snare', 'Bass Drum'],                             // MasterSystem(FM), MSX2(FM)
+  'PSG': ['PSG 1', 'PSG 2', 'PSG 3'],                                                 // X1, MSX, many others
+  'OPN': ['FM 1', 'FM 2', 'FM 3', 'PSG 1', 'PSG 2', 'PSG 3'],                         // PC-8801(NORMAL), PC-9801(26)
+  'OPNA': ['FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6', 'PSG 1', 'PSG 2', 'PSG 3', // PC-8801(SB2), PC-9801(86)
+    'ADPCM', 'Bass drum', 'Snare', 'Cymbal', 'Hi-hat', 'Tom-tom', 'Rim shot'],
+  'OPN2': ['FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6'],                           // MegaDrive, FM-TOWNS
+  'OPM': ['FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6', 'FM 7', 'FM 8'],            // X1(FM)
+  'OPLL': ['FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6', 'FM 7', 'FM 8', 'FM 9',    // MasterSystem(FM), MSX2(FM)
+    'Hi-hat', 'Cymbal', 'Tom-tom', 'Snare', 'Bass Drum'],
   'OPL': [],
   'OPL2': [],
   'OPL3': [],
@@ -220,6 +219,29 @@ export default class S98Player extends Player {
     });
   }
 
+
+  getAbsolutePath(paths) {
+    const delimiter = '/';
+    let absolutePath = '';
+
+    paths.forEach((path, index) => {
+      if (index === 0) {
+        if (path.startsWith('http') || path.startsWith(delimiter)) {
+          absolutePath += path;
+        } else {
+          absolutePath += delimiter + path;
+        }
+      } else {
+        if (absolutePath.endsWith(delimiter) || path.startsWith(delimiter)) {
+          absolutePath += path;
+        } else {
+          absolutePath += delimiter + path;
+        }
+      }
+    });
+    return absolutePath;
+  }
+
   registerRhythmData() {
     [
       '2608_BD.WAV',
@@ -230,13 +252,19 @@ export default class S98Player extends Player {
       '2608_TOP.WAV',
     ].forEach((rhythmFile) => {
       if (!this.existsFileData(rhythmPath, rhythmFile)) {
-        const fileRequest = promisify(new XMLHttpRequest());
-        fileRequest.responseType = 'arraybuffer';
-        fileRequest.open('GET', rhythmPath + '/' + rhythmFile);
-        fileRequest.send()
-          .then(xhr => xhr.response)
+        const remoteRhythmAbsolutePath = this.getAbsolutePath([rhythmPath, rhythmFile]);
+        fetch(remoteRhythmAbsolutePath, {method: 'GET',})
+          .then(response => {
+            if (!response.ok) {
+              throw Error(response.statusText);
+            }
+            return response.arrayBuffer();
+          })
           .then(buffer => {
             this.registerFileData(rhythmPath, rhythmFile, buffer);
+          })
+          .catch(e => {
+            //console.log(e);
           });
       }
     });
@@ -464,25 +492,16 @@ export default class S98Player extends Player {
     const trackInfo = module.ccall('s98_get_track_info', 'number');
 
     const info = module.HEAP32.subarray(trackInfo >> 2, (trackInfo >> 2) + numOfInfo);
-    const parseMeta = function (input) {
-      try {
-        // TODO: We need converting Japanese Texts to UTF-8 from SJIS (S98 V3 allows both UTF-8 and SJIS encodings)
-        return window.atob(module.UTF8ToString(input));
-      } catch (e) {
-        return module.UTF8ToString(input);
-      }
-    };
-
     return {
-      title: parseMeta(info[0]),
-      artist: parseMeta(info[1]),
-      game: parseMeta(info[2]),
-      year: parseMeta(info[3]),
-      genre: parseMeta(info[4]),
-      comment: parseMeta(info[5]),
-      copyright: parseMeta(info[6]),
-      s98by: parseMeta(info[7]),
-      system: parseMeta(info[8]),
+      title: module.UTF8ToString(info[0]),
+      artist: module.UTF8ToString(info[1]),
+      game: module.UTF8ToString(info[2]),
+      year: module.UTF8ToString(info[3]),
+      genre: module.UTF8ToString(info[4]),
+      comment: module.UTF8ToString(info[5]),
+      copyright: module.UTF8ToString(info[6]),
+      s98by: module.UTF8ToString(info[7]),
+      system: module.UTF8ToString(info[8]),
     };
   }
 
