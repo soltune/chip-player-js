@@ -392,6 +392,25 @@ int  mdx_get_buffer_size ( t_mdxmini *data )
 	return pcm8_get_buffer_size(data->songdata);
 }
 
+int  mdx_reload_pcm_and_restart( t_mdxmini *data, char* mdxpath )
+{
+    data->mdx->haspdx = FLAG_TRUE;
+    data->pdx = _get_pdx(data->mdx, mdxpath);
+    if (!data->pdx) {
+        data->mdx->haspdx = FLAG_FALSE;
+        return -1;
+    }
+
+    data->self = mdx_parse_mml_ym2151_async_initialize(data->mdx, data->pdx, data->songdata);
+    if (!data->self)
+        return -1;
+
+    data->samples = 0;
+    data->channels = pcm8_get_output_channels(data->songdata);
+
+    return 0;
+}
+
 /* pdx loading */
 
 static unsigned char*

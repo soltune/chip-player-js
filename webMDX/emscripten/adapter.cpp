@@ -124,7 +124,7 @@ double play_len= 0;
 int initialized= 0;
 int mdx_loop_count = 2;
 int pmd_loop_length = 0;
-char pmd_pcm_filenames[3][256];
+char pmd_pcm_filename[256];
 
 char* internalRhythmPath = "/rhythm";
 
@@ -247,19 +247,22 @@ extern "C"  int EMSCRIPTEN_KEEPALIVE mdx_load_file(char *filename, void * inBuff
 		// error
 		return 1;
 	} else {
-	    if (mdx_mode) {
-	        // MDX
-	    } else {
+		// success
+	    if (!mdx_mode) {
+	        // stores PCM filenames because minipmd forget them if pcm loading fail
 	        unsigned char* copiedBuff = (unsigned char*) malloc(inBufSize);
             memcpy(copiedBuff, inBuffer, inBufSize);
 
-	        pmd_get_memo(pmd_pcm_filenames[0], copiedBuff, inBufSize, 0); // p86 or ppc
-	        pmd_get_memo(pmd_pcm_filenames[1], copiedBuff, inBufSize, -1); // pps
-	        pmd_get_memo(pmd_pcm_filenames[2], copiedBuff, inBufSize, -2); // ppz
+	        pmd_get_memo(pmd_pcm_filename, copiedBuff, inBufSize, 0); // p86 or ppc
+	        if (*pmd_pcm_filename == 0) {
+	            pmd_get_memo(pmd_pcm_filename, copiedBuff, inBufSize, -1); // pps
+	        }
+	        if (*pmd_pcm_filename == 0) {
+                pmd_get_memo(pmd_pcm_filename, copiedBuff, inBufSize, -2); // ppz
+            }
 
 	        free(copiedBuff);
 	    }
-		// success
 		do_song_init();
 		return 0;					
 	}
@@ -331,19 +334,19 @@ extern "C" void EMSCRIPTEN_KEEPALIVE mdx_set_rhythm_with_ssg(int value) {
     do_set_rhythm_with_ssg(value);
 }
 
-extern "C" char* mdx_get_pcm_filename(int number) __attribute__((noinline));
-extern "C" char* EMSCRIPTEN_KEEPALIVE mdx_get_pcm_filename(int number) {
+extern "C" char* mdx_get_pcm_filename() __attribute__((noinline));
+extern "C" char* EMSCRIPTEN_KEEPALIVE mdx_get_pcm_filename() {
     if (mdx_mode) {
-        return "";  // TODO 実装
+        return (char*) mdxmini.mdx->pdx_name;
     } else {
-        return (char*) &pmd_pcm_filenames[number];
+        return (char*) pmd_pcm_filename;
     }
 }
 
 extern "C" int mdx_reload_pcm(char* pcmFilename) __attribute__((noinline));
 extern "C" int EMSCRIPTEN_KEEPALIVE mdx_reload_pcm(char* pcmFilename) {
     if (mdx_mode) {
-        return 1;   // TODO 実装
+        return mdx_reload_pcm_and_restart(&mdxmini, pcmFilename);
     } else {
         return pmd_load_pcm_and_restart(pcmFilename);
     }

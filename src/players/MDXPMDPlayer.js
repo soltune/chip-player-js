@@ -48,13 +48,7 @@ class MDXPMDLibWrapper {
   }
 
   getPcmFilename() {
-    for (let i = 0; i < 3; i++ ) {
-      const file = this.mdxpmdlib.ccall('mdx_get_pcm_filename', 'string', ['number'], [i]);
-      if (file) {
-        return file;
-      }
-    }
-    return undefined;
+    return this.mdxpmdlib.ccall('mdx_get_pcm_filename', 'string');
   }
 
   getAbsolutePath(paths) {
@@ -105,7 +99,8 @@ class MDXPMDLibWrapper {
             this.mdxpmdlib.ccall('mdx_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
             onMusicLoadFinished(result);
 
-          }).catch(e => {
+          })
+          .catch(e => {
             console.log(e);
             onMusicLoadFinished(result);
         });
@@ -170,10 +165,6 @@ class MDXPMDLibWrapper {
   setRhythmWithSSG(value) {
     value = value? 1 : 0;
     this.mdxpmdlib.ccall('mdx_set_rhythm_with_ssg', null, ['number'], [value]);
-  }
-
-  getRhythmWithSSG() {
-    return this.mdxpmdlib.ccall('mdx_get_rhythm_with_ssg', 'number') === 0;
   }
 
   getDelegate() {
@@ -636,7 +627,6 @@ export default class MDXPMDPlayer extends Player {
 
   stop() {
     this.suspend();
-    //this.lib.close();
     this.lib.teardown(); // loadよりも、stop()のところで呼んだ方が確実な気がする
 
     console.debug('MDXPMDPlayer.stop()');
