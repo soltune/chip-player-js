@@ -32,6 +32,7 @@
 #include <emscripten.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <iconv.h>
 
 #include <iostream>
 #include <fstream>
@@ -47,48 +48,6 @@
 #else
 #define EMSCRIPTEN_KEEPALIVE
 #endif
-
-
-// hack to pass all those japaneese info texts safely to the JavaScript side:
-static const std::string chars = 
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-std::string mdx_base64_encode(unsigned char* input, unsigned int len) {
-  int i, j = 0;
-  unsigned char arr3[3];
-  unsigned char arr4[4];
-  std::string ret;
-  
-  while (len--) {
-    arr3[i++] = *(input++);
-    if (i == 3) {
-      arr4[0] = (arr3[0] & 0xfc) >> 2;
-      arr4[1] = ((arr3[0] & 0x03) << 4) + ((arr3[1] & 0xf0) >> 4);
-      arr4[2] = ((arr3[1] & 0x0f) << 2) + ((arr3[2] & 0xc0) >> 6);
-      arr4[3] = arr3[2] & 0x3f;
-
-      for(i = 0; (i <4) ; i++) {
-        ret += chars[arr4[i]];
-		}
-      i = 0;
-    }
-  }
-  if (i) {
-    for(j = i; j < 3; j++) {
-      arr3[j] = '\0';
-	}
-    arr4[0] = ( arr3[0] & 0xfc) >> 2;
-    arr4[1] = ((arr3[0] & 0x03) << 4) + ((arr3[1] & 0xf0) >> 4);
-    arr4[2] = ((arr3[1] & 0x0f) << 2) + ((arr3[2] & 0xc0) >> 6);
-
-    for (j = 0; (j < i + 1); j++) {
-      ret += chars[arr4[j]];
-	}
-    while((i++ < 3)) {
-      ret += '=';
-	}
-  }
-  return ret;
-}
 
 #define CHANNELS 2				
 #define BYTES_PER_SAMPLE 2
@@ -107,15 +66,6 @@ char mdx_artist_str[TEXT_MAX];
 #define RAW_INFO_MAX	1024
 char mdx_raw_info_buffer[RAW_INFO_MAX];
 
-struct StaticBlock {
-    StaticBlock(){
-		mdx_info_texts[0]= mdx_title_str;
-		mdx_info_texts[1]= mdx_artist_str;
-    }
-};
-
-static StaticBlock static_constructor;
-
 int mdx_mode= 0;	// switch the two emulators..
 t_mdxmini mdxmini;
 
@@ -128,6 +78,16 @@ char pmd_pcm_filename[256];
 
 char* internalRhythmPath = "/rhythm";
 
+
+static char* to_utf8(iconv_t ic, char* in_sjis, char* out_utf8) {
+    size_t	in_size = strlen(in_sjis);
+    size_t	out_size = (size_t)TEXT_MAX;
+
+    iconv( ic, &in_sjis, &in_size, &out_utf8, &out_size );
+    *out_utf8 = '\0';
+
+    return out_utf8;
+}
 
 static void do_set_rhythm_with_ssg(int value) {
     pmd_set_rhythm_with_ssg(value);
@@ -146,27 +106,32 @@ static void do_init() {
 }
 
 static void do_song_init() {
+    iconv_t ic = iconv_open("UTF-8", "SJIS");  // sjis -> utf8
+
 	if (mdx_mode) {
 		mdx_set_max_loop(&mdxmini, (mdx_loop_count - 1));
 		mdx_get_title(&mdxmini, mdx_raw_info_buffer);
+		to_utf8(ic, mdx_raw_info_buffer, mdx_title_str);
 
 		max_play_len = mdx_get_length(&mdxmini) * 1000;
 
 	} else {
 		pmd_get_compo(mdx_raw_info_buffer);
-		std::string encArtist= mdx_base64_encode((unsigned char*)mdx_raw_info_buffer, strlen(mdx_raw_info_buffer));
-		snprintf(mdx_artist_str, TEXT_MAX, "%s", encArtist.c_str());
+		to_utf8(ic, mdx_raw_info_buffer, mdx_artist_str);
 
 		pmd_get_title( mdx_raw_info_buffer );
+		to_utf8(ic, mdx_raw_info_buffer, mdx_title_str);
+
 		do_set_rhythm_with_ssg(1);  // default : true
 
 		pmd_loop_length = pmd_loop_msec();
 		max_play_len = pmd_length_msec() + pmd_loop_length * (mdx_loop_count - 1);
 
 	}
-	std::string encTitle= mdx_base64_encode((unsigned char*)mdx_raw_info_buffer, strlen(mdx_raw_info_buffer));
-	snprintf(mdx_title_str, TEXT_MAX, "%s", encTitle.c_str());
+    iconv_close( ic );
 
+    mdx_info_texts[0] = mdx_title_str;
+    mdx_info_texts[1] = mdx_artist_str;
 }
 
 static int do_get_current_position() {

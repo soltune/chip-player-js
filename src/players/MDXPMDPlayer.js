@@ -51,6 +51,19 @@ class MDXPMDLibWrapper {
     return this.mdxpmdlib.ccall('mdx_get_pcm_filename', 'string');
   }
 
+  getMetaData() {
+    const metaData = [];
+    //const module = this.mdxpmdlib.getDelegate();
+    const numOfInfo = 2;
+    const trackInfo = this.mdxpmdlib.ccall('mdx_get_track_info', 'number');
+
+    const info = this.mdxpmdlib.HEAP32.subarray(trackInfo >> 2, (trackInfo >> 2) + numOfInfo);
+    for (let i = 0; i < numOfInfo; i++) {
+      metaData.push(this.mdxpmdlib.UTF8ToString(info[i]));
+    }
+    return metaData;
+  }
+
   getAbsolutePath(paths) {
     const delimiter = '/';
     let absolutePath = '';
@@ -483,8 +496,7 @@ export default class MDXPMDPlayer extends Player {
     this.fadeOutStartMs = 0;
     this.params = {};
 
-    const pathTokens = fullFilename.split('/');
-    this.metadata = this.createMetadata(pathTokens[pathTokens.length - 1]);
+    this.metadata = this.createMetadata();
   }
 
   // overrided methods from Player
@@ -494,7 +506,7 @@ export default class MDXPMDPlayer extends Player {
   }
 
   loadData(data, filepath) {
-    if (this.lib.currentFile) {
+    if (!this.lib.isClosed()) {
       this.lib.teardown();
     }
 
@@ -514,32 +526,11 @@ export default class MDXPMDPlayer extends Player {
     this.lib.loadMusicData(this.sampleRate, path, filepath, data, _onMusicLoadFinished);
   }
 
-  createMetadata(fullFilename) {
-    // const module = this.s98lib.getDelegate();
-    // const numOfInfo = 9;
-    // const trackInfo = module.ccall('s98_get_track_info', 'number');
-    //
-    // const info = module.HEAP32.subarray(trackInfo >> 2, (trackInfo >> 2) + numOfInfo);
-    // const parseMeta = function (input) {
-    //   try {
-    //     // TODO: We need converting Japanese Texts to UTF-8 from SJIS (S98 V3 allows both UTF-8 and SJIS encodings)
-    //     return window.atob(module.UTF8ToString(input));
-    //   } catch (e) {
-    //     return module.UTF8ToString(input);
-    //   }
-    // };
-
+  createMetadata() {
+    const metaData = this.lib.getMetaData();
     return {
-      // title: parseMeta(info[0]),
-      // artist: parseMeta(info[1]),
-      // game: parseMeta(info[2]),
-      // year: parseMeta(info[3]),
-      // genre: parseMeta(info[4]),
-      // comment: parseMeta(info[5]),
-      // copyright: parseMeta(info[6]),
-      // s98by: parseMeta(info[7]),
-      // system: parseMeta(info[8]),
-      title: 'test',
+      title: metaData[0],
+      artist: metaData[1],
     };
   }
 
@@ -548,7 +539,7 @@ export default class MDXPMDPlayer extends Player {
   }
 
   getSubtune() {
-    return 0; // MDX/PMD/FMP does not have subtunes.
+    return 0; // MDX/PMD does not have subtunes.
   }
 
   getPositionMs() {
@@ -601,7 +592,7 @@ export default class MDXPMDPlayer extends Player {
   }
 
   setTempo(val) {
-    //console.error('Unable to set speed for this file format.');
+    //TODO console.error('Unable to set speed for this file format.');
   }
 
   setFadeout(startMs) {
