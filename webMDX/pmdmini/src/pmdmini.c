@@ -277,3 +277,15 @@ int pmd_load_pcm_and_restart( char* filename )
     music_start();
     return result;
 }
+
+int pmd_set_mask( int ch, int is_maskon )
+{
+    if (is_maskon)
+    {
+        return maskon(ch);
+    }
+    else
+    {
+        return maskoff(ch);
+    }
+}

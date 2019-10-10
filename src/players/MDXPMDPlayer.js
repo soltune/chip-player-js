@@ -9,6 +9,27 @@ const rhythmPath = '/rhythm';
 const internalPCMPath = '/mdxpcm';  // on the remote, pcm files should be located where mdx/pmd files are
 
 const SAMPLES_PER_BUFFER = 16384; // allowed: buffer sizes: 256, 512, 1024, 2048, 4096, 8192, 16384
+const CHANNELS = {
+  'PMD': [
+    'FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6',
+    'SSG 1', 'SSG 2', 'SSG 3',
+    'ADPCM',
+    'SSG Rhythm',
+    'Ext 1', 'Ext 2', 'Ext 3',
+    'FM Rhythm',
+    'Eff',
+    'PPZ8 1', 'PPZ8 2', 'PPZ8 3', 'PPZ8 4', 'PPZ8 5', 'PPZ8 6', 'PPZ8 7', 'PPZ8 8'
+  ],
+  'MDX': {
+    9: [
+      'FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6', 'FM 7', 'FM 8', 'ADPCM'
+    ],
+    16: [
+      'FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6', 'FM 7', 'FM 8',
+      'PCM8 1', 'PCM8 2', 'PCM8 3', 'PCM8 4', 'PCM8 5', 'PCM8 6', 'PCM8 7', 'PCM8 8'
+    ],
+  }
+};
 
 class MDXPMDLibWrapper {
   constructor(chipCore) {
@@ -178,6 +199,14 @@ class MDXPMDLibWrapper {
   setRhythmWithSSG(value) {
     value = value? 1 : 0;
     this.mdxpmdlib.ccall('mdx_set_rhythm_with_ssg', null, ['number'], [value]);
+  }
+
+  getVoiceCount() {
+    return this.mdxpmdlib.ccall('mdx_get_voices', 'number');
+  }
+
+  setVoices(voices) {
+    return this.mdxpmdlib.ccall('mdx_set_voices', null, ['number'], [voices]);
   }
 
   getDelegate() {
@@ -564,8 +593,8 @@ export default class MDXPMDPlayer extends Player {
       if (!this.lib.isMdxMode()) {
         params = {
           id: 'rhythmwssg',
-          label: 'Rhythm with SSG Drums',
-          hint: 'Play rhythm samples with SSG drums',
+          label: 'Enable FM Rhythm with SSG Drums',
+          hint: 'Play FM(OPNA) rhythm samples with SSG drums',
           type: 'toggle',
           defaultValue: true,
         };
@@ -601,15 +630,27 @@ export default class MDXPMDPlayer extends Player {
   }
 
   getVoiceName(index) {
-    return 'hoge'; //TODO: 実装
+    if (this.lib.isMdxMode()) {
+      return 'hoge';
+    } else {
+      return CHANNELS['PMD'][index];
+    }
   }
 
   getNumVoices() {
-    return 1;   //TODO 実装
+
+    return this.lib.getVoiceCount();
   }
 
   setVoices(voices) {
-    // TODO 実装
+    let mask = 0;
+    voices.forEach((enabled, i) => {
+      if (!enabled) {
+        mask += (1 << i);
+      }
+    });
+    this.lib.setVoices(mask);
+
   }
 
   seekMs(positionMs) {

@@ -317,3 +317,24 @@ extern "C" int EMSCRIPTEN_KEEPALIVE mdx_reload_pcm(char* pcmFilename) {
     }
 }
 
+extern "C" int mdx_get_voices() __attribute__((noinline));
+extern "C" int EMSCRIPTEN_KEEPALIVE mdx_get_voices() {
+    if (mdx_mode) {
+        return mdxmini.mdx->tracks;
+    } else {
+        return pmd_get_tracks();
+    }
+}
+
+extern "C" void mdx_set_voices(unsigned int voices) __attribute__((noinline));
+extern "C" void EMSCRIPTEN_KEEPALIVE mdx_set_voices(unsigned int voices) {
+    if (mdx_mode) {
+        // todo
+    } else {
+        int voice_disabled = 1;
+        for (int i = 0; i < 24; i++) {
+            int maskon = (voices & (voice_disabled << i));
+            pmd_set_mask(i, maskon);
+        }
+    }
+}
