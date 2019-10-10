@@ -155,6 +155,6 @@ http.createServer(function (req, res) {
     res.writeHead(500);
     res.end(`Server error\n${e}\n`);
   }
-}).listen(8080, 'localhost');
+}).listen(8080, '0.0.0.0');
 
 console.log('Server running at http://localhost:8080/.');

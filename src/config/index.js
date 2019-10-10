@@ -1,5 +1,5 @@
-export const API_BASE = process.env.REACT_APP_API_BASE;
-export const CATALOG_PREFIX = process.env.REACT_APP_CATALOG_PREFIX;
+export const API_BASE = "http://"+window.location.hostname+":8080/";
+export const CATALOG_PREFIX = "http://"+window.location.hostname+":5000/static/catalog/";
 export const SOUNDFONT_URL_PATH = process.env.REACT_APP_SOUNDFONT_URL_PATH;
 
 export const MAX_VOICES = 64;

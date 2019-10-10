@@ -383,7 +383,7 @@ var flags = [
   '-s', 'ENVIRONMENT=web',
   '-s', 'USE_ZLIB=1',
   '-s', 'BINARYEN_TRAP_MODE=clamp',
-  '-s', 'EXPORT_ES6=1',
+  '-s', 'EXPORT_ES6=0',
   '-Os',
   '-o', js_file,
 
