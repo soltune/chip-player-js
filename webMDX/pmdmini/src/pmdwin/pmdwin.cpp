@@ -1435,8 +1435,15 @@ void PMDWIN::effsweep(void)
 	
 	dl = effwork.eswnst;
 	effwork.eswnct = dl & 15;
-	
-	effwork.eswnhz += dl / 16;
+
+	// used to be "dl / 16"
+	// with negative value division is different from shifting right
+	// division: usually truncated towards zero (mandatory since c99)
+	//   same as x86 idiv
+	// shift: usually arithmetic shift
+	//   same as x86 sar
+
+	effwork.eswnhz += dl >> 4;
 	
 	opna.SetReg(6, effwork.eswnhz);
 	open_work.psnoi_last = effwork.eswnhz;
@@ -3103,8 +3110,9 @@ uchar * PMDWIN::commandsp(QQ *qq, uchar *si)
 		//
 		case 0xe4 : si++; break;
 		//追加 for V2.3
-		case 0xe3 : if((qq->volume + *si) < 16) qq->volume += *si; si++;break;
-		case 0xe2 : if((qq->volume - *si) >= 0) qq->volume -= *si; si++;break;
+		// saturate
+		case 0xe3 : qq->volume += *si++; if (qq->volume > 15) qq->volume = 15; break;
+		case 0xe2 : qq->volume -= *si++; if (qq->volume < 0) qq->volume = 0; break;
 		//
 		case 0xe1 : si++; break;
 		case 0xe0 : si++; break;
@@ -5569,7 +5577,10 @@ void PMDWIN::fnumsetp(QQ *qq, int al)
 	
 	ax = psg_tune_data[bx];
 	if(cl > 0) {
-		ax = (ax + 1) >> cl;
+		int carry;
+		ax >>= cl - 1;
+		carry = ax & 1;
+		ax = (ax >> 1) + carry;
 	}
 	
 	qq->fnum = ax;
