@@ -82,6 +82,7 @@ typedef struct _TRACK_WORK {
   int quantize2;          /* quantize (@q) */
   int detune;             /* detune */
   int portament;          /* portament */
+  int muted;
 
   int loop_depth;
   int loop_counter[MDX_MAX_LOOP_DEPTH];

@@ -76,8 +76,14 @@ char s98_system_str[TEXT_MAX];
 char raw_info_buffer[RAW_INFO_MAX];
 
 unsigned char* buffer_copy= NULL;
+int isUnicodeTag;
 
 static char* to_utf8(iconv_t ic, char* in_sjis, char* out_utf8) {
+    if ( isUnicodeTag ) {
+        strcpy( out_utf8, in_sjis );
+        return out_utf8;
+    }
+
     size_t  in_size = strlen(in_sjis);
     size_t  out_size = (size_t)TEXT_MAX;
 
@@ -214,9 +220,16 @@ void extractStructFileInfo(char *filename) {
 		"s98by=foo" 0x0a
 		"system=PC-8801" 0x0a
 		*/
-		// TODO detect text encoding as V3 allows both sjis and utf8
 		const char *pfx= "[S98]";
-		int hasPrefix= !strncmp(raw_info_buffer, pfx, strlen(pfx));
+		unsigned char* tag = (unsigned char*) strstr( raw_info_buffer, pfx );
+		int hasPrefix= tag != NULL;
+		isUnicodeTag = 0;
+		if ( tag ) {
+		    tag += strlen( pfx );
+		    if ( *tag == 0xEF && *(++tag) == 0xBB && *(++tag) == 0xBF ) { // BOM
+		        isUnicodeTag = 1;
+		    }
+		}
 		
 		if (hasPrefix || g_soundinfo.dwIsV3) {
 			std::string s= std::string(raw_info_buffer + (hasPrefix?strlen(pfx):0));

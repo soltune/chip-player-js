@@ -317,3 +317,28 @@ extern "C" int EMSCRIPTEN_KEEPALIVE mdx_reload_pcm(char* pcmFilename) {
     }
 }
 
+extern "C" int mdx_get_voices() __attribute__((noinline));
+extern "C" int EMSCRIPTEN_KEEPALIVE mdx_get_voices() {
+    if (mdx_mode) {
+        return mdxmini.mdx->tracks;
+    } else {
+        return pmd_get_tracks();
+    }
+}
+
+extern "C" void mdx_set_voices(unsigned int voices) __attribute__((noinline));
+extern "C" void EMSCRIPTEN_KEEPALIVE mdx_set_voices(unsigned int voices) {
+    int voice_disabled = 1;
+
+    if (mdx_mode) {
+        for (int i = 0; i < mdxmini.mdx->tracks; i++) {
+            int maskon = (voices & (voice_disabled << i));
+            mdxmini.mdx->track[i].muted = (maskon)? 1 : 0;
+        }
+    } else {
+        for (int i = 0; i < 24; i++) {
+            int maskon = (voices & (voice_disabled << i));
+            pmd_set_mask(i, maskon);
+        }
+    }
+}

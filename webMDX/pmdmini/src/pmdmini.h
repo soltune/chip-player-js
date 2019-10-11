@@ -28,6 +28,7 @@ int pmd_load_pcm_and_restart( char* filename );
 
 int pmd_get_tracks( void );
 void pmd_get_current_notes ( int *notes , int len );
+int pmd_set_mask( int ch, int is_maskon );
 
 
 #endif

@@ -346,11 +346,8 @@ var exported_functions = [
   '_mdx_set_rhythm_with_ssg',
   '_mdx_get_pcm_filename',
   '_mdx_reload_pcm',
-
-  // '_mdx_get_device_count',
-  // '_mdx_get_device_name',
-  // '_mdx_set_channel_mask',
-  // '_mdx_set_volumes',
+  '_mdx_get_voices',
+  '_mdx_set_voices',
 
   // From showcqtbar.c
   '_cqt_init',

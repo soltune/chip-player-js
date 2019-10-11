@@ -7,8 +7,30 @@ const fileExtensions = [
 
 const rhythmPath = '/rhythm';
 const internalPCMPath = '/mdxpcm';  // on the remote, pcm files should be located where mdx/pmd files are
+const remotePCMPath = '';         // if you collect pcm files at in one place, set the path.
 
 const SAMPLES_PER_BUFFER = 16384; // allowed: buffer sizes: 256, 512, 1024, 2048, 4096, 8192, 16384
+const CHANNELS = {
+  'PMD': [
+    'FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6',
+    'SSG 1', 'SSG 2', 'SSG 3',
+    'ADPCM',
+    'SSG Rhythm',
+    'Ext 1', 'Ext 2', 'Ext 3',
+    'FM Rhythm',
+    'Eff',
+    'PPZ8 1', 'PPZ8 2', 'PPZ8 3', 'PPZ8 4', 'PPZ8 5', 'PPZ8 6', 'PPZ8 7', 'PPZ8 8'
+  ],
+  'MDX': {
+    9: [
+      'FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6', 'FM 7', 'FM 8', 'ADPCM'
+    ],
+    16: [
+      'FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6', 'FM 7', 'FM 8',
+      'PCM8 1', 'PCM8 2', 'PCM8 3', 'PCM8 4', 'PCM8 5', 'PCM8 6', 'PCM8 7', 'PCM8 8'
+    ],
+  }
+};
 
 class MDXPMDLibWrapper {
   constructor(chipCore) {
@@ -98,7 +120,7 @@ class MDXPMDLibWrapper {
 
     const pcmFileName = this.getPcmFilename();
     if (pcmFileName) {
-      const remotePcmAbsolutePath = this.getAbsolutePath([CATALOG_PREFIX, path, pcmFileName]);
+      let remotePcmAbsolutePath = this.getAbsolutePath([CATALOG_PREFIX, path, pcmFileName]);
       if (!this.existsFileData(internalPCMPath, pcmFileName)) {
         fetch(remotePcmAbsolutePath, {method: 'GET',})
           .then(response => {
@@ -111,12 +133,39 @@ class MDXPMDLibWrapper {
             this.registerFileData(internalPCMPath, pcmFileName, buffer);
             this.mdxpmdlib.ccall('mdx_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
             onMusicLoadFinished(result);
-
           })
           .catch(e => {
-            console.log(e);
-            onMusicLoadFinished(result);
-        });
+            // console.log(e);
+            return e;
+            //onMusicLoadFinished(result);
+          })
+          .then((e) => { // second try
+            if (e === undefined) {
+              return;
+            }
+            if (!remotePCMPath) {
+              onMusicLoadFinished(result);
+              return;
+            }
+            remotePcmAbsolutePath = this.getAbsolutePath([CATALOG_PREFIX, remotePCMPath, pcmFileName]);
+            fetch(remotePcmAbsolutePath, {method: 'GET',})
+              .then(response => {
+                if (!response.ok) { // 404, 500.. missing pcm can be ignored for playing
+                  throw Error(response.statusText);
+                }
+                return response.arrayBuffer();
+              })
+              .then(buffer => {
+                this.registerFileData(internalPCMPath, pcmFileName, buffer);
+                this.mdxpmdlib.ccall('mdx_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
+                onMusicLoadFinished(result);
+
+              })
+              .catch(e => {
+                // console.log(e);
+                onMusicLoadFinished(result); // giving up
+              });
+          });
       } else {
         // file already exists
         this.mdxpmdlib.ccall('mdx_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
@@ -178,6 +227,18 @@ class MDXPMDLibWrapper {
   setRhythmWithSSG(value) {
     value = value? 1 : 0;
     this.mdxpmdlib.ccall('mdx_set_rhythm_with_ssg', null, ['number'], [value]);
+  }
+
+  getVoiceCount() {
+    return this.mdxpmdlib.ccall('mdx_get_voices', 'number');
+  }
+
+  setVoices(voices) {
+    return this.mdxpmdlib.ccall('mdx_set_voices', null, ['number'], [voices]);
+  }
+
+  setTempo(tempo) {
+    //this.mdxpmdlib.ccall('mdx_set_tempo', null, ['number'], [tempo]);
   }
 
   getDelegate() {
@@ -564,8 +625,8 @@ export default class MDXPMDPlayer extends Player {
       if (!this.lib.isMdxMode()) {
         params = {
           id: 'rhythmwssg',
-          label: 'Rhythm with SSG Drums',
-          hint: 'Play rhythm samples with SSG drums',
+          label: 'Enable FM Rhythm with SSG Drums',
+          hint: 'Play FM(OPNA) rhythm samples with SSG drums',
           type: 'toggle',
           defaultValue: true,
         };
@@ -592,7 +653,7 @@ export default class MDXPMDPlayer extends Player {
   }
 
   setTempo(val) {
-    //TODO console.error('Unable to set speed for this file format.');
+    this.lib.setTempo(val);
   }
 
   setFadeout(startMs) {
@@ -601,15 +662,25 @@ export default class MDXPMDPlayer extends Player {
   }
 
   getVoiceName(index) {
-    return 'hoge'; //TODO: 実装
+    if (this.lib.isMdxMode()) {
+      return CHANNELS['MDX'][this.getNumVoices()][index];
+    } else {
+      return CHANNELS['PMD'][index];
+    }
   }
 
   getNumVoices() {
-    return 1;   //TODO 実装
+    return this.lib.getVoiceCount();
   }
 
   setVoices(voices) {
-    // TODO 実装
+    let mask = 0;
+    voices.forEach((enabled, i) => {
+      if (!enabled) {
+        mask += (1 << i);
+      }
+    });
+    this.lib.setVoices(mask);
   }
 
   seekMs(positionMs) {
@@ -618,7 +689,7 @@ export default class MDXPMDPlayer extends Player {
 
   stop() {
     this.suspend();
-    this.lib.teardown(); // loadよりも、stop()のところで呼んだ方が確実な気がする
+    this.lib.teardown();
 
     console.debug('MDXPMDPlayer.stop()');
     this.onPlayerStateUpdate(true);
