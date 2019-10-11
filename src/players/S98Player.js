@@ -150,6 +150,7 @@ export default class S98Player extends Player {
     this.sourceBufferIdx = 0;
     this.sourceBuffer = null;
     this.sourceBufferLen = 0;
+    this.isPC98System = false;
 
     this.params = {};
 
@@ -453,6 +454,9 @@ export default class S98Player extends Player {
     if (this.metadata.system.indexOf('9801') > -1 || this.metadata.system.indexOf('9821') > -1) {
       // we need a tweak for the volume balance, as default setting seems to be referenced by PC-8801.
       this.setVolumeFix(true);
+      this.isPC98System = true;
+    } else {
+      this.isPC98System = false;
     }
   }
 
@@ -532,15 +536,13 @@ export default class S98Player extends Player {
   getParamDefs() {
     let px98fix = {};
     if (! this.s98lib.isClosed()) { // avoid illegal memory access because this method is also called on end of list
-      if (['OPN', 'OPNA'].indexOf(this.s98lib.getDeviceName()) > -1 && this.metadata.system.indexOf('9801') === -1) {
-        px98fix = {
-          id: 'pc98fix',
-          label: 'PC-9801 Volume Balance Fix',
-          hint: 'Fix volume balance for PC-9801.',
-          type: 'toggle',
-          defaultValue: false,
-        };
-      }
+      px98fix = {
+        id: 'pc98fix',
+        label: 'PC-9801 Volume Balance Fix',
+        hint: 'Fix volume balance for PC-9801.',
+        type: 'toggle',
+        defaultValue: this.isPC98System,
+      };
     }
     return [
       px98fix,

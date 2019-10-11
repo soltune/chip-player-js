@@ -107,7 +107,7 @@ export default class PlayerParams extends PureComponent {
                            this.props.setParameter(param.id, e.target.checked);
                            this.forceUpdate();
                          }}
-                         checked={value}/>
+                         checked={value === undefined ? param.defaultValue : value}/>
                   {param.label}
                 </label>
               );
