@@ -323,6 +323,12 @@ mdx_parse_mml_ym2151_async(songdata *data)
     if ( infinite_loops > self->mdx->track[i].infinite_loop_times ) {
       infinite_loops = self->mdx->track[i].infinite_loop_times;
     }
+
+    if ( i < 8 ) {
+      ym2151_set_volume( i, self->mdx->track[i].volume * !self->mdx->track[i].muted, data );
+    } else {
+      pcm8_set_volume( i - 8, self->mdx->track[i].volume * !self->mdx->track[i].muted, data );
+    }
   }
 
   if ( self->mdx->max_infinite_loops > 0 ) {
@@ -435,6 +441,7 @@ mdx_init_track_work_area_ym2151( songdata *data )
     mdx->track[i].portament     = 0;
     if ( i<8 )
       ym2151_set_portament(i,0, data);
+    mdx->track[i].muted         = FLAG_FALSE;
 
     mdx->track[i].loop_depth = 0;
     mdx->track[i].infinite_loop_times = 0;

@@ -328,10 +328,14 @@ extern "C" int EMSCRIPTEN_KEEPALIVE mdx_get_voices() {
 
 extern "C" void mdx_set_voices(unsigned int voices) __attribute__((noinline));
 extern "C" void EMSCRIPTEN_KEEPALIVE mdx_set_voices(unsigned int voices) {
+    int voice_disabled = 1;
+
     if (mdx_mode) {
-        // todo
+        for (int i = 0; i < mdxmini.mdx->tracks; i++) {
+            int maskon = (voices & (voice_disabled << i));
+            mdxmini.mdx->track[i].muted = (maskon)? 1 : 0;
+        }
     } else {
-        int voice_disabled = 1;
         for (int i = 0; i < 24; i++) {
             int maskon = (voices & (voice_disabled << i));
             pmd_set_mask(i, maskon);

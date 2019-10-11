@@ -7,6 +7,7 @@ const fileExtensions = [
 
 const rhythmPath = '/rhythm';
 const internalPCMPath = '/mdxpcm';  // on the remote, pcm files should be located where mdx/pmd files are
+const remotePCMPath = '';         // if you collect pcm files at in one place, set the path.
 
 const SAMPLES_PER_BUFFER = 16384; // allowed: buffer sizes: 256, 512, 1024, 2048, 4096, 8192, 16384
 const CHANNELS = {
@@ -119,7 +120,7 @@ class MDXPMDLibWrapper {
 
     const pcmFileName = this.getPcmFilename();
     if (pcmFileName) {
-      const remotePcmAbsolutePath = this.getAbsolutePath([CATALOG_PREFIX, path, pcmFileName]);
+      let remotePcmAbsolutePath = this.getAbsolutePath([CATALOG_PREFIX, path, pcmFileName]);
       if (!this.existsFileData(internalPCMPath, pcmFileName)) {
         fetch(remotePcmAbsolutePath, {method: 'GET',})
           .then(response => {
@@ -132,12 +133,39 @@ class MDXPMDLibWrapper {
             this.registerFileData(internalPCMPath, pcmFileName, buffer);
             this.mdxpmdlib.ccall('mdx_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
             onMusicLoadFinished(result);
-
           })
           .catch(e => {
-            console.log(e);
-            onMusicLoadFinished(result);
-        });
+            // console.log(e);
+            return e;
+            //onMusicLoadFinished(result);
+          })
+          .then((e) => { // second try
+            if (e === undefined) {
+              return;
+            }
+            if (!remotePCMPath) {
+              onMusicLoadFinished(result);
+              return;
+            }
+            remotePcmAbsolutePath = this.getAbsolutePath([CATALOG_PREFIX, remotePCMPath, pcmFileName]);
+            fetch(remotePcmAbsolutePath, {method: 'GET',})
+              .then(response => {
+                if (!response.ok) { // 404, 500.. missing pcm can be ignored for playing
+                  throw Error(response.statusText);
+                }
+                return response.arrayBuffer();
+              })
+              .then(buffer => {
+                this.registerFileData(internalPCMPath, pcmFileName, buffer);
+                this.mdxpmdlib.ccall('mdx_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
+                onMusicLoadFinished(result);
+
+              })
+              .catch(e => {
+                // console.log(e);
+                onMusicLoadFinished(result); // giving up
+              });
+          });
       } else {
         // file already exists
         this.mdxpmdlib.ccall('mdx_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
@@ -207,6 +235,10 @@ class MDXPMDLibWrapper {
 
   setVoices(voices) {
     return this.mdxpmdlib.ccall('mdx_set_voices', null, ['number'], [voices]);
+  }
+
+  setTempo(tempo) {
+    //this.mdxpmdlib.ccall('mdx_set_tempo', null, ['number'], [tempo]);
   }
 
   getDelegate() {
@@ -621,7 +653,7 @@ export default class MDXPMDPlayer extends Player {
   }
 
   setTempo(val) {
-    //TODO console.error('Unable to set speed for this file format.');
+    this.lib.setTempo(val);
   }
 
   setFadeout(startMs) {
@@ -631,14 +663,13 @@ export default class MDXPMDPlayer extends Player {
 
   getVoiceName(index) {
     if (this.lib.isMdxMode()) {
-      return 'hoge';
+      return CHANNELS['MDX'][this.getNumVoices()][index];
     } else {
       return CHANNELS['PMD'][index];
     }
   }
 
   getNumVoices() {
-
     return this.lib.getVoiceCount();
   }
 
@@ -650,7 +681,6 @@ export default class MDXPMDPlayer extends Player {
       }
     });
     this.lib.setVoices(mask);
-
   }
 
   seekMs(positionMs) {
@@ -659,7 +689,7 @@ export default class MDXPMDPlayer extends Player {
 
   stop() {
     this.suspend();
-    this.lib.teardown(); // loadよりも、stop()のところで呼んだ方が確実な気がする
+    this.lib.teardown();
 
     console.debug('MDXPMDPlayer.stop()');
     this.onPlayerStateUpdate(true);
