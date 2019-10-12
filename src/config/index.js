@@ -7,6 +7,7 @@ export const REPLACE_STATE_ON_SEEK = false;
 export const FORMATS =  [
   'ay',
   'gbs',
+  'hes',
   'it',
   'm',
   'm2',
