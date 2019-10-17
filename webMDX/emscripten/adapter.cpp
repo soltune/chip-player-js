@@ -52,7 +52,8 @@
 #define CHANNELS 2				
 #define BYTES_PER_SAMPLE 2
 #define SAMPLE_BUF_SIZE	1024
-#define SAMPLE_FREQ	44100
+#define PMD_SAMPLE_FREQ	55466
+#define MDX_SAMPLE_FREQ 62400
 
 int16_t mdx_sample_buffer[SAMPLE_BUF_SIZE * CHANNELS];
 int mdx_samples_available= 0;
@@ -96,11 +97,11 @@ static void do_set_rhythm_with_ssg(int value) {
 static void do_init() {
 	if (mdx_mode) {	
 		memset(&mdxmini, 0, sizeof(t_mdxmini));
-		mdx_set_rate(SAMPLE_FREQ);	
+		mdx_set_rate(MDX_SAMPLE_FREQ);
 	} else {
 		pmd_init();
 		pmd_set_rhythm_path(internalRhythmPath);
-		pmd_setrate( SAMPLE_FREQ );
+		pmd_setrate( PMD_SAMPLE_FREQ );
 	}
 	initialized= 1;
 }
@@ -149,13 +150,16 @@ static int do_get_max_position() {
 static int mdx_compute_samples() {
 	if (do_get_current_position() >= do_get_max_position()) return 1;
 
+	mdx_samples_available= SAMPLE_BUF_SIZE;
 	if (mdx_mode) {
 		mdx_calc_sample(&mdxmini, mdx_sample_buffer, SAMPLE_BUF_SIZE);
+		play_len += ((double)mdx_samples_available)/MDX_SAMPLE_FREQ * 1000;
 	} else {
 		pmd_renderer ( mdx_sample_buffer, SAMPLE_BUF_SIZE );
+		play_len += ((double)mdx_samples_available)/PMD_SAMPLE_FREQ * 1000;
 	}
-	mdx_samples_available= SAMPLE_BUF_SIZE;
-	play_len += ((double)mdx_samples_available)/SAMPLE_FREQ * 1000;
+
+
 	return 0;
 }
 
@@ -235,7 +239,11 @@ extern "C"  int EMSCRIPTEN_KEEPALIVE mdx_load_file(char *filename, void * inBuff
 
 extern "C" int mdx_get_sample_rate() __attribute__((noinline));
 extern "C" EMSCRIPTEN_KEEPALIVE int mdx_get_sample_rate() {
-	return SAMPLE_FREQ;
+    if (mdx_mode) {
+	    return MDX_SAMPLE_FREQ;
+	} else {
+	    return PMD_SAMPLE_FREQ;
+	}
 }
 
 extern "C" int mdx_set_subsong(int subsong, unsigned char boost) __attribute__((noinline));
