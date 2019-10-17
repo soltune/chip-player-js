@@ -52,7 +52,7 @@ const char *getEmscriptenRhythmPath() {
 #define CHANNELS 2				
 #define BYTES_PER_SAMPLE 2
 #define SAMPLE_BUF_SIZE	1024
-#define SAMPLE_FREQ	44100
+#define SAMPLE_FREQ	55466
 
 
 Int16 sample_buffer[SAMPLE_BUF_SIZE * CHANNELS];
