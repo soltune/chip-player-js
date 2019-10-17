@@ -10,6 +10,7 @@ extern "C" {
 #include "fmplayer/fmdriver/fmdriver_fmp.h"
 #include "fmplayer/libopna/opnatimer.h"
 #include "fmplayer/libopna/opnaadpcm.h"
+#include "fmplayer/libopna/opnadrum.h"
 #include "fmplayer/libopna/opna.h"
 #include "fmplayer/common/fmplayer_common.h"
 }
@@ -25,6 +26,7 @@ extern "C" {
 #define BYTES_PER_SAMPLE 2
 #define SAMPLE_BUF_SIZE	1024
 #define SAMPLE_FREQ	55467
+#define FMP_MAX_LOOP 2
 
 int16_t fmp_sample_buffer[SAMPLE_BUF_SIZE * CHANNELS];
 int fmp_samples_available= 0;
@@ -40,23 +42,44 @@ char fmp_raw_info_buffer[RAW_INFO_MAX];
 
 int fmp_max_play_len= -1;
 double fmp_play_len= 0;
-int fmp_loop_count = 2;
-int fmp_loop_length = 0;
 char fmp_pcm_filename[256];
 bool fmp_loop_detected = false;
 
-char* fmp_internalRhythmPath = "/rhythm";
+char* fmp_internalRhythmPath = (char*)"/rhythm/ym2608_adpcm_rom.bin";
 
 struct driver_fmp fmp;    // fmdriver_fmp.h 演奏中のFMP各種情報
-
 struct opna_timer opna_timer;   //opnatimer.h
 struct fmdriver_work fmp_work;  //fmdriver.h
 struct ppz8 ppz8;
 uint8_t adpcmram[OPNA_ADPCM_RAM_SIZE];
 struct opna opna;
+uint8_t drum_rom[OPNA_ROM_SIZE];
 
-extern "C" bool fmplayer_drum_rom_load(struct opna_drum *drum) {   // opna_drum -> opnadrum.h
-  return false; // TODO 実装　fmplayer_drumrom_unix.c　任意のディレクトリから rom を読めるようにする
+static int loadfile(void) {
+  long size = 0;
+  FILE *rhythm = fopen(fmp_internalRhythmPath, "r");
+  if (!rhythm) goto loadfile_err;
+  if (fseek(rhythm, 0, SEEK_END) != 0) goto err_file;
+  size = ftell(rhythm) ;
+  if (size != OPNA_ROM_SIZE) goto err_file;
+  if (fseek(rhythm, 0, SEEK_SET) != 0) goto err_file;
+  if (fread(drum_rom, 1, OPNA_ROM_SIZE, rhythm) != OPNA_ROM_SIZE) goto err_file;
+  fclose(rhythm);
+  return 0;
+
+err_file:
+  fclose(rhythm);
+
+loadfile_err:
+  return 1;
+}
+
+extern "C" bool fmplayer_drum_rom_load(struct opna_drum *drum) {
+  if (loadfile() == 1) {
+    return false;
+  }
+  opna_drum_set_rom(drum, drum_rom);
+  return true;
 }
 
 static struct driver_fmp *fmp_dup(const struct driver_fmp *fmp) {
@@ -208,7 +231,7 @@ extern "C"  int EMSCRIPTEN_KEEPALIVE fmp_load_file(char *filename, void * inBuff
         return 1;
     }
 
-    fmp_max_play_len = get_fmp_duration(&fmp_work, &fmp, fmp_loop_count);
+    fmp_max_play_len = get_fmp_duration(&fmp_work, &fmp, FMP_MAX_LOOP);
     fmp_init(&fmp_work, &fmp);  //  fmp_init(work, &fmfile->driver.fmp);
 
     // ここまでおわったら(fmp_init()のあと)、一旦js側に制御を戻して以下メソッドを呼ばせる

@@ -299,8 +299,7 @@ export default class FMPPlayer extends Player {
 
     this.params = {};
 
-    // TODO: register rhythm data for OPNA
-    //this.registerRhythmData();
+    this.registerRhythmData();
 
     this.setAudioProcess((e) => {
       for (let i = 0; i < e.outputBuffer.numberOfChannels; i++) {
@@ -361,6 +360,26 @@ export default class FMPPlayer extends Player {
         }
       }
     });
+  }
+
+  registerRhythmData() {
+    const rhythmFile = 'ym2608_adpcm_rom.bin';
+    if (!this.lib.existsFileData(rhythmPath, rhythmFile)) {
+      const remoteRhythmAbsolutePath = this.lib.getAbsolutePath([rhythmPath, rhythmFile]);
+      fetch(remoteRhythmAbsolutePath, {method: 'GET',})
+        .then(response => {
+          if (!response.ok) {
+            throw Error(response.statusText);
+          }
+          return response.arrayBuffer();
+        })
+        .then(buffer => {
+          this.lib.registerFileData(rhythmPath, rhythmFile, buffer);
+        })
+        .catch(e => {
+          //console.log(e);
+        });
+    }
   }
 
   getResampledAudio(input, len) {
