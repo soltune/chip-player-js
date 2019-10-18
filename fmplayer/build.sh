@@ -17,7 +17,7 @@ emcc ${OPT} \
   ./fmplayer/libopna/opnassg.c \
   ./fmplayer/libopna/opnassg-sinc-c.c \
   ./fmplayer_wrapper.cpp \
-  -s EXPORTED_FUNCTIONS="[ '_fmp_get_sample_rate', '_fmp_load_file', '_fmp_teardown', '_fmp_get_audio_buffer', '_fmp_get_audio_buffer_length', 'fmp_compute_audio_samples', '_fmp_get_current_position', '_fmp_get_max_position', '_fmp_has_loop' ]" \
+  -s EXPORTED_FUNCTIONS="[ '_fmp_get_sample_rate', '_fmp_load_file', '_fmp_teardown', '_fmp_get_audio_buffer', '_fmp_get_audio_buffer_length', 'fmp_compute_audio_samples', '_fmp_get_current_position', '_fmp_get_max_position', '_fmp_has_loop', '_fmp_get_pcm_filenames', '_fmp_load_pvi', '_fmp_load_ppz', '_fmp_get_track_info', '_fmp_set_mask' ]" \
   -s EXPORTED_RUNTIME_METHODS="[ 'ccall', 'UTF8ToString', 'getValue' ]" \
   -o build/fmplayer.bc
 #

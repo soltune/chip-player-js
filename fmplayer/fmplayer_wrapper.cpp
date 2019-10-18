@@ -5,13 +5,18 @@
 
 #include <iostream>
 #include <fstream>
+#include <string.h>
+
+#define FMP_VOLUME_BOOST
 
 extern "C" {
 #include "fmplayer/fmdriver/fmdriver_fmp.h"
+#include "fmplayer/fmdriver/ppz8.h"
 #include "fmplayer/libopna/opnatimer.h"
 #include "fmplayer/libopna/opnaadpcm.h"
 #include "fmplayer/libopna/opnadrum.h"
 #include "fmplayer/libopna/opna.h"
+
 #include "fmplayer/common/fmplayer_common.h"
 }
 
@@ -29,31 +34,68 @@ extern "C" {
 #define FMP_MAX_LOOP 2
 
 int16_t fmp_sample_buffer[SAMPLE_BUF_SIZE * CHANNELS];
-int fmp_samples_available= 0;
-
-char* fmp_info_texts[2];
+int fmp_samples_available = 0;
 
 #define TEXT_MAX	1024
-char fmp_title_str[TEXT_MAX];
-char fmp_artist_str[TEXT_MAX];
-
-#define RAW_INFO_MAX	1024
-char fmp_raw_info_buffer[RAW_INFO_MAX];
+#define FMP_COMMENT_COUNT   3
+char* fmp_info_texts[FMP_COMMENT_COUNT];
 
 int fmp_max_play_len= -1;
 double fmp_play_len= 0;
-char fmp_pcm_filename[256];
+char* fmp_pcm_filenames[2];
 bool fmp_loop_detected = false;
 
 char* fmp_internalRhythmPath = (char*)"/rhythm/ym2608_adpcm_rom.bin";
 
-struct driver_fmp fmp;    // fmdriver_fmp.h 演奏中のFMP各種情報
+struct driver_fmp fmp;    // fmdriver_fmp.h
 struct opna_timer opna_timer;   //opnatimer.h
 struct fmdriver_work fmp_work;  //fmdriver.h
 struct ppz8 ppz8;
 uint8_t adpcmram[OPNA_ADPCM_RAM_SIZE];
 struct opna opna;
 uint8_t drum_rom[OPNA_ROM_SIZE];
+
+
+static void *fileread(const char *path, size_t maxsize, size_t *filesize) {
+  FILE *f = 0;
+  void *buf = 0;
+  size_t fsize;
+
+  f = fopen(path, "rb");
+  if (!f) {
+    goto err;
+  }
+  if (fseek(f, 0, SEEK_END)) {
+    goto err;
+  }
+  {
+    long ssize = ftell(f);
+    if (ssize < 0) {
+      goto err;
+    }
+    if (maxsize && ((size_t)ssize > maxsize)) {
+      goto err;
+    }
+    fsize = ssize;
+  }
+  if (fseek(f, 0, SEEK_SET)) {
+    goto err;
+  }
+  buf = malloc(fsize);
+  if (!buf) {
+    goto err;
+  }
+  if (fread(buf, 1, fsize, f) != fsize) {
+    goto err;
+  }
+  fclose(f);
+  *filesize = fsize;
+  return buf;
+err:
+  free(buf);
+  if (f) fclose(f);
+  return 0;
+}
 
 static int loadfile(void) {
   long size = 0;
@@ -167,31 +209,29 @@ static char* to_utf8(iconv_t ic, char* in_sjis, char* out_utf8) {
     return out_utf8;
 }
 
-
-static void do_init() {
-    // ナンか初期化するものがあれば初期化
-    // メモリの解放などは、それ以前のteardown()でやってる
-//	if (mdx_mode) {
-//		memset(&mdxmini, 0, sizeof(t_mdxmini));
-//		mdx_set_rate(SAMPLE_FREQ);
-//	} else {
-//		pmd_init();
-//		pmd_set_rhythm_path(internalRhythmPath);
-//		pmd_setrate( SAMPLE_FREQ );
-//	}
-//	initialized= 1;
-}
-
 static void do_song_init() {
-    // TODO: 初期化、タグ読み込みなど
-
-//    mdx_info_texts[0] = mdx_title_str;
-//    mdx_info_texts[1] = mdx_artist_str;
+    iconv_t ic = iconv_open("UTF-8", "SJIS");
+    for (int i = 0; i < FMP_COMMENT_COUNT; i++) {
+        fmp_info_texts[i] = (char*) malloc(TEXT_MAX);
+        if (strlen((const char *)fmp.comment[i]) > 0) {
+            to_utf8(ic, (char*)fmp.comment[i], fmp_info_texts[i]);
+        } else {
+            *fmp_info_texts[i] = '\0';
+        }
+    }
+    iconv_close( ic );
 }
 
 static int fmp_compute_samples() {
     memset(fmp_sample_buffer, 0, sizeof(fmp_sample_buffer));
     opna_timer_mix(&opna_timer, fmp_sample_buffer, SAMPLE_BUF_SIZE );
+
+#ifdef FMP_VOLUME_BOOST
+    for (int i = 0; i < SAMPLE_BUF_SIZE * CHANNELS; i++) {
+        int32_t o = fmp_sample_buffer[i] * 1.5;
+        fmp_sample_buffer[i] = (o > INT16_MAX)? INT16_MAX : (o < INT16_MIN ? INT16_MIN : o);
+    }
+#endif
 
 	fmp_samples_available = SAMPLE_BUF_SIZE;
 	fmp_play_len += ((double)fmp_samples_available)/SAMPLE_FREQ * 1000;
@@ -201,8 +241,10 @@ static int fmp_compute_samples() {
 extern "C" void fmp_teardown (void)  __attribute__((noinline));
 extern "C" void EMSCRIPTEN_KEEPALIVE fmp_teardown (void) {
     free((void*) fmp.data);
-
-	fmp_title_str[0]= fmp_artist_str[0]= 0;
+    memset(fmp_sample_buffer, 0, sizeof(fmp_sample_buffer));
+	for (int i = 0; i < FMP_COMMENT_COUNT; i++) {
+	    free(&fmp_info_texts[i]);
+	}
 	fmp_play_len = 0;
 
     fmp_work = {0};
@@ -220,7 +262,6 @@ extern "C" void EMSCRIPTEN_KEEPALIVE fmp_teardown (void) {
 extern "C"  int fmp_load_file(char *filename, void * inBuffer, uint32_t inBufSize)  __attribute__((noinline));
 extern "C"  int EMSCRIPTEN_KEEPALIVE fmp_load_file(char *filename, void * inBuffer, uint32_t inBufSize) {
 	fmp_teardown();
-	do_init();
 
 	uint8_t *fmp_data = (uint8_t*) malloc(inBufSize * sizeof(uint8_t));
 	if (fmp_data == NULL) {
@@ -231,12 +272,11 @@ extern "C"  int EMSCRIPTEN_KEEPALIVE fmp_load_file(char *filename, void * inBuff
         return 1;
     }
 
-    fmp_max_play_len = get_fmp_duration(&fmp_work, &fmp, FMP_MAX_LOOP);
-    fmp_init(&fmp_work, &fmp);  //  fmp_init(work, &fmfile->driver.fmp);
+    fmp_max_play_len = get_fmp_duration(&fmp_work, &fmp, FMP_MAX_LOOP - 1);
+    fmp_init(&fmp_work, &fmp);
 
-    // ここまでおわったら(fmp_init()のあと)、一旦js側に制御を戻して以下メソッドを呼ばせる
-    //     loadpvi(work, fmfile);   // loadpvi()の実装は、fmplayer_file.cをさんこうに
-    //       loadfmpppz(work, fmfile);
+    fmp_pcm_filenames[0] = fmp.pvi_name;
+    fmp_pcm_filenames[1] = fmp.ppz_name;
 
     do_song_init();
     return 0;
@@ -285,4 +325,47 @@ extern "C" int EMSCRIPTEN_KEEPALIVE fmp_get_max_position() {
 extern "C" int fmp_has_loop() __attribute__((noinline));
 extern "C" int EMSCRIPTEN_KEEPALIVE fmp_has_loop() {
     return fmp_loop_detected;
+}
+
+extern "C" const char** fmp_get_pcm_filenames() __attribute__((noinline));
+extern "C" const char** EMSCRIPTEN_KEEPALIVE fmp_get_pcm_filenames() {
+	return (const char**)fmp_pcm_filenames;
+}
+
+extern "C" int fmp_load_pvi(const char* pvi_absolute_path) __attribute__((noinline));
+extern "C" int EMSCRIPTEN_KEEPALIVE fmp_load_pvi(const char* pvi_absolute_path) {
+    size_t filesize;
+    void *buf = fileread(pvi_absolute_path, 0, &filesize);
+    if (!fmp_adpcm_load(&fmp_work, (uint8_t *) buf, filesize)) {
+        free(buf);
+        return 1;
+    }
+    free(buf);
+    return 0;
+}
+
+extern "C" int fmp_load_ppz(const char* ppz_absolute_path) __attribute__((noinline));
+extern "C" int EMSCRIPTEN_KEEPALIVE fmp_load_ppz(const char* ppz_absolute_path) {
+// fmplayer_file:: loadppzpvi
+    size_t filesize;
+    void *pvibuf = 0, *ppzbuf = 0;
+
+    pvibuf = fileread(ppz_absolute_path, 0, &filesize);
+    if (!pvibuf) goto err;
+    ppzbuf = calloc(ppz8_pvi_decodebuf_samples(filesize), 2);
+    if (!ppzbuf) goto err;
+    if (!ppz8_pvi_load(fmp_work.ppz8, 0, (const uint8_t *)pvibuf, filesize, (int16_t *)ppzbuf)) goto err;
+    free(pvibuf);
+    return true;
+
+err:
+    free(ppzbuf);
+    free(pvibuf);
+    return false;
+}
+
+extern "C" void fmp_set_mask(uint32_t mask) __attribute__((noinline));
+extern "C" void EMSCRIPTEN_KEEPALIVE fmp_set_mask(uint32_t mask) {
+    opna_set_mask(&opna, mask & 0xffff);
+    ppz8_set_mask(&ppz8, mask >> 16);
 }

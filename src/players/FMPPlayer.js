@@ -6,37 +6,24 @@ const fileExtensions = [
 ];
 
 const rhythmPath = '/rhythm';
-const internalPCMPath = '/fmppcm';  // on the remote, pcm files should be located where mdx/pmd files are
-const remotePCMPath = '';         // if you collect pcm files at in one place, set the path.
+const rhythmFile = 'ym2608_adpcm_rom.bin';
+const internalPCMPath = '/fmppcm';  // on the remote, pcm files should be located where fmp files present
 
 const SAMPLES_PER_BUFFER = 16384; // allowed: buffer sizes: 256, 512, 1024, 2048, 4096, 8192, 16384
 const CHANNELS = {
-  'PMD': [
-    'FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6',
-    'SSG 1', 'SSG 2', 'SSG 3',
-    'ADPCM',
-    'SSG Rhythm',
-    'Ext 1', 'Ext 2', 'Ext 3',
-    'FM Rhythm',
-    'Eff',
-    'PPZ8 1', 'PPZ8 2', 'PPZ8 3', 'PPZ8 4', 'PPZ8 5', 'PPZ8 6', 'PPZ8 7', 'PPZ8 8'
-  ],
-  'MDX': {
-    9: [
-      'FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6', 'FM 7', 'FM 8', 'ADPCM'
-    ],
-    16: [
-      'FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6', 'FM 7', 'FM 8',
-      'PCM8 1', 'PCM8 2', 'PCM8 3', 'PCM8 4', 'PCM8 5', 'PCM8 6', 'PCM8 7', 'PCM8 8'
-    ],
-  }
+  "OPNA": [
+    'FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6', 'PSG 1', 'PSG 2', 'PSG 3',
+    'Bass dr', 'Snare', 'Cymbal', 'Hi-hat', 'Tom-tom', 'Rim shot', 'ADPCM' ],
+  "PPZ": ['PPZ8 1', 'PPZ8 2', 'PPZ8 3', 'PPZ8 4', 'PPZ8 5', 'PPZ8 6', 'PPZ8 7', 'PPZ8 8']
 };
+
 
 class FMPLibWrapper {
   constructor(chipCore) {
     this.fmplib = chipCore;
     this.fs = this.fmplib.FS;
     this.currentFile = null;
+    this.pcmFilenames = null;
   }
 
   getAudioBuffer() {
@@ -63,24 +50,44 @@ class FMPLibWrapper {
   }
 
   seekPlaybackPosition(pos) {
-    //this.fmplib.ccall('mdx_seek_position', 'number', ['number'], [pos]);
+    this.fmplib.ccall('fmp_seek_position', 'number', ['number'], [pos]);
   }
 
-  getPcmFilename() {
-    //return this.fmplib.ccall('mdx_get_pcm_filename', 'string');
+  getPcmFilenames() {
+    if (!this.pcmFilenames) {
+      this.pcmFilenames = ['', ''];
+      const numOfInfo = 2;
+      const p = this.fmplib.ccall('fmp_get_pcm_filenames', 'number');
+
+      const rawNames = this.fmplib.HEAP32.subarray(p >> 2, (p >> 2) + numOfInfo);
+      for (let i = 0; i < numOfInfo; i++) {
+        const str = this.fmplib.UTF8ToString(rawNames[i]);
+        if (str) {
+          this.pcmFilenames[i] = (str + '.PVI'); // fmp.pvi_name and fmp.ppz_name has no ext
+        }
+      }
+    }
+    return this.pcmFilenames; // pcmFilenames : 0 -> pvi, 1 -> ppz
+  }
+
+  loadPvi(pviAbsolutePath) {
+    return this.fmplib.ccall('fmp_load_pvi', 'number', ['string'], [pviAbsolutePath]);
+  }
+
+  loadPpz(ppzAbsolutePath) {
+    return this.fmplib.ccall('fmp_load_ppz', 'number', ['string'], [ppzAbsolutePath]);
   }
 
   getMetaData() {
-    // const metaData = [];
-    // //const module = this.mdxpmdlib.getDelegate();
-    // const numOfInfo = 2;
-    // const trackInfo = this.mdxpmdlib.ccall('mdx_get_track_info', 'number');
-    //
-    // const info = this.mdxpmdlib.HEAP32.subarray(trackInfo >> 2, (trackInfo >> 2) + numOfInfo);
-    // for (let i = 0; i < numOfInfo; i++) {
-    //   metaData.push(this.mdxpmdlib.UTF8ToString(info[i]));
-    // }
-    // return metaData;
+    const metaData = [];
+    const numOfInfo = 3;
+    const p = this.fmplib.ccall('fmp_get_track_info', 'number');
+    const info = this.fmplib.HEAP32.subarray(p / 4, p / 4 + numOfInfo);
+
+    for (let i = 0; i < numOfInfo; i++) {
+      metaData.push(this.fmplib.UTF8ToString(info[i]));
+    }
+    return metaData;
   }
 
   getAbsolutePath(paths) {
@@ -105,7 +112,29 @@ class FMPLibWrapper {
     return absolutePath;
   }
 
-  loadMusicData(sampleRate, path, filename, data, onMusicLoadFinished) {
+  async fetchAndStorePcm(remotePath, pcmFilename) {
+    let hasPcm = this.existsFileData(internalPCMPath, pcmFilename);
+    if (!hasPcm) { // there's no cache - try fetching from remote
+      const remotePcmAbsolutePath = this.getAbsolutePath([CATALOG_PREFIX, remotePath, pcmFilename]);
+      hasPcm = await fetch(remotePcmAbsolutePath, {method: 'GET',})
+        .then(response => {
+          if (!response.ok) { // 404, 500.. missing pcm can be ignored for playing
+            throw Error(response.statusText);
+          }
+          return response.arrayBuffer();
+        })
+        .catch(e => {
+          return false;
+        })
+        .then((buf) => {
+          if (!buf) return false;
+          return this.registerFileData(internalPCMPath, pcmFilename, buf);
+        });
+    }
+    return hasPcm;
+  }
+
+  async loadMusicData(sampleRate, path, filename, data, onMusicLoadFinished) {
     let buf = this.fmplib._malloc(data.length);
     this.fmplib.HEAPU8.set(data, buf);
     const result = this.fmplib.ccall('fmp_load_file', 'number',
@@ -114,94 +143,35 @@ class FMPLibWrapper {
     if (result === 0) { // result -> 0: success, 1: error
       this.currentFile = filename;
     }
-    //
-    // const pcmFileName = this.getPcmFilename();
-    // if (pcmFileName) {
-    //   let remotePcmAbsolutePath = this.getAbsolutePath([CATALOG_PREFIX, path, pcmFileName]);
-    //   if (!this.existsFileData(internalPCMPath, pcmFileName)) {
-    //     fetch(remotePcmAbsolutePath, {method: 'GET',})
-    //       .then(response => {
-    //         if (!response.ok) { // 404, 500.. missing pcm can be ignored for playing
-    //           throw Error(response.statusText);
-    //         }
-    //         return response.arrayBuffer();
-    //       })
-    //       .then(buffer => {
-    //         this.registerFileData(internalPCMPath, pcmFileName, buffer);
-    //         this.mdxpmdlib.ccall('mdx_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
-    //         onMusicLoadFinished(result);
-    //       })
-    //       .catch(e => {
-    //         // console.log(e);
-    //         return e;
-    //         //onMusicLoadFinished(result);
-    //       })
-    //       .then((e) => { // second try
-    //         if (e === undefined) {
-    //           return;
-    //         }
-    //         if (!remotePCMPath) {
-    //           onMusicLoadFinished(result);
-    //           return;
-    //         }
-    //         remotePcmAbsolutePath = this.getAbsolutePath([CATALOG_PREFIX, remotePCMPath, pcmFileName]);
-    //         fetch(remotePcmAbsolutePath, {method: 'GET',})
-    //           .then(response => {
-    //             if (!response.ok) { // 404, 500.. missing pcm can be ignored for playing
-    //               throw Error(response.statusText);
-    //             }
-    //             return response.arrayBuffer();
-    //           })
-    //           .then(buffer => {
-    //             this.registerFileData(internalPCMPath, pcmFileName, buffer);
-    //             this.mdxpmdlib.ccall('mdx_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
-    //             onMusicLoadFinished(result);
-    //
-    //           })
-    //           .catch(e => {
-    //             // console.log(e);
-    //             onMusicLoadFinished(result); // giving up
-    //           });
-    //       });
-    //   } else {
-    //     // file already exists
-    //     this.mdxpmdlib.ccall('mdx_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
-    //     onMusicLoadFinished(result);
-    //   }
-    // } else {
-    //   // no additional PCM required
-    //   onMusicLoadFinished(result);
-    // }
-    onMusicLoadFinished(result);
+
+    const [pviFilename, ppzFilename] = this.getPcmFilenames();
+    console.log('pvi: ' + pviFilename);
+    console.log('ppz: ' + ppzFilename);
+    if (pviFilename) {
+      if (await this.fetchAndStorePcm(path, pviFilename)) {
+        this.loadPvi(this.getAbsolutePath([internalPCMPath, pviFilename]));
+      }
+    }
+    if (ppzFilename) {
+      if (await this.fetchAndStorePcm(path, ppzFilename)) {
+        this.loadPpz(this.getAbsolutePath([internalPCMPath, ppzFilename]));
+      }
+    }
     return result;
   }
 
-  // evalTrackOptions(options) {
-  //   if (typeof options.timeout != 'undefined') {
-  //     ScriptNodePlayer.getInstance().setPlaybackTimeout(options.timeout*1000);
-  //   } else {
-  //     ScriptNodePlayer.getInstance().setPlaybackTimeout(-1);	// reset last songs setting
-  //   }
-  //   var id= (options && options.track) ? options.track : -1;	// by default do not set track
-  //   var boostVolume= (options && options.boostVolume) ? options.boostVolume : 0;
-  //   return this.Module.ccall('emu_set_subsong', 'number', ['number', 'number'], [id, boostVolume]);	// not used here..
-  // }
-
   teardown() {
     this.currentFile = null;
+    this.pcmFilenames = null;
     this.fmplib.ccall('fmp_teardown', 'number');	// just in case
+  }
+
+  getCurrentFilename() {
+    return this.currentFile;
   }
 
   getSampleRate() {
     return this.fmplib.ccall('fmp_get_sample_rate', 'number');
-  }
-
-  setChannelMask(deviceIndex, mask) {
-    // if (this.getDeviceName(deviceIndex) === 'OPN') {
-    //   // seem to require a padding only for OPN, according to opna.cpp
-    //   mask = (mask & 0b0111) + ((mask >> 3) << 6);
-    // }
-    // this.s98Lib.ccall('s98_set_channel_mask', null, ['number', 'number'], [deviceIndex, mask]);
   }
 
   getPathAndFilename(filename) {
@@ -219,17 +189,11 @@ class FMPLibWrapper {
 
   hasLoop() {
     let loop = this.fmplib.ccall('fmp_has_loop', 'number');
-    // console.log(loop);
     return loop === 1;
   }
 
-  getVoiceCount() {
-    //return this.fmplib.ccall('mdx_get_voices', 'number');
-    return 1;
-  }
-
   setVoices(voices) {
-    //return this.fmplib.ccall('mdx_set_voices', null, ['number'], [voices]);
+    this.fmplib.ccall('fmp_set_mask', null, ['number'], [voices]);
   }
 
   setTempo(tempo) {
@@ -352,7 +316,8 @@ export default class FMPPlayer extends Player {
             });
           }
         }
-
+        if (this.getPositionMs() < 20)
+          this.resampleBuffer = this.resampleBuffer.map((value) => { return 0; }); //workaround to avoid noise...
         if (this.isStereo) {
           this.copySamplesStereo();
         } else {
@@ -363,7 +328,6 @@ export default class FMPPlayer extends Player {
   }
 
   registerRhythmData() {
-    const rhythmFile = 'ym2608_adpcm_rom.bin';
     if (!this.lib.existsFileData(rhythmPath, rhythmFile)) {
       const remoteRhythmAbsolutePath = this.lib.getAbsolutePath([rhythmPath, rhythmFile]);
       fetch(remoteRhythmAbsolutePath, {method: 'GET',})
@@ -529,6 +493,7 @@ export default class FMPPlayer extends Player {
     if (s > this.resampleBuffer.length) {
       this.resampleBuffer = this.allocResampleBuffer(s);
     }
+    this.resampleBuffer = this.resampleBuffer.map((value) => { return 0 });
   }
 
   init(fullFilename, data) {
@@ -548,40 +513,39 @@ export default class FMPPlayer extends Player {
   }
 
   loadData(data, filepath) {
+    this.suspend();
     if (!this.lib.isClosed()) {
       this.lib.teardown();
     }
 
-    const [path, filename] = this.lib.getPathAndFilename(filepath);
-    this.lib.registerFileData(path, filename,  data);
-
-    const _onMusicLoadFinished = (status) => {
-      // we will get also PCM asynchronously in `loadMusicData()` so the following impl should be given as a callback
-      if (status === 0) {
+    const [path, filename] = this.lib.getPathAndFilename(filepath); // eslint-disable-line
+    this.lib.loadMusicData(this.sampleRate, path, filepath, data)
+      .then((status) => {
+        if (status !== 0) {
+          return;
+        }
         this.init(filepath, data);
         this.connect();
         this.resume();
-
         this.onPlayerStateUpdate(!this.isPlaying());
-      }
-    };
-    this.lib.loadMusicData(this.sampleRate, path, filepath, data, _onMusicLoadFinished);
+      });
   }
 
   createMetadata() {
     const metaData = this.lib.getMetaData();
     return {
-      title: "todo; title", // title
-      artist: "todo: artist", //artist
+      title: metaData[0] ? metaData[0] : this.lib.getCurrentFilename(),
+      copyright: metaData[1],
+      artist: metaData[2]
     };
   }
 
   getNumSubtunes() {
-    return 1;  // MDX/PMD/FMP should contain only one track.
+    return 1;  // FMP should contain only one track.
   }
 
   getSubtune() {
-    return 0; // MDX/PMD does not have subtunes.
+    return 0; // FMP does not have subtunes.
   }
 
   getPositionMs() {
@@ -609,9 +573,6 @@ export default class FMPPlayer extends Player {
 
   setParameter(id, value) {
     switch (id) {
-      // case 'rhythmwssg':
-      //   this.lib.setRhythmWithSSG(value);
-      //   break;
       default:
         console.warn('S98Player has no parameter with id "%s".', id);
     }
@@ -631,16 +592,23 @@ export default class FMPPlayer extends Player {
     this.fadeOutStartMs = startMs;
   }
 
+  getChannels() {
+    if (this.lib.isClosed()) {
+      return [];
+    }
+    if (!this.lib.getPcmFilenames()[1]) {  // has ppz?
+      return CHANNELS['OPNA'];
+    } else {
+      return CHANNELS['OPNA'].concat(CHANNELS['PPZ']);
+    }
+  }
+
   getVoiceName(index) {
-    // if (this.lib.isMdxMode()) {
-    //   return CHANNELS['MDX'][this.getNumVoices()][index];
-    // } else {
-    //   return CHANNELS['PMD'][index];
-    // }
+    return this.getChannels()[index];
   }
 
   getNumVoices() {
-    return this.lib.getVoiceCount();
+    return this.getChannels().length;
   }
 
   setVoices(voices) {
@@ -650,7 +618,7 @@ export default class FMPPlayer extends Player {
         mask += (1 << i);
       }
     });
-   // this.lib.setVoices(mask);
+   this.lib.setVoices(mask);
   }
 
   seekMs(positionMs) {

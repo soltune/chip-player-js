@@ -37,7 +37,7 @@ uint8_t fmdriver_fm_freq2key(uint16_t freq);
 uint8_t fmdriver_ssg_freq2key(uint16_t freq);
 uint8_t fmdriver_ppz8_freq2key(uint32_t freq);
 
-#if 1
+#if 0
 #include <stdio.h>
 #define FMDRIVER_DEBUG(...) fprintf(stderr, __VA_ARGS__)
 #else
