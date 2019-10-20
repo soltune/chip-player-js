@@ -21,6 +21,7 @@ import MIDIPlayer from './players/MIDIPlayer';
 import V2MPlayer from './players/V2MPlayer';
 import S98Player from "./players/S98Player";
 import MDXPMDPlayer from "./players/MDXPMDPlayer";
+import FMPPlayer from "./players/FMPPlayer";
 
 import PlayerParams from './PlayerParams';
 import Search from './Search';
@@ -189,6 +190,7 @@ class App extends React.Component {
             new V2MPlayer(audioCtx, playerNode, chipCore),
             new S98Player(audioCtx, playerNode, chipCore),
             new MDXPMDPlayer(audioCtx, playerNode, chipCore),
+            new FMPPlayer(audioCtx, playerNode, chipCore),
           ]);
           this.setState({loading: false});
 

@@ -224,6 +224,22 @@ const mdxmini_files = [
 source_files = source_files.concat(mdxmini_files);
 source_files.push('webMDX/emscripten/adapter.cpp');
 
+// const fmplayer_files = [
+//   'fmdriver/fmdriver_fmp.c',
+//   'fmdriver/fmdriver_common.c',
+//   'fmdriver/ppz8.c',
+//   'common/fmplayer_work_opna.c',
+//   'libopna/opna.c',
+//   'libopna/opnaadpcm.c',
+//   'libopna/opnatimer.c',
+//   'libopna/opnadrum.c',
+//   'libopna/opnassg.c',
+//   'libopna/opnassg-sinc-c.c',
+// ].map(file => 'fmplayer/fmplayer/' + file);
+//
+// source_files = source_files.concat(fmplayer_files);
+source_files.push('fmplayer/build/fmplayer.bc');
+
 var js_file = 'src/chip-core.js';
 var wasm_file = 'src/chip-core.wasm';
 var wasm_dir = paths.appPublic;
@@ -380,7 +396,7 @@ var flags = [
   '-s', 'ENVIRONMENT=web',
   '-s', 'USE_ZLIB=1',
   '-s', 'BINARYEN_TRAP_MODE=clamp',
-  '-s', 'EXPORT_ES6=1',
+  '-s', 'EXPORT_ES6=0',
   '-Os',
   '-o', js_file,
 
@@ -425,6 +441,11 @@ var flags = [
   // webMDX
   '-IwebS98/src/device/fmgen',
   '-IwebMDX/mdxmini/src/ ',
+
+  // FMPlayer
+  // '-Ifmplayer/fmplayer',
+  // '-I.',
+
 ];
 var args = [].concat(flags, source_files);
 
