@@ -9,7 +9,6 @@
 
 #define FMP_VOLUME_BOOST
 
-extern "C" {
 #include "fmplayer/fmdriver/fmdriver_fmp.h"
 #include "fmplayer/fmdriver/ppz8.h"
 #include "fmplayer/libopna/opnatimer.h"
@@ -18,8 +17,6 @@ extern "C" {
 #include "fmplayer/libopna/opna.h"
 
 #include "fmplayer/common/fmplayer_common.h"
-}
-
 
 #ifdef EMSCRIPTEN
 #define EMSCRIPTEN_KEEPALIVE __attribute__((used))
@@ -116,7 +113,7 @@ loadfile_err:
   return 1;
 }
 
-extern "C" bool fmplayer_drum_rom_load(struct opna_drum *drum) {
+bool fmplayer_drum_rom_load(struct opna_drum *drum) {
   if (loadfile() == 1) {
     return false;
   }
@@ -314,7 +311,10 @@ extern "C" int EMSCRIPTEN_KEEPALIVE fmp_get_current_position() {
 
 extern "C" void fmp_seek_position(int pos) __attribute__((noinline));
 extern "C" void EMSCRIPTEN_KEEPALIVE fmp_seek_position(int pos) {
-
+    while (fmp_play_len < pos) {
+        opna_timer_mix(&opna_timer, 0, SAMPLE_BUF_SIZE );
+	    fmp_play_len += ((double)SAMPLE_BUF_SIZE)/SAMPLE_FREQ * 1000;
+    }
 }
 
 extern "C" int fmp_get_max_position() __attribute__((noinline));

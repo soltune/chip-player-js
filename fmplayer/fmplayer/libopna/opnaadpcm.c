@@ -218,7 +218,7 @@ void opna_adpcm_mix(struct opna_adpcm *adpcm, int16_t *buf, unsigned samples) {
 }
 
 void opna_adpcm_set_ram_256k(struct opna_adpcm *adpcm, void *ram) {
-  adpcm->ram = ram;
+  adpcm->ram = (uint8_t *) ram;
 }
 
 void *opna_adpcm_get_ram(struct opna_adpcm *adpcm) {

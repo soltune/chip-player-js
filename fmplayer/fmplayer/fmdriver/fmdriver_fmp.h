@@ -112,7 +112,7 @@ struct fmp_ssgenv {
   uint8_t release_rate;
 };
 
-enum {
+enum pdzf_env_vol {
   PDZF_ENV_VOL_MIN = -15,
 };
 
@@ -257,8 +257,8 @@ struct fmp_part {
   
   // 0051
   uint8_t eff_chan;
-  union {
-    struct {
+  union module {
+    struct fm_status {
       // 0052 (ptr)
       uint8_t tone_tl[4];
       struct {
@@ -363,7 +363,7 @@ struct fmp_part {
   } u;
 
   uint8_t tonelen;
-  struct {
+  struct part_pdzf {
     uint32_t loopstart32;
     uint32_t loopend32;
     uint8_t mode;
@@ -378,8 +378,8 @@ struct fmp_part {
       uint8_t sr;
       uint8_t rr;
     } env_param;
-    struct {
-      enum {
+    struct pdzf_env_state {
+      enum pdzf_env_type {
         PDZF_ENV_ATT,
         PDZF_ENV_DEC,
         PDZF_ENV_REL,
@@ -527,7 +527,7 @@ struct driver_fmp {
   } datainfo;
   uint8_t rand71;
   
-  struct {
+  struct ppz_pdzf {
     // when 0, no PDZF
     // when 1, PDZF Normal mode
     // when 2, PDZF Enhanced mode
