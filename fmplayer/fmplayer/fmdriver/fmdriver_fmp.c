@@ -198,7 +198,7 @@ static void fmp_part_pdzf_vol_update(struct fmdriver_work *work,
       work->ppz8_functbl->channel_volume(
         work->ppz8,
         part->pdzf.ppz8_channel,
-        fmp_pdzf_vol_clamp(part->pdzf.vol, envvol)
+        fmp_pdzf_vol_clamp(part->pdzf.vol, (uint8_t) envvol)
       );
     }
   }
@@ -284,10 +284,10 @@ static void fmp_part_keyoff(struct fmdriver_work *work, struct driver_fmp *fmp,
   if (part->pdzf.mode) {
     part->pdzf.keyon = false;
     if (part->lfo_f.q && part->pdzf.env_param.rr) {
-      part->pdzf.env_state.status = PDZF_ENV_REL;
+      part->pdzf.env_state.status = fmp_part::part_pdzf::pdzf_env_state::pdzf_env_type::PDZF_ENV_REL;
       part->pdzf.env_state.cnt = part->pdzf.env_param.rr;
     } else {
-      part->pdzf.env_state.status = PDZF_ENV_OFF;
+      part->pdzf.env_state.status = fmp_part::part_pdzf::pdzf_env_state::pdzf_env_type::PDZF_ENV_OFF;
       if (work->ppz8_functbl) {
         work->ppz8_functbl->channel_stop(
           work->ppz8,
@@ -1261,7 +1261,7 @@ static bool fmp_cmd7c_lfo_pan_fm(struct fmdriver_work *work,
       
       int pdzf_i = (part - &fmp->parts[FMP_PART_FM_EX1]);
       if ((pdzf_i == 1) || (pdzf_i == 2)) {
-        struct pdzf_rhythm *pr = (struct pdzf_rhythm*) &fmp->pdzf.rhythm[pdzf_i-1];
+        struct driver_fmp::ppz_pdzf::pdzf_rhythm *pr = (struct driver_fmp::ppz_pdzf::pdzf_rhythm*) &fmp->pdzf.rhythm[pdzf_i-1];
         pr->voice[0] = part->u.fm.wlfo.delay;
         pr->voice[1] = part->u.fm.wlfo.speed;
         int16_t panpot = u8s8(part->u.fm.wlfo.rate);
@@ -1576,7 +1576,7 @@ static void fmp_part_keyon_fm(struct fmdriver_work *work,
 // 2b1c-2b79
 static void fmp_part_wlfo(struct fmdriver_work *work,
                           struct fmp_part *part) {
-  struct fmp_wlfo *wlfo = (struct fmp_wlfo*) &part->u.fm.wlfo;
+  struct fmp_part::module::fm_status::fmp_wlfo *wlfo = (struct fmp_part::module::fm_status::fmp_wlfo*) &part->u.fm.wlfo;
   // 2b1c
   if (!wlfo->delay) return;
   if (--wlfo->delay_cnt) return;
@@ -1664,7 +1664,7 @@ static void fmp_part_keyon_pdzf(struct fmdriver_work *work,
         voice
       );
     }
-    part->pdzf.env_state.status = PDZF_ENV_ATT;
+    part->pdzf.env_state.status = fmp_part::part_pdzf::pdzf_env_state::pdzf_env_type::PDZF_ENV_ATT;
     part->pdzf.env_state.vol = 0;
     part->pdzf.env_state.cnt = part->pdzf.env_param.al;
     part->pdzf.keyon = true;
@@ -1832,11 +1832,11 @@ static void fmp_part_pdzf_env(struct fmdriver_work *work,
                               struct fmp_part *part) {
   (void)fmp;
   switch (part->pdzf.env_state.status) {
-  case PDZF_ENV_ATT:
+  case fmp_part::part_pdzf::pdzf_env_state::pdzf_env_type::PDZF_ENV_ATT:
     if (!part->pdzf.env_state.cnt--) {
       part->pdzf.env_state.vol = part->pdzf.env_param.dd;
-      part->pdzf.env_state.status = PDZF_ENV_DEC;
-      if (part->pdzf.env_state.vol > PDZF_ENV_VOL_MIN) {
+      part->pdzf.env_state.status = fmp_part::part_pdzf::pdzf_env_state::pdzf_env_type::PDZF_ENV_DEC;
+      if (part->pdzf.env_state.vol > pdzf_env_vol::PDZF_ENV_VOL_MIN) {
         part->pdzf.env_state.cnt = part->pdzf.env_param.sr;
         if (work->ppz8_functbl) {
           work->ppz8_functbl->channel_volume(
@@ -1846,8 +1846,8 @@ static void fmp_part_pdzf_env(struct fmdriver_work *work,
           );
         }
       } else {
-        part->pdzf.env_state.vol = PDZF_ENV_VOL_MIN;
-        part->pdzf.env_state.status = PDZF_ENV_OFF;
+        part->pdzf.env_state.vol = pdzf_env_vol::PDZF_ENV_VOL_MIN;
+        part->pdzf.env_state.status = fmp_part::part_pdzf::pdzf_env_state::pdzf_env_type::PDZF_ENV_OFF;
         if (work->ppz8_functbl) {
           work->ppz8_functbl->channel_stop(
             work->ppz8,
@@ -1857,12 +1857,12 @@ static void fmp_part_pdzf_env(struct fmdriver_work *work,
       }
     }
     break;
-  case PDZF_ENV_DEC:
+  case fmp_part::part_pdzf::pdzf_env_state::pdzf_env_type::PDZF_ENV_DEC:
     if (!part->pdzf.env_param.sr) {
       //part->pdzf.env_state.vol = PDZF_ENV_VOL_MIN;
     } else if (!--part->pdzf.env_state.cnt) {
       part->pdzf.env_state.vol--;
-      if (part->pdzf.env_state.vol > PDZF_ENV_VOL_MIN) {
+      if (part->pdzf.env_state.vol > pdzf_env_vol::PDZF_ENV_VOL_MIN) {
         part->pdzf.env_state.cnt = part->pdzf.env_param.sr;
         if (work->ppz8_functbl) {
           work->ppz8_functbl->channel_volume(
@@ -1873,9 +1873,9 @@ static void fmp_part_pdzf_env(struct fmdriver_work *work,
         }
       }
     }
-    if (part->pdzf.env_state.vol <= PDZF_ENV_VOL_MIN) {
-        part->pdzf.env_state.vol = PDZF_ENV_VOL_MIN;
-        part->pdzf.env_state.status = PDZF_ENV_OFF;
+    if (part->pdzf.env_state.vol <= pdzf_env_vol::PDZF_ENV_VOL_MIN) {
+        part->pdzf.env_state.vol = pdzf_env_vol::PDZF_ENV_VOL_MIN;
+        part->pdzf.env_state.status = fmp_part::part_pdzf::pdzf_env_state::pdzf_env_type::PDZF_ENV_OFF;
         if (work->ppz8_functbl) {
           work->ppz8_functbl->channel_stop(
             work->ppz8,
@@ -1884,10 +1884,10 @@ static void fmp_part_pdzf_env(struct fmdriver_work *work,
         }
       }
     break;
-  case PDZF_ENV_REL:
+  case fmp_part::part_pdzf::pdzf_env_state::pdzf_env_type::PDZF_ENV_REL:
     if (!--part->pdzf.env_state.cnt) {
       part->pdzf.env_state.vol--;
-      if (part->pdzf.env_state.vol > PDZF_ENV_VOL_MIN) {
+      if (part->pdzf.env_state.vol > pdzf_env_vol::PDZF_ENV_VOL_MIN) {
         part->pdzf.env_state.cnt = part->pdzf.env_param.rr;
         if (work->ppz8_functbl) {
           work->ppz8_functbl->channel_volume(
@@ -1897,8 +1897,8 @@ static void fmp_part_pdzf_env(struct fmdriver_work *work,
           );
         }
       } else {
-        part->pdzf.env_state.vol = PDZF_ENV_VOL_MIN;
-        part->pdzf.env_state.status = PDZF_ENV_OFF;
+        part->pdzf.env_state.vol = pdzf_env_vol::PDZF_ENV_VOL_MIN;
+        part->pdzf.env_state.status = fmp_part::part_pdzf::pdzf_env_state::pdzf_env_type::PDZF_ENV_OFF;
         if (work->ppz8_functbl) {
           work->ppz8_functbl->channel_stop(
             work->ppz8,
@@ -1908,7 +1908,7 @@ static void fmp_part_pdzf_env(struct fmdriver_work *work,
       }
     }
     break;
-  case PDZF_ENV_OFF:
+  case fmp_part::part_pdzf::pdzf_env_state::pdzf_env_type::PDZF_ENV_OFF:
     break;
   }
 }
@@ -2482,10 +2482,10 @@ static void fmp_part_keyoff_q(struct fmdriver_work *work,
   if (part->pdzf.mode) {
     part->pdzf.keyon = false;
     if (part->lfo_f.q && part->pdzf.env_param.rr) {
-      part->pdzf.env_state.status = PDZF_ENV_REL;
+      part->pdzf.env_state.status = part->pdzf.env_state.PDZF_ENV_REL;
       part->pdzf.env_state.cnt = part->pdzf.env_param.rr;
     } else {
-      part->pdzf.env_state.status = PDZF_ENV_OFF;
+      part->pdzf.env_state.status = part->pdzf.env_state.PDZF_ENV_OFF;
       if (work->ppz8_functbl) {
         work->ppz8_functbl->channel_stop(
           work->ppz8,

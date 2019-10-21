@@ -224,21 +224,23 @@ const mdxmini_files = [
 source_files = source_files.concat(mdxmini_files);
 source_files.push('webMDX/emscripten/adapter.cpp');
 
-// const fmplayer_files = [
-//   'fmdriver/fmdriver_fmp.c',
-//   'fmdriver/fmdriver_common.c',
-//   'fmdriver/ppz8.c',
-//   'common/fmplayer_work_opna.c',
-//   'libopna/opna.c',
-//   'libopna/opnaadpcm.c',
-//   'libopna/opnatimer.c',
-//   'libopna/opnadrum.c',
-//   'libopna/opnassg.c',
-//   'libopna/opnassg-sinc-c.c',
-// ].map(file => 'fmplayer/fmplayer/' + file);
-//
-// source_files = source_files.concat(fmplayer_files);
-source_files.push('fmplayer/build/fmplayer.bc');
+const fmplayer_files = [
+  'fmdriver/fmdriver_fmp.c',
+  'fmdriver/fmdriver_common.c',
+  'fmdriver/ppz8.c',
+  'common/fmplayer_work_opna.c',
+ // 'common/fmplayer_file.c',
+  'libopna/opna.c',
+  'libopna/opnafm.c',
+  'libopna/opnaadpcm.c',
+  'libopna/opnatimer.c',
+  'libopna/opnadrum.c',
+  'libopna/opnassg.c',
+  'libopna/opnassg-sinc-c.c',
+].map(file => 'fmplayer/fmplayer/' + file);
+
+source_files = source_files.concat(fmplayer_files);
+source_files.push('fmplayer/fmplayer_wrapper.cpp');
 
 var js_file = 'src/chip-core.js';
 var wasm_file = 'src/chip-core.wasm';
@@ -365,6 +367,21 @@ var exported_functions = [
   '_mdx_get_voices',
   '_mdx_set_voices',
 
+  '_fmp_get_sample_rate',
+  '_fmp_load_file',
+  '_fmp_teardown',
+  '_fmp_get_audio_buffer',
+  '_fmp_get_audio_buffer_length',
+  '_fmp_compute_audio_samples',
+  '_fmp_get_current_position',
+  '_fmp_get_max_position',
+  '_fmp_has_loop',
+  '_fmp_get_pcm_filenames',
+  '_fmp_load_pvi',
+  '_fmp_load_ppz',
+  '_fmp_get_track_info',
+  '_fmp_set_mask',
+
   // From showcqtbar.c
   '_cqt_init',
   '_cqt_calc',
@@ -443,8 +460,7 @@ var flags = [
   '-IwebMDX/mdxmini/src/ ',
 
   // FMPlayer
-  // '-Ifmplayer/fmplayer',
-  // '-I.',
+  '-Ifmplayer/fmplayer',
 
 ];
 var args = [].concat(flags, source_files);

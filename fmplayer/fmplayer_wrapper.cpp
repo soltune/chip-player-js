@@ -9,7 +9,6 @@
 
 #define FMP_VOLUME_BOOST
 
-extern "C" {
 #include "fmplayer/fmdriver/fmdriver_fmp.h"
 #include "fmplayer/fmdriver/ppz8.h"
 #include "fmplayer/libopna/opnatimer.h"
@@ -18,8 +17,6 @@ extern "C" {
 #include "fmplayer/libopna/opna.h"
 
 #include "fmplayer/common/fmplayer_common.h"
-}
-
 
 #ifdef EMSCRIPTEN
 #define EMSCRIPTEN_KEEPALIVE __attribute__((used))
@@ -116,7 +113,7 @@ loadfile_err:
   return 1;
 }
 
-extern "C" bool fmplayer_drum_rom_load(struct opna_drum *drum) {
+bool fmplayer_drum_rom_load(struct opna_drum *drum) {
   if (loadfile() == 1) {
     return false;
   }
