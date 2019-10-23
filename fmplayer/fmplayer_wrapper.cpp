@@ -311,7 +311,10 @@ extern "C" int EMSCRIPTEN_KEEPALIVE fmp_get_current_position() {
 
 extern "C" void fmp_seek_position(int pos) __attribute__((noinline));
 extern "C" void EMSCRIPTEN_KEEPALIVE fmp_seek_position(int pos) {
-
+    while (fmp_play_len < pos) {
+        opna_timer_mix(&opna_timer, 0, SAMPLE_BUF_SIZE );
+	    fmp_play_len += ((double)SAMPLE_BUF_SIZE)/SAMPLE_FREQ * 1000;
+    }
 }
 
 extern "C" int fmp_get_max_position() __attribute__((noinline));
