@@ -4,9 +4,8 @@
 Chip Player JS is web-based chip tune player written by Matt Montag.  
 This fork is to share my fixes like;  
 
-- Improve Japanese text support on the file selector, using an extra font
 - additional file formats support
-    - gbs
+    - gbs, hes
     - s98 ([webS98](https://github.com/wothke/webS98/), based on [m_s98.kpi S98V3](http://www.vesta.dti.ne.jp/~tsato/soft_s98v3.html))
         - supports rhythm samples for OPNA
         - corrects volume balance for PC-9801
@@ -16,7 +15,9 @@ This fork is to share my fixes like;
         - supports ADPCM/PCM (.pps, .ppc, .p86, .pzi)
     - mdx ([webMDX](https://github.com/wothke/webMDX), based on [mdxmini](https://github.com/mistydemeo/mdxmini))
         - supports ADPCM/PCM (.pdx)
-- and more. (coming soon)
+    - fmp ([fmplayer](https://github.com/takamichih/fmplayer/))
+        - supports rhythm rom for OPNA
+        - supports ADPCM/PCM (.pvi, .pzi(for PPZ8))
 
 ---
 
