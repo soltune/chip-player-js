@@ -52,8 +52,8 @@
 #define CHANNELS 2				
 #define BYTES_PER_SAMPLE 2
 #define SAMPLE_BUF_SIZE	1024
-#define PMD_SAMPLE_FREQ	55466
-#define MDX_SAMPLE_FREQ 62400
+#define PMD_SAMPLE_FREQ 55466   // 7987200Hz / 144 cycles
+#define MDX_SAMPLE_FREQ 62500   // 4000000Hz /  64 cycles
 
 int16_t mdx_sample_buffer[SAMPLE_BUF_SIZE * CHANNELS];
 int mdx_samples_available= 0;
@@ -208,10 +208,10 @@ static int ends_with(std::string const & value, std::string const & ending) {
 extern "C"  int mdx_load_file(char *filename, void * inBuffer, uint32_t inBufSize)  __attribute__((noinline));
 extern "C"  int EMSCRIPTEN_KEEPALIVE mdx_load_file(char *filename, void * inBuffer, uint32_t inBufSize) {
 	mdx_teardown();
-	do_init();
 
 	mdx_mode = ends_with(std::string(filename), std::string(".mdx")) || ends_with(std::string(filename), std::string(".MDX"));
-	
+	do_init();
+
 	if (!file_open(filename)) {
 		// error
 		return 1;
