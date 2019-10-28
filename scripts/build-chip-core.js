@@ -242,6 +242,27 @@ const fmplayer_files = [
 source_files = source_files.concat(fmplayer_files);
 source_files.push('fmplayer/fmplayer_wrapper.cpp');
 
+const psfplayer_files = [
+  'Core/psx.c',
+  'Core/ioptimer.c',
+  'Core/iop.c',
+  'Core/bios.c',
+  'Core/r3000dis.c',
+  'Core/r3000asm.c',
+  'Core/r3000.c',
+  'Core/vfs.c',
+  'Core/spucore.c',
+  'Core/spu.c',
+  'Core/mkhebios.c',
+  'psflib/psf2fs.c',
+  'psflib/psflib.c',
+  'emscripten/heplug.c',
+  'emscripten/adapter.cpp',
+].map(file => 'webpsx/' + file);
+
+source_files = source_files.concat(psfplayer_files);
+
+
 var js_file = 'src/chip-core.js';
 var wasm_file = 'src/chip-core.wasm';
 var wasm_dir = paths.appPublic;
@@ -382,6 +403,21 @@ var exported_functions = [
   '_fmp_get_track_info',
   '_fmp_set_mask',
 
+  '_psf_setup',
+  '_psf_init',
+  '_psf_teardown',
+  '_psf_get_current_position',
+  '_psf_seek_position',
+  '_psf_get_max_position',
+  '_psf_get_track_info',
+  '_psf_get_sample_rate',
+  '_psf_get_audio_buffer',
+  '_psf_get_audio_buffer_length',
+  '_psf_compute_audio_samples',
+  '_psf_get_psf_version',
+  '_psf_set_mask',
+  '_psf_set_reverb',
+
   // From showcqtbar.c
   '_cqt_init',
   '_cqt_calc',
@@ -461,6 +497,14 @@ var flags = [
 
   // FMPlayer
   '-Ifmplayer/fmplayer',
+
+  // PSFPlayer
+  '-Iwebpsx/Core',
+  '-Iwebpsx/psflib',
+  '-DEMU_COMPILE',
+  '-DEMU_LITTLE_ENDIAN',
+  '-DBUILTIN_HEBIOS', // build-in bios enabled
+  '--js-library', 'webpsx/psf_callback.js',
 
 ];
 var args = [].concat(flags, source_files);

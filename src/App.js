@@ -22,6 +22,7 @@ import V2MPlayer from './players/V2MPlayer';
 import S98Player from "./players/S98Player";
 import MDXPMDPlayer from "./players/MDXPMDPlayer";
 import FMPPlayer from "./players/FMPPlayer";
+import PSFPlayer from "./players/PSFPlayer";
 
 import PlayerParams from './PlayerParams';
 import Search from './Search';
@@ -191,6 +192,7 @@ class App extends React.Component {
             new S98Player(audioCtx, playerNode, chipCore),
             new MDXPMDPlayer(audioCtx, playerNode, chipCore),
             new FMPPlayer(audioCtx, playerNode, chipCore),
+            new PSFPlayer(audioCtx, playerNode, chipCore),
           ]);
           this.setState({loading: false});
 
