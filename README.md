@@ -10,14 +10,29 @@ This fork is to share my fixes like;
         - supports rhythm samples for OPNA
         - corrects volume balance for PC-9801
             - the player reduces the volume of PSG ch if there's `9801` in 'system' tag.
+        - the following sound samples must be located at `chip-player-js/public/rhythm` before building (each filenames are case sensitive)
+            - 2608_BD.WAV
+            - 2608_HH.WAV 
+            - 2608_RIM.WAV 
+            - 2608_SD.WAV
+            - 2608_TOM.WAV
+            - 2608_TOP.WAV
     - pmd ([webMDX](https://github.com/wothke/webMDX), based on [pmdmini](https://github.com/mistydemeo/pmdmini))
         - supports rhythm samples for OPNA
         - supports ADPCM/PCM (.pps, .ppc, .p86, .pzi)
+        - the following sound samples must be located at `chip-player-js/public/rhythm` before building (each filenames are case sensitive)
+            - 2608_BD.WAV
+            - 2608_HH.WAV 
+            - 2608_RIM.WAV 
+            - 2608_SD.WAV
+            - 2608_TOM.WAV
+            - 2608_TOP.WAV
     - mdx ([webMDX](https://github.com/wothke/webMDX), based on [mdxmini](https://github.com/mistydemeo/mdxmini))
         - supports ADPCM/PCM (.pdx)
     - fmp ([fmplayer](https://github.com/takamichih/fmplayer/))
         - supports rhythm rom for OPNA
         - supports ADPCM/PCM (.pvi, .pzi(for PPZ8))
+        - `ym2608_adpcm_rom.bin` must be located at `chip-player-js/public/rhythm` before building (the filename is case sensitive)
 
 ---
 
