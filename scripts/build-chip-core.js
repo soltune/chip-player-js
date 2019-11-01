@@ -262,6 +262,30 @@ const psfplayer_files = [
 
 source_files = source_files.concat(psfplayer_files);
 
+const ndsplayer_files = [
+  'psflib/dspsflib.c',
+  'psflib/dspsf2fs.c',
+  'vio2sf/desmume/arm_instructions.c',
+  'vio2sf/desmume/armcpu.c',
+  'vio2sf/desmume/barray.c',
+  'vio2sf/desmume/bios.c',
+  'vio2sf/desmume/cp15.c',
+  'vio2sf/desmume/FIFO.c',
+  'vio2sf/desmume/GPU.c',
+  'vio2sf/desmume/isqrt.c',
+  'vio2sf/desmume/matrix.c',
+  'vio2sf/desmume/mc.c',
+  'vio2sf/desmume/MMU.c',
+  'vio2sf/desmume/NDSSystem.c',
+  'vio2sf/desmume/resampler.c',
+  'vio2sf/desmume/state.c',
+  'vio2sf/desmume/thumb_instructions.c',
+  'vio2sf/desmume/SPU.cpp',
+  'emscripten/twosfplug.cpp',
+  'emscripten/adapter.cpp',
+].map(file => 'webDS/' + file);
+
+source_files = source_files.concat(ndsplayer_files);
 
 var js_file = 'src/chip-core.js';
 var wasm_file = 'src/chip-core.wasm';
@@ -418,6 +442,19 @@ var exported_functions = [
   '_psf_set_mask',
   '_psf_set_reverb',
 
+  '_nds_setup',
+  '_nds_init',
+  '_nds_teardown',
+  '_nds_get_current_position',
+  '_nds_seek_position',
+  '_nds_get_max_position',
+  '_nds_get_track_info',
+  '_nds_get_sample_rate',
+  '_nds_get_audio_buffer',
+  '_nds_get_audio_buffer_length',
+  '_nds_compute_audio_samples',
+  '_nds_set_mask',
+
   // From showcqtbar.c
   '_cqt_init',
   '_cqt_calc',
@@ -505,6 +542,11 @@ var flags = [
   '-DEMU_LITTLE_ENDIAN',
   '-DBUILTIN_HEBIOS', // build-in bios enabled
   '--js-library', 'webpsx/psf_callback.js',
+
+  // DSPlayer
+  '--js-library', 'webDS/nds_callback.js',
+  '-IwebDS/vio2sf/desmume/',
+  '-IwebDS/psflib',
 
 ];
 var args = [].concat(flags, source_files);
