@@ -5,6 +5,7 @@ export const SOUNDFONT_URL_PATH = process.env.REACT_APP_SOUNDFONT_URL_PATH;
 export const MAX_VOICES = 64;
 export const REPLACE_STATE_ON_SEEK = false;
 export const FORMATS =  [
+  '2sf',
   'ay',
   'gbs',
   'hes',
@@ -13,6 +14,7 @@ export const FORMATS =  [
   'm2',
   'mz',
   'mid',
+  'mini2sf',
   'minipsf',
   'minipsf2',
   'mod',
