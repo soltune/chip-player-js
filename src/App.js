@@ -24,6 +24,7 @@ import MDXPMDPlayer from "./players/MDXPMDPlayer";
 import FMPPlayer from "./players/FMPPlayer";
 import PSFPlayer from "./players/PSFPlayer";
 import NDSPlayer from "./players/NDSPlayer";
+import StreamPlayer from "./players/StreamPlayer";
 
 import PlayerParams from './PlayerParams';
 import Search from './Search';
@@ -195,6 +196,7 @@ class App extends React.Component {
             new FMPPlayer(audioCtx, playerNode, chipCore),
             new PSFPlayer(audioCtx, playerNode, chipCore),
             new NDSPlayer(audioCtx, playerNode, chipCore),
+            new StreamPlayer(audioCtx, playerNode, chipCore),
           ]);
           this.setState({loading: false});
 
