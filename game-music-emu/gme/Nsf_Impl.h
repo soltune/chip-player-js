@@ -182,6 +182,7 @@ private:
 	byte* unmapped_code()   { return &high_ram [sram_size]; }
 	byte* fdsram()          { return &high_ram [fdsram_offset]; }
 	int fds_enabled() const { return header_.chip_flags & header_t::fds_mask; }
+	int only_fds_enabled()  const { return (header_.chip_flags & header_t::all_mask) == header_t::fds_mask; }
 	
 	void map_memory();
 	void write_bank( int index, int data );
