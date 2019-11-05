@@ -62,7 +62,8 @@ export default class StreamPlayer extends Player {
   loadData(data, filepath) {
     this.init();
     this.metadata = this.createMetadata(data, filepath);
-    this.audioCtx.decodeAudioData(data.buffer).then((buffer) => {
+    // Safari doesn't support decodeAudioData() as promise based
+    this.audioCtx.decodeAudioData(data.buffer, (buffer) => {
       this.buffer = buffer;
       this.connect();
       this.resume();
