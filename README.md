@@ -3,7 +3,9 @@
 ## About this fork
 Chip Player JS is web-based chip tune player written by Matt Montag.  
 This fork is to share my fixes like;  
-
+- Small bugfixes and improvements
+    - [GME] fixed incorrect text encoding handling in the tags
+    - [GME/nsf] supported `FDS write protect` for some tunes which use multi extend chips
 - additional file formats support
     - gbs, hes
     - s98 ([webS98](https://github.com/wothke/webS98/), based on [m_s98.kpi S98V3](http://www.vesta.dti.ne.jp/~tsato/soft_s98v3.html))
@@ -33,7 +35,8 @@ This fork is to share my fixes like;
         - supports rhythm rom for OPNA
         - supports ADPCM/PCM (.pvi, .pzi(for PPZ8))
         - `ym2608_adpcm_rom.bin` must be located at `chip-player-js/public/rhythm` before building (the filename is case sensitive)
-
+    - psf/minipsf ([webPSX](https://github.com/wothke/webpsx))
+    - 2sf/mini2sf ([webDS](https://github.com/wothke/webDS))
 ---
 
 ```
