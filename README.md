@@ -1,5 +1,6 @@
 # Chip Player JS
 
+
 ## About this fork
 Chip Player JS is web-based chip tune player written by Matt Montag.  
 This fork is to share my fixes like;  
@@ -39,38 +40,24 @@ This fork is to share my fixes like;
     - 2sf/mini2sf ([webDS](https://github.com/wothke/webDS))
 ---
 
-```
-                                            _
-                                ________   (_)
-                               / ____/ /_  ______
-                              / /  _/ __ \/ / __ \
-                             / /___/ / / / / /_/ /\
-                        ____ \______/ /_/_/ ____/ /         __ ____
-                       / __ \/ /__ ____  /_/__  _/___      / /‾___/\
-                      / /_/ / /‾__‾ / /\/ /‾_ \/ ‾__/\__  / /\__ \_/
-                     / ____/ / /_/ / {_/ /  __/ /‾ __/ /_/ /___/ /\
-                    /_/ __/_/\__,_/\__  /\___/_/ /   \____//____/ /
-                    \__/  \__/\____│___/ /\_____/     \____\_____/
-                                    \___/
+![Screen Shot 2019-11-19 at 1 21 04 PM](https://user-images.githubusercontent.com/946117/69187458-80955600-0acf-11ea-9a1f-e090032dcb00.png)
 
-```
+Play online: [Chip Player JS](https://mmontag.github.io/chip-player-js). Feature requests? [Create an issue](https://github.com/mmontag/chip-player-js/issues/new).
 
-Play online: [Chip Player JS](https://mmontag.github.io/chip-player-js)
+### Features
 
-Chip Player JS is a work in progress. Goals:
-
-- [x] Support popular game console formats and tracker formats (not exhaustive)
-- [x] Advanced sound control (channel volume, panning, etc.) like [NotSoFatso](https://disch.zophar.net/notsofatso.php)'s stereo and bandlimiting controls
-- [x] Built-in online music library like [Chipmachine](http://sasq64.github.io/chipmachine/)
-- [x] Simple music management (at least the ability to save favorites) like Winamp/Spotify
-- [x] High-quality MIDI playback with JS wavetable synthesis
-    * [x] Bonus: user-selectable soundbanks
-- [x] Track sequencer with player controls and shuffle mode
-- [x] Media key support in Chrome
-- [ ] High performance
-   - [ ] Cold cache time-to-play under 500 ms (i.e. https://mmontag.github.io/chip-player-js/?play=ModArchives/aryx.s3m in incognito window)
-   - [x] Instant search results
-   - [x] CPU usage under 25% in most circumstances
+- Support popular game console formats and tracker formats (not exhaustive)
+- Advanced sound control (channel volume, panning, etc.) like [NotSoFatso](https://disch.zophar.net/notsofatso.php)'s stereo and bandlimiting controls
+- Built-in online music library like [Chipmachine](http://sasq64.github.io/chipmachine/)
+- Simple music management (at least the ability to save favorites) like Winamp/Spotify
+- High-quality MIDI playback with JS wavetable synthesis
+    * Bonus: user-selectable soundbanks
+- Track sequencer with player controls and shuffle mode
+- Media key support in Chrome
+- High performance
+   - Time-to-audio under 500 ms (i.e. https://mmontag.github.io/chip-player-js/?play=ModArchives/aryx.s3m)
+   - Instant search results
+   - CPU usage under 25% in most circumstances
 
 ## Development Notes
 

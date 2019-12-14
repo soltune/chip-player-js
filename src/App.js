@@ -1,6 +1,6 @@
 import React from 'react';
 import isMobile from 'ismobilejs';
-import pathParse from 'path-parse';
+import clamp from 'lodash/clamp';
 import queryString from 'querystring';
 import * as firebase from 'firebase/app';
 import 'firebase/auth';
@@ -88,6 +88,7 @@ class App extends React.Component {
 
     this.togglePause = this.togglePause.bind(this);
     this.toggleSettings = this.toggleSettings.bind(this);
+    this.toggleInfo = this.toggleInfo.bind(this);
     this.playContext = this.playContext.bind(this);
     this.prevSong = this.prevSong.bind(this);
     this.nextSong = this.nextSong.bind(this);
@@ -106,6 +107,7 @@ class App extends React.Component {
     this.handleToggleFavorite = this.handleToggleFavorite.bind(this);
     this.attachMediaKeyHandlers = this.attachMediaKeyHandlers.bind(this);
     this.fetchDirectory = this.fetchDirectory.bind(this);
+    this.setSpeedRelative = this.setSpeedRelative.bind(this);
 
     this.attachMediaKeyHandlers();
     this.contentAreaRef = React.createRef();
@@ -168,6 +170,8 @@ class App extends React.Component {
       voices: Array(MAX_VOICES).fill(true),
       voiceNames: Array(MAX_VOICES).fill(''),
       imageUrl: null,
+      infoTexts: [],
+      showInfo: false,
       showPlayerSettings: false,
       user: null,
       faves: [],
@@ -266,6 +270,42 @@ class App extends React.Component {
       navigator.mediaSession.setActionHandler('previoustrack', () => { console.debug('Media Key: previoustrack'); this.prevSong(); });
       navigator.mediaSession.setActionHandler('nexttrack', () => { console.debug('Media Key: nexttrack'); this.nextSong(); });
     }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
+
+      switch (e.key) {
+        case 'Escape':
+          this.setState({ showInfo: false });
+          e.target.blur();
+          break;
+        case 'ArrowLeft':
+          this.seekRelative(-5000);
+          break;
+        case 'ArrowRight':
+          this.seekRelative(5000);
+          break;
+        case ' ':
+          if (e.target.tagName !== 'BUTTON') {
+            this.togglePause();
+            e.preventDefault();
+          }
+          break;
+        case '-':
+          this.setSpeedRelative(-0.1);
+          break;
+        case '_':
+          this.setSpeedRelative(-0.01);
+          break;
+        case '=':
+          this.setSpeedRelative(0.1);
+          break;
+        case '+':
+          this.setSpeedRelative(0.01);
+          break;
+        default:
+      }
+    });
   }
 
   playContext(context, index = 0) {
@@ -311,8 +351,8 @@ class App extends React.Component {
       const player = this.sequencer.getPlayer();
       const url = this.sequencer.getCurrUrl();
       if (url && url !== this.state.songUrl) {
-        const imageDir = pathParse(url.replace(CATALOG_PREFIX, '/')).dir;
-        const getImageUrl = `${API_BASE}/image?path=${encodeURIComponent(imageDir)}`;
+        const path = url.replace(CATALOG_PREFIX, '/');
+        const getMetadataUrl = `${API_BASE}/metadata?path=${encodeURIComponent(path)}`;
         const pathParts = url.split('/');
         pathParts.pop();
 
@@ -327,24 +367,27 @@ class App extends React.Component {
         const stateUrl = '?' + queryString.stringify(urlParams);
         window.history.replaceState(null, '', stateUrl);
 
-        // Fetch artwork for this file (cancelable request)
-        if (this.imageRequest) this.imageRequest.abort();
-        this.imageRequest = promisify(new XMLHttpRequest());
-        this.imageRequest.responseType = 'json';
-        this.imageRequest.open('GET', getImageUrl);
-        this.imageRequest.send()
+        // Fetch artwork/info for this file (cancelable request)
+        if (this.metaRequest) this.metaRequest.abort();
+        this.metaRequest = promisify(new XMLHttpRequest());
+        this.metaRequest.responseType = 'json';
+        this.metaRequest.open('GET', getMetadataUrl);
+        this.metaRequest.send()
           .then(xhr => {
             if (xhr.status >= 200 && xhr.status < 400) {
-              const imageUrl = xhr.response.imageUrl;
-              this.setState({imageUrl: imageUrl});
+              const { imageUrl, infoTexts } = xhr.response;
+              this.setState({imageUrl: imageUrl, infoTexts: infoTexts});
+              if (infoTexts.length === 0) {
+                this.setState({ showInfo: false });
+              }
             }
           })
           .catch(e => {
-            this.setState({imageUrl: null});
+            this.setState({imageUrl: null, infoTexts: [], showInfo: false});
           });
       } else {
         // Drag & dropped files reach this branch
-        this.setState({imageUrl: null});
+        this.setState({imageUrl: null, infoTexts: [], showInfo: false});
       }
 
       this.setState({
@@ -410,7 +453,27 @@ class App extends React.Component {
     // Seek in song
     this.sequencer.getPlayer().seekMs(seekMs);
     this.setState({
-      currentSongPositionMs: pos * this.state.currentSongDurationMs, // Smooth
+      currentSongPositionMs: seekMs, // Smooth
+    });
+    setTimeout(() => {
+      if (this.sequencer.getPlayer().isPlaying()) {
+        this.setState({
+          currentSongPositionMs: this.sequencer.getPlayer().getPositionMs(), // Accurate
+        });
+      }
+    }, 100);
+  }
+
+  seekRelative(ms) {
+    if (!this.sequencer.getPlayer()) return;
+
+    const durationMs = this.state.currentSongDurationMs;
+    const seekMs = clamp(this.sequencer.getPlayer().getPositionMs() + ms, 0, durationMs);
+
+    // Seek in song
+    this.sequencer.getPlayer().seekMs(seekMs);
+    this.setState({
+      currentSongPositionMs: seekMs, // Smooth
     });
     setTimeout(() => {
       if (this.sequencer.getPlayer().isPlaying()) {
@@ -432,6 +495,16 @@ class App extends React.Component {
     if (!this.sequencer.getPlayer()) return;
 
     const tempo = parseFloat((event.target ? event.target.value : event)) || 1.0;
+    this.sequencer.getPlayer().setTempo(tempo);
+    this.setState({
+      tempo: tempo
+    });
+  }
+
+  setSpeedRelative(delta) {
+    if (!this.sequencer.getPlayer()) return;
+
+    const tempo = clamp(this.state.tempo + delta, 0.1, 2);
     this.sequencer.getPlayer().setTempo(tempo);
     this.setState({
       tempo: tempo
@@ -461,15 +534,19 @@ class App extends React.Component {
     }
   }
 
+  toggleInfo() {
+    this.setState({
+      showInfo: !this.state.showInfo,
+    });
+  }
+
   romanToArabicSubstrings(str) {
     // Works up to 399 (CCCXCIX)
     try {
       str = str.replace(/\b([IVXLC]+|[ivxlc]+)[-.,)]/, (a, match, c, d) => {
         const numeric = String(toArabic(match)).padStart(4, '0');
-        console.log('===', match, numeric);
         return numeric;
       });
-      console.log(str);
       return str;
     } catch (e) {
       // Ignore false positives like 'mill.', 'did-', or 'mix,'
@@ -492,6 +569,7 @@ class App extends React.Component {
           return item.path.toLowerCase().indexOf('ix') > -1;
         });
         if (needsRomanNumeralSort) {
+          console.log("Roman numeral sort is active for this directory");
           json.forEach(item => arabicMap[item.path] = this.romanToArabicSubstrings(item.path));
         }
         const items = json
@@ -571,6 +649,18 @@ class App extends React.Component {
         onDrop={this.onDrop}>{dropzoneProps => (
       <div className="App">
         <DropMessage dropzoneProps={dropzoneProps}/>
+        <div hidden={!this.state.showInfo} className="message-box-outer">
+          <div hidden={!this.state.showInfo} className="message-box">
+            <div className="message-box-inner">
+              <pre style={{maxHeight: '100%', margin: 0}}>
+                {this.state.infoTexts[0]}
+              </pre>
+            </div>
+            <div className="message-box-footer">
+              <button className="box-button message-box-button" onClick={this.toggleInfo}>Close</button>
+            </div>
+          </div>
+        </div>
         <AppHeader user={this.state.user}
                    handleLogout={this.handleLogout}
                    handleLogin={this.handleLogin}
@@ -695,7 +785,15 @@ class App extends React.Component {
                                 toggleFavorite={this.handleToggleFavorite}
                                 href={this.state.songUrl}/>
               </div>}
-              <div className="SongDetails-title">{title}</div>
+              <div className="SongDetails-title">
+                {title}
+                {' '}
+                {this.state.infoTexts.length > 0 &&
+                <a onClick={(e) => this.toggleInfo(e)} href='#'>
+                  тхт
+                </a>
+                }
+              </div>
               <div className="SongDetails-subtitle">{subtitle}</div>
               <div className="SongDetails-filepath">{pathLinks}</div>
             </div>}
@@ -730,7 +828,7 @@ class App extends React.Component {
               <div>(No active player)</div>}
           </div>}
           {this.state.imageUrl &&
-          <img className="App-footer-art" src={this.state.imageUrl}/>}
+          <img alt="Cover art" className="App-footer-art" src={this.state.imageUrl}/>}
         </div>
       </div>
       )}</Dropzone>
