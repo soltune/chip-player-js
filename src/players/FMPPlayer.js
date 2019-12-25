@@ -285,13 +285,13 @@ export default class FMPPlayer extends Player {
         if (this.numberOfSamplesToRender === 0) {
 
           this.currentPlaytime = this.getPositionMs();
-          if (this.lib.hasLoop()) { // has loops
-            if (!this.isFadingOut && this.getDurationMs() - this.currentPlaytime <= fadeoutTimeMs) {
+          if (this.lib.hasLoop()) {
+            if (!this.isFadingOut && this.getDurationMs() < this.currentPlaytime) {
               this.setFadeout(this.currentPlaytime);
             }
           }
 
-          if (this.currentPlaytime > this.getDurationMs()) {
+          if (this.currentPlaytime > this.getDurationMs() + fadeoutTimeMs) {
             // no frame left
             this.fillEmpty(outSize);
             this.stop();
@@ -308,9 +308,8 @@ export default class FMPPlayer extends Player {
 
           // Fading out
           if (this.isFadingOut) {
-            const duration = this.getDurationMs() - this.fadeOutStartMs;
-            const current = this.currentPlaytime - this.fadeOutStartMs;
-            const ratio = (duration - current) / duration;
+            const current = this.currentPlaytime - this.getDurationMs();
+            const ratio = Math.max((fadeoutTimeMs - current) / fadeoutTimeMs, 0);
             this.resampleBuffer = this.resampleBuffer.map((value) => {
               return value * ratio
             });
