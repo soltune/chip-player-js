@@ -286,12 +286,12 @@ export default class FMPPlayer extends Player {
 
           this.currentPlaytime = this.getPositionMs();
           if (this.lib.hasLoop()) {
-            if (!this.isFadingOut && this.getDurationMs() < this.currentPlaytime) {
+            if (!this.isFadingOut && this.lib.hasLoop() && this.getDurationMs() < this.currentPlaytime) {
               this.setFadeout(this.currentPlaytime);
             }
           }
 
-          if (this.currentPlaytime > this.getDurationMs() + fadeoutTimeMs) {
+          if (this.currentPlaytime > this.getDurationMs() + (fadeoutTimeMs * (this.lib.hasLoop()? 1 : 0))) {
             // no frame left
             this.fillEmpty(outSize);
             this.stop();
