@@ -148,7 +148,6 @@ static int do_get_max_position() {
 }
 
 static int mdx_compute_samples() {
-	if (do_get_current_position() >= do_get_max_position()) return 1;
 
 	mdx_samples_available= SAMPLE_BUF_SIZE;
 	if (mdx_mode) {
@@ -160,7 +159,7 @@ static int mdx_compute_samples() {
 	}
 
 
-	return 0;
+	return (do_get_current_position() >= do_get_max_position())? 1 : 0;
 }
 
 static void do_teardown() {
