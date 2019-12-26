@@ -282,10 +282,10 @@ void extractStructFileInfo(char *filename) {
 }
 
 int computeSamples() {
-	if (g_loop_detected) return 1;  // the position goes over the end of tune
+//	if (g_loop_detected) return 1;  // the position goes over the end of tune
 	
 	s98_samples_available = g_s98->Write((Int16 *)sample_buffer, SAMPLE_BUF_SIZE / 4) ;
-	return 0;
+	return (g_loop_detected)? 1 : 0;
 }
 
 extern "C"  int s98_load_file(char *filename, void * inBuffer, uint32_t inBufSize)  __attribute__((noinline));
@@ -334,7 +334,8 @@ extern "C" int EMSCRIPTEN_KEEPALIVE s98_get_current_position() {
 	if (g_s98->GetPosition() > g_soundinfo.dwLength) {
 		g_loop_detected = 1;
 	}
-	return g_s98->GetPosition() % g_soundinfo.dwLength;
+//	return g_s98->GetPosition() % g_soundinfo.dwLength;
+	return (g_s98)? g_s98->GetPosition() : 0;
 }
 
 extern "C" void s98_seek_position(int pos) __attribute__((noinline));

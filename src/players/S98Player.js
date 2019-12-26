@@ -170,23 +170,19 @@ export default class S98Player extends Player {
       }
 
       const outSize = this.channels[0].length;
+      const fadeoutTimeMs = 2000;
       this.numberOfSamplesRendered = 0;
 
       while (this.numberOfSamplesRendered < outSize) {
         if (this.numberOfSamplesToRender === 0) {
 
-          let finished = false;
-          this.currentPlaytime = Math.max(this.getPositionMs(), this.currentPlaytime);
-          if (this.currentPlaytime > 0 && this.getPositionMs() === 0) {
-            finished = true;  // detected the termination of non-looped tune
-          } else {
-            finished = (this.s98lib.computeAudioSamples() === 1);
-            if (!this.isFadingOut && this.getDurationMs() - this.currentPlaytime <= 2000) {
-              this.setFadeout(this.currentPlaytime);
-            }
+          this.currentPlaytime = this.getPositionMs();
+          const detectLoop = this.s98lib.computeAudioSamples();
+          if (!this.isFadingOut && detectLoop && this.getDurationMs() < this.currentPlaytime) {
+            this.setFadeout(this.currentPlaytime);
           }
 
-          if (finished) {
+          if (this.currentPlaytime >= (this.getDurationMs() + (detectLoop * fadeoutTimeMs))) {
             // no frame left
             this.fillEmpty(outSize);
             this.stop();
@@ -202,9 +198,8 @@ export default class S98Player extends Player {
 
           // Fading out
           if (this.isFadingOut && this.currentPlaytime >= this.fadeOutStartMs) {
-            const duration = this.getDurationMs() - this.fadeOutStartMs;
-            const current = this.currentPlaytime - this.fadeOutStartMs;
-            const ratio = (duration - current) / duration;
+            const current = this.currentPlaytime - this.getDurationMs();
+            const ratio = Math.max((fadeoutTimeMs - current) / fadeoutTimeMs, 0);
             this.resampleBuffer = this.resampleBuffer.map((value) => {
               return value * ratio
             });
