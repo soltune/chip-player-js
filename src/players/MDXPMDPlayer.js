@@ -179,17 +179,6 @@ class MDXPMDLibWrapper {
     return result;
   }
 
-  // evalTrackOptions(options) {
-  //   if (typeof options.timeout != 'undefined') {
-  //     ScriptNodePlayer.getInstance().setPlaybackTimeout(options.timeout*1000);
-  //   } else {
-  //     ScriptNodePlayer.getInstance().setPlaybackTimeout(-1);	// reset last songs setting
-  //   }
-  //   var id= (options && options.track) ? options.track : -1;	// by default do not set track
-  //   var boostVolume= (options && options.boostVolume) ? options.boostVolume : 0;
-  //   return this.Module.ccall('emu_set_subsong', 'number', ['number', 'number'], [id, boostVolume]);	// not used here..
-  // }
-
   teardown() {
     this.currentFile = null;
     this.mdxpmdlib.ccall('mdx_teardown', 'number');	// just in case
@@ -320,22 +309,26 @@ export default class MDXPMDPlayer extends Player {
       }
 
       const outSize = this.channels[0].length;
+      const fadeoutTimeMs = 2000;
       this.numberOfSamplesRendered = 0;
 
       while (this.numberOfSamplesRendered < outSize) {
         if (this.numberOfSamplesToRender === 0) {
 
           let finished = false;
-          this.currentPlaytime = Math.max(this.getPositionMs(), this.currentPlaytime);
-          if (this.currentPlaytime > 0 && this.getPositionMs() === 0) {
-            finished = true;  // detected the termination of non-looped tune
-          } else {
-            finished = (this.lib.computeAudioSamples() === 1);
-            if (!this.lib.isMdxMode() && !this.isFadingOut && this.lib.hasLoop() &&
-              this.getDurationMs() - this.currentPlaytime <= 2000) {
-              // set fadeout only if the file is pmd and has loop
-              // MDXWin has its own fade out function
-              this.setFadeout(this.currentPlaytime);
+          this.currentPlaytime = this.getPositionMs();
+          this.lib.computeAudioSamples();
+          if (this.lib.isMdxMode()) { // mdx
+            finished = (this.getDurationMs() <= this.currentPlaytime);
+          } else {  // pmd
+            if (this.lib.hasLoop()) {
+              if (!this.isFadingOut && this.getDurationMs() <= this.currentPlaytime) {
+                this.setFadeout(this.currentPlaytime);
+              } else if (this.getDurationMs() + fadeoutTimeMs <= this.currentPlaytime) {
+                finished = true;
+              }
+            } else {
+              finished = (this.getDurationMs() <= this.currentPlaytime);
             }
           }
 
@@ -355,9 +348,8 @@ export default class MDXPMDPlayer extends Player {
 
           // Fading out
           if (this.isFadingOut && this.currentPlaytime >= this.fadeOutStartMs) {
-            const duration = this.getDurationMs() - this.fadeOutStartMs;
-            const current = this.currentPlaytime - this.fadeOutStartMs;
-            const ratio = (duration - current) / duration;
+            const current = this.currentPlaytime - this.getDurationMs();
+            const ratio = Math.max((fadeoutTimeMs - current) / fadeoutTimeMs, 0);
             this.resampleBuffer = this.resampleBuffer.map((value) => {
               return value * ratio
             });
