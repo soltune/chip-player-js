@@ -285,7 +285,8 @@ int computeSamples() {
 //	if (g_loop_detected) return 1;  // the position goes over the end of tune
 	
 	s98_samples_available = g_s98->Write((Int16 *)sample_buffer, SAMPLE_BUF_SIZE / 4) ;
-	return (g_loop_detected)? 1 : 0;
+	return (!g_s98->HasLoop())? -1 :
+	            ((g_loop_detected)? 1 : 0);
 }
 
 extern "C"  int s98_load_file(char *filename, void * inBuffer, uint32_t inBufSize)  __attribute__((noinline));
