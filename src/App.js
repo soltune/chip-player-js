@@ -261,13 +261,14 @@ class App extends React.Component {
   }
 
   attachMediaKeyHandlers() {
+    AUDIO_KEEPER.src = process.env.PUBLIC_URL + '/5-seconds-of-silence.mp3';
+    AUDIO_KEEPER.volume = 0;
+
     if ('mediaSession' in navigator) {
       console.log('Attaching Media Key event handlers.');
 
       // Limitations of MediaSession: there must always be an active audio element :(
-      AUDIO_KEEPER.src = process.env.PUBLIC_URL + '/5-seconds-of-silence.mp3';
       AUDIO_KEEPER.loop = true;
-      AUDIO_KEEPER.volume = 0;
       AUDIO_KEEPER.play();
 
       navigator.mediaSession.setActionHandler('play', () => { console.debug('Media Key: play'); this.togglePause(); });
