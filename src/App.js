@@ -309,6 +309,26 @@ class App extends React.Component {
         case '+':
           this.setSpeedRelative(0.01);
           break;
+        case 'c':
+        case 'C':
+          this.togglePause();
+          break;
+        case 'b':
+        case 'B':
+          if (e.shiftKey) {
+            this.nextSong();
+          } else {
+            this.sequencer.hasNextSubtune()? this.nextSubtune() : this.nextSong();
+          }
+          break;
+        case 'z':
+        case 'Z':
+          if (e.shiftKey) {
+            this.prevSong();
+          } else {
+            this.sequencer.hasPrevSubtune()? this.prevSubtune() : this.prevSong();
+          }
+          break;
         default:
       }
     });
