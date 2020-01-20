@@ -252,7 +252,9 @@ class App extends React.Component {
       const unlock = () => {
         context.resume().then(() => events.forEach(event => document.body.removeEventListener(event, unlock)));
         if (AUDIO_KEEPER.paused) {  // workaround for iOS 13 (background play)
-          AUDIO_KEEPER.loop = false;
+          const mediaSourceNode = context.createMediaElementSource(AUDIO_KEEPER);
+          mediaSourceNode.connect(this.playerNode);
+
           AUDIO_KEEPER.play();
         }
       };
@@ -263,12 +265,12 @@ class App extends React.Component {
   attachMediaKeyHandlers() {
     AUDIO_KEEPER.src = process.env.PUBLIC_URL + '/5-seconds-of-silence.mp3';
     AUDIO_KEEPER.volume = 0;
+    AUDIO_KEEPER.loop = true;
 
     if ('mediaSession' in navigator) {
       console.log('Attaching Media Key event handlers.');
 
       // Limitations of MediaSession: there must always be an active audio element :(
-      AUDIO_KEEPER.loop = true;
       AUDIO_KEEPER.play();
 
       navigator.mediaSession.setActionHandler('play', () => { console.debug('Media Key: play'); this.togglePause(); });
