@@ -40,7 +40,6 @@ import dice from './images/dice.png';
 import DropMessage from "./DropMessage";
 
 const NUMERIC_COLLATOR = new Intl.Collator(undefined, {numeric: true, sensitivity: 'base'});
-const AUDIO_KEEPER = document.createElement('audio');
 
 class App extends React.Component {
   handleLogin() {
@@ -110,7 +109,11 @@ class App extends React.Component {
     this.fetchDirectory = this.fetchDirectory.bind(this);
     this.setSpeedRelative = this.setSpeedRelative.bind(this);
 
-    this.attachMediaKeyHandlers();
+    const audioElement = document.createElement('audio');
+    audioElement.src = process.env.PUBLIC_URL + '/5-seconds-of-silence.mp3';
+    audioElement.volume = 0;
+    audioElement.loop = true;
+    this.attachMediaKeyHandlers(audioElement);
     this.contentAreaRef = React.createRef();
 
     // Initialize Firebase
@@ -152,7 +155,7 @@ class App extends React.Component {
     gainNode.connect(audioCtx.destination);
     var playerNode = this.playerNode = gainNode;
 
-    this._unlockAudioContext(audioCtx);
+    this._unlockAudioContext(audioCtx, audioElement);
     console.log('Sample rate: %d hz', audioCtx.sampleRate);
 
     this.state = {
@@ -244,34 +247,33 @@ class App extends React.Component {
     this.sequencer = new Sequencer([], this.handleSequencerStateUpdate, this.handlePlayerError);
   }
 
-  _unlockAudioContext(context) {
+  _unlockAudioContext(context, audioElement) {
     // https://hackernoon.com/unlocking-web-audio-the-smarter-way-8858218c0e09
     console.log('AudioContext initial state is %s.', context.state);
     if (context.state === 'suspended') {
       const events = ['touchstart', 'touchend', 'mousedown', 'mouseup'];
       const unlock = () => {
-        context.resume().then(() => events.forEach(event => document.body.removeEventListener(event, unlock)));
-        if (AUDIO_KEEPER.paused) {  // workaround for iOS 13 (background play)
-          const mediaSourceNode = context.createMediaElementSource(AUDIO_KEEPER);
-          mediaSourceNode.connect(this.playerNode);
+        context.resume().then(() => {
+          events.forEach(event => document.body.removeEventListener(event, unlock));
 
-          AUDIO_KEEPER.play();
-        }
+          if (audioElement.paused) {  // workaround for iOS 13 (background play)
+            const mediaSourceNode = context.createMediaElementSource(audioElement);
+            mediaSourceNode.connect(this.playerNode);
+            audioElement.play();
+          }
+        });
       };
       events.forEach(event => document.body.addEventListener(event, unlock, false));
     }
   }
 
-  attachMediaKeyHandlers() {
-    AUDIO_KEEPER.src = process.env.PUBLIC_URL + '/5-seconds-of-silence.mp3';
-    AUDIO_KEEPER.volume = 0;
-    AUDIO_KEEPER.loop = true;
+  attachMediaKeyHandlers(audioElement) {
 
     if ('mediaSession' in navigator) {
       console.log('Attaching Media Key event handlers.');
 
       // Limitations of MediaSession: there must always be an active audio element :(
-      AUDIO_KEEPER.play();
+      audioElement.play();
 
       navigator.mediaSession.setActionHandler('play', () => { console.debug('Media Key: play'); this.togglePause(); });
       navigator.mediaSession.setActionHandler('pause', () => { console.debug('Media Key: pause'); this.togglePause(); });
