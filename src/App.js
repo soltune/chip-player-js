@@ -253,15 +253,13 @@ class App extends React.Component {
     if (context.state === 'suspended') {
       const events = ['touchstart', 'touchend', 'mousedown', 'mouseup'];
       const unlock = () => {
-        context.resume().then(() => {
-          events.forEach(event => document.body.removeEventListener(event, unlock));
+        context.resume().then(() => events.forEach(event => document.body.removeEventListener(event, unlock)));
 
-          if (audioElement.paused) {  // workaround for iOS 13 (background play)
-            const mediaSourceNode = context.createMediaElementSource(audioElement);
-            mediaSourceNode.connect(this.playerNode);
-            audioElement.play();
-          }
-        });
+        if (audioElement.paused) {  // workaround for iOS 13 (background play)
+          const mediaSourceNode = context.createMediaElementSource(audioElement);
+          mediaSourceNode.connect(this.playerNode);
+          audioElement.play();
+        }
       };
       events.forEach(event => document.body.addEventListener(event, unlock, false));
     }
