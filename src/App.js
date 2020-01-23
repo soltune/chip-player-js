@@ -38,6 +38,7 @@ import Browse from "./Browse";
 import DirectoryLink from "./DirectoryLink";
 import dice from './images/dice.png';
 import DropMessage from "./DropMessage";
+import GlobalParams from "./GlobalParams";
 
 const NUMERIC_COLLATOR = new Intl.Collator(undefined, {numeric: true, sensitivity: 'base'});
 
@@ -108,6 +109,7 @@ class App extends React.Component {
     this.attachMediaKeyHandlers = this.attachMediaKeyHandlers.bind(this);
     this.fetchDirectory = this.fetchDirectory.bind(this);
     this.setSpeedRelative = this.setSpeedRelative.bind(this);
+    this.handleVolumeBoostChange = this.handleVolumeBoostChange.bind(this);
 
     const audioElement = document.createElement('audio');
     audioElement.src = process.env.PUBLIC_URL + '/5-seconds-of-silence.mp3';
@@ -150,9 +152,13 @@ class App extends React.Component {
 
     // Initialize audio graph
     const audioCtx = this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const compressor = audioCtx.createDynamicsCompressor();
+    compressor.connect(audioCtx.destination);
+    compressor.ratio.value = 1;
+    this.audioCompressor = compressor;
     const gainNode = audioCtx.createGain();
     gainNode.gain.value = 1;
-    gainNode.connect(audioCtx.destination);
+    gainNode.connect(compressor);
     var playerNode = this.playerNode = gainNode;
 
     this._unlockAudioContext(audioCtx, audioElement);
@@ -180,6 +186,7 @@ class App extends React.Component {
       user: null,
       faves: [],
       songUrl: null,
+      boost: this.playerNode.gain.value,
 
       directories: {},
     };
@@ -568,6 +575,13 @@ class App extends React.Component {
     });
   }
 
+  handleVolumeBoostChange(event) {
+    const value = parseFloat((event.target ? event.target.value : event)) || 0.0;
+    this.setState({boost: value});
+    this.audioCompressor.ratio.value = (value > 1.0)? 12 : 1; // avoid sound clipping
+    this.playerNode.gain.value = value;
+  }
+
   romanToArabicSubstrings(str) {
     // Works up to 399 (CCCXCIX)
     try {
@@ -854,6 +868,13 @@ class App extends React.Component {
                 paramDefs={this.sequencer.getPlayer().getParamDefs()}/>
               :
               <div>(No active player)</div>}
+              <hr />
+              <h3 style={{margin: '0 8px 19px 0'}}>Global Settings</h3>
+
+              <GlobalParams
+                boost={this.state.boost}
+                defaultDuration={this.state.defaultDuration}
+                handleVolumeBoostChange={this.handleVolumeBoostChange} />
           </div>}
           {this.state.imageUrl &&
           <img alt="Cover art" className="App-footer-art" src={this.state.imageUrl}/>}
