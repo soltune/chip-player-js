@@ -110,6 +110,7 @@ class App extends React.Component {
     this.fetchDirectory = this.fetchDirectory.bind(this);
     this.setSpeedRelative = this.setSpeedRelative.bind(this);
     this.handleVolumeBoostChange = this.handleVolumeBoostChange.bind(this);
+    this.handleNsfDurationChange = this.handleNsfDurationChange.bind(this);
 
     const audioElement = document.createElement('audio');
     audioElement.src = process.env.PUBLIC_URL + '/5-seconds-of-silence.mp3';
@@ -187,6 +188,7 @@ class App extends React.Component {
       faves: [],
       songUrl: null,
       boost: this.playerNode.gain.value,
+      nsfDuration: 150,
 
       directories: {},
     };
@@ -384,6 +386,7 @@ class App extends React.Component {
       window.history.replaceState(null, '', search ? `?${search}` : './');
     } else {
       const player = this.sequencer.getPlayer();
+      if (player.setNsfDuration)  player.setNsfDuration(this.state.nsfDuration);
       const url = this.sequencer.getCurrUrl();
       if (url && url !== this.state.songUrl) {
         const path = url.replace(CATALOG_PREFIX, '/');
@@ -580,6 +583,11 @@ class App extends React.Component {
     this.setState({boost: value});
     this.audioCompressor.ratio.value = (value > 1.0)? 12 : 1; // avoid sound clipping
     this.playerNode.gain.value = value;
+  }
+
+  handleNsfDurationChange(event) {
+    const value = parseInt((event.target ? event.target.value : event)) || 150;
+    this.setState({nsfDuration: value});
   }
 
   romanToArabicSubstrings(str) {
@@ -868,13 +876,13 @@ class App extends React.Component {
                 paramDefs={this.sequencer.getPlayer().getParamDefs()}/>
               :
               <div>(No active player)</div>}
-              <hr />
+              <br />
               <h3 style={{margin: '0 8px 19px 0'}}>Global Settings</h3>
-
               <GlobalParams
                 boost={this.state.boost}
-                defaultDuration={this.state.defaultDuration}
-                handleVolumeBoostChange={this.handleVolumeBoostChange} />
+                nsfDuration={this.state.nsfDuration}
+                handleVolumeBoostChange={this.handleVolumeBoostChange}
+                handleNsfDurationChange={this.handleNsfDurationChange}/>
           </div>}
           {this.state.imageUrl &&
           <img alt="Cover art" className="App-footer-art" src={this.state.imageUrl}/>}

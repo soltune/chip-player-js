@@ -33,6 +33,7 @@ export default class GMEPlayer extends Player {
     this.subtune = 0;
     this.tempo = 1.0;
     this.params = { subbass: 1 };
+    this.duration = 0;
 
     this.buffer = libgme.allocate(this.bufferSize * 16, 'i16', libgme.ALLOC_NORMAL);
     this.emuPtr = libgme.allocate(1, 'i32', libgme.ALLOC_NORMAL);
@@ -214,8 +215,16 @@ export default class GMEPlayer extends Player {
   }
 
   getDurationMs() {
-    if (emu) return this.metadata.play_length;
-    return 0;
+    if (!emu) return 0;
+    if (['Famicom', 'Gameboy', 'PC-Engine', 'MSX'].includes(this.filepathMeta.system)) {
+      return this.duration * 1000;
+    } else{
+      return this.metadata.play_length;
+    }
+  }
+
+  setNsfDuration(duration) {
+    this.duration = duration;
   }
 
   getMetadata() {
