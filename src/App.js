@@ -586,8 +586,16 @@ class App extends React.Component {
   }
 
   handleNsfDurationChange(event) {
-    const value = parseInt((event.target ? event.target.value : event)) || 150;
-    this.setState({nsfDuration: value});
+    const duration = parseInt((event.target ? event.target.value : event)) || 150;
+    this.setState({nsfDuration: duration});
+
+    const player = this.sequencer.getPlayer();
+    if (player.setNsfDuration) {
+      const oldValue = player.getDurationMs();
+      player.setNsfDuration(duration);
+      if (player.getDurationMs() !== oldValue)
+        this.setState({ currentSongDurationMs: duration * 1000 });
+    }
   }
 
   romanToArabicSubstrings(str) {
