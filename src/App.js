@@ -84,6 +84,10 @@ class App extends React.Component {
     }
   }
 
+  handleUpdateGlobalSettings(params) {
+
+  }
+
   constructor(props) {
     super(props);
 
@@ -579,10 +583,13 @@ class App extends React.Component {
   }
 
   handleVolumeBoostChange(event) {
-    const value = parseFloat((event.target ? event.target.value : event)) || 0.0;
-    this.setState({boost: value});
-    this.audioCompressor.ratio.value = (value > 1.0)? 12 : 1; // avoid sound clipping
-    this.playerNode.gain.value = value;
+    const maxGain = 9.0, maxCompressorRatio = 12;
+    const gain = parseFloat((event.target ? event.target.value : event));
+    this.setState({boost: gain});
+    this.audioCompressor.ratio.value = (gain > 1.0)? (gain / maxGain * maxCompressorRatio) : 1.0; // avoid clipping
+    this.playerNode.gain.value = gain;
+
+    this.handleUpdateGlobalSettings({ boost: gain});
   }
 
   handleNsfDurationChange(event) {
@@ -596,6 +603,8 @@ class App extends React.Component {
       if (player.getDurationMs() !== oldValue)
         this.setState({ currentSongDurationMs: duration * 1000 });
     }
+
+    this.handleUpdateGlobalSettings({ nsfDuration: duration});
   }
 
   romanToArabicSubstrings(str) {
