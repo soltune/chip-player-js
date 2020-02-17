@@ -161,7 +161,7 @@ class App extends React.Component {
               const data = userSnapshot.data();
               this.setState({
                 faves: data.faves || [],
-                settings: Object.assign(data.settings, defaultSettings),
+                settings: Object.assign(defaultSettings, data.settings),
                 showPlayerSettings: data.settings ? data.settings.showPlayerSettings : false,
               });
               this.audioCompressor.ratio.value = this.getCompressorRatio(this.state.settings.boost);
