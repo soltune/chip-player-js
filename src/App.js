@@ -86,7 +86,7 @@ class App extends React.Component {
 
   handleUpdateGlobalSettings(params) {
     const oldSettings = this.state.settings;
-    const newSettings = JSON.parse(JSON.stringify(oldSettings));
+    const newSettings = JSON.parse(JSON.stringify(oldSettings));  // deep copy
     Object.assign(newSettings, params);
     this.setState({settings: newSettings});
 
@@ -94,10 +94,8 @@ class App extends React.Component {
     if (user) {
       const userRef = this.db.collection('users').doc(user.uid);
       userRef.update(
-        {settings: {
-            newSettings
-          }}).catch((e) => {
-            this.setState({settings: oldSettings});
+        {settings: {newSettings}}).catch((e) => {
+            // this.setState({settings: oldSettings});
       });
     }
   }
@@ -137,14 +135,53 @@ class App extends React.Component {
     this.attachMediaKeyHandlers(audioElement);
     this.contentAreaRef = React.createRef();
 
+    // Initialize Firebase
+    const defaultSettings = {
+        boost: 1,
+        nsfDuration: 150,
+      };
+    if(firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
+    this.db = firebase.firestore();
+    firebase.auth().onAuthStateChanged(user => {
+      this.setState({user: user, loadingUser: !!user});
+      if (user) {
+        this.db
+          .collection('users')
+          .doc(user.uid)
+          .get()
+          .then(userSnapshot => {
+            if (!userSnapshot.exists) {
+              // Create user
+              this.db.collection('users').doc(user.uid).set({
+                faves: [],
+                settings: defaultSettings,
+              });
+            } else {
+              // Restore user
+              const data = userSnapshot.data();
+              this.setState({
+                faves: data.faves || [],
+                settings: data.settings || defaultSettings,
+                showPlayerSettings: data.settings ? data.settings.showPlayerSettings : false,
+              });
+              this.audioCompressor.ratio.value = this.getCompressorRatio(this.state.settings.boost);
+              this.playerNode.gain.value = this.state.settings.boost;
+            }
+          })
+          .finally(() => {
+            this.setState({loadingUser: false});
+          });
+      }
+    });
+
     // Initialize audio graph
     const audioCtx = this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const compressor = audioCtx.createDynamicsCompressor();
     compressor.connect(audioCtx.destination);
-    compressor.ratio.value = 1;
+    compressor.ratio.value = this.getCompressorRatio(defaultSettings.boost);
     this.audioCompressor = compressor;
     const gainNode = audioCtx.createGain();
-    gainNode.gain.value = 1;
+    gainNode.gain.value = defaultSettings.boost;
     gainNode.connect(compressor);
     var playerNode = this.playerNode = gainNode;
 
@@ -173,48 +210,10 @@ class App extends React.Component {
       user: null,
       faves: [],
       songUrl: null,
-      settings:  {
-        boost: gainNode.gain.value,
-        nsfDuration: 150,
-      },
+      settings: defaultSettings,
 
       directories: {},
     };
-
-    // Initialize Firebase
-    if(firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
-    this.db = firebase.firestore();
-    firebase.auth().onAuthStateChanged(user => {
-      this.setState({user: user, loadingUser: !!user});
-      if (user) {
-        this.db
-          .collection('users')
-          .doc(user.uid)
-          .get()
-          .then(userSnapshot => {
-            if (!userSnapshot.exists) {
-              // Create user
-              this.db.collection('users').doc(user.uid).set({
-                faves: [],
-                settings: this.state.settings,
-              });
-            } else {
-              // Restore user
-              const data = userSnapshot.data();
-              this.setState({
-                faves: data.faves || [],
-                settings: data.settings || this.state.settings,
-                showPlayerSettings: data.settings ? data.settings.showPlayerSettings : false,
-              });
-              this.audioCompressor.ratio.value = this.getCompressorRatio(data.settings.boost);
-              this.playerNode.gain.value = data.settings.boost;
-            }
-          })
-          .finally(() => {
-            this.setState({loadingUser: false});
-          });
-      }
-    });
 
     // Load the chip-core Emscripten runtime
     try {
@@ -409,7 +408,7 @@ class App extends React.Component {
       window.history.replaceState(null, '', search ? `?${search}` : './');
     } else {
       const player = this.sequencer.getPlayer();
-      if (player.setNsfDuration)  player.setNsfDuration(this.state.nsfDuration);
+      if (player.setNsfDuration)  player.setNsfDuration(this.state.settings.nsfDuration);
       const url = this.sequencer.getCurrUrl();
       if (url && url !== this.state.songUrl) {
         const path = url.replace(CATALOG_PREFIX, '/');
@@ -608,7 +607,6 @@ class App extends React.Component {
 
   handleVolumeBoostChange(event) {
     const gain = parseFloat((event.target ? event.target.value : event));
-    // this.setState({settings: {boost: gain}});
     this.audioCompressor.ratio.value = this.getCompressorRatio(gain); // avoid clipping
     this.playerNode.gain.value = gain;
 
@@ -617,8 +615,6 @@ class App extends React.Component {
 
   handleNsfDurationChange(event) {
     const duration = parseInt((event.target ? event.target.value : event)) || 150;
-    // this.setState({settings: {nsfDuration: duration}});
-
     const player = this.sequencer.getPlayer();
     if (player.setNsfDuration) {
       const oldValue = player.getDurationMs();
