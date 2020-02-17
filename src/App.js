@@ -94,7 +94,7 @@ class App extends React.Component {
     if (user) {
       const userRef = this.db.collection('users').doc(user.uid);
       userRef.update(
-        {settings: {newSettings}}).catch((e) => {
+        {settings: newSettings}).catch((e) => {
             // this.setState({settings: oldSettings});
       });
     }
@@ -161,7 +161,7 @@ class App extends React.Component {
               const data = userSnapshot.data();
               this.setState({
                 faves: data.faves || [],
-                settings: data.settings || defaultSettings,
+                settings: Object.assign(data.settings, defaultSettings),
                 showPlayerSettings: data.settings ? data.settings.showPlayerSettings : false,
               });
               this.audioCompressor.ratio.value = this.getCompressorRatio(this.state.settings.boost);
@@ -408,7 +408,7 @@ class App extends React.Component {
       window.history.replaceState(null, '', search ? `?${search}` : './');
     } else {
       const player = this.sequencer.getPlayer();
-      if (player.setNsfDuration)  player.setNsfDuration(this.state.settings.nsfDuration);
+      if (player && player.setNsfDuration)  player.setNsfDuration(this.state.settings.nsfDuration);
       const url = this.sequencer.getCurrUrl();
       if (url && url !== this.state.songUrl) {
         const path = url.replace(CATALOG_PREFIX, '/');
@@ -616,7 +616,7 @@ class App extends React.Component {
   handleNsfDurationChange(event) {
     const duration = parseInt((event.target ? event.target.value : event)) || 150;
     const player = this.sequencer.getPlayer();
-    if (player.setNsfDuration) {
+    if (player && player.setNsfDuration) {
       const oldValue = player.getDurationMs();
       player.setNsfDuration(duration);
       if (player.getDurationMs() !== oldValue)
