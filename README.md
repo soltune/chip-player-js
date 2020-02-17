@@ -7,6 +7,8 @@ This fork is to share my fixes like;
 - Small bugfixes and improvements
     - [GME] fixed incorrect text encoding handling in the tags
     - [GME/nsf] supported `FDS write protect` for some tunes which use multi extend chips
+    - [Font] added additional font to improve rendering Japanese text
+        - the font is created by [MM of 自家製フォント工房](http://jikasei.me/font/kh-dotfont/) (some optimizations done for this project by me)  
 - additional file formats support
     - gbs, hes
     - s98 ([webS98](https://github.com/wothke/webS98/), based on [m_s98.kpi S98V3](http://www.vesta.dti.ne.jp/~tsato/soft_s98v3.html))
