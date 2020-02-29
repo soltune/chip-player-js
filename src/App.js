@@ -84,22 +84,6 @@ class App extends React.Component {
     }
   }
 
-  handleUpdateGlobalSettings(params) {
-    const oldSettings = this.state.settings;
-    const newSettings = JSON.parse(JSON.stringify(oldSettings));  // deep copy
-    Object.assign(newSettings, params);
-    this.setState({settings: newSettings});
-
-    const user = this.state.user;
-    if (user) {
-      const userRef = this.db.collection('users').doc(user.uid);
-      userRef.update(
-        {settings: newSettings}).catch((e) => {
-            // this.setState({settings: oldSettings});
-      });
-    }
-  }
-
   constructor(props) {
     super(props);
 
@@ -126,7 +110,6 @@ class App extends React.Component {
     this.fetchDirectory = this.fetchDirectory.bind(this);
     this.setSpeedRelative = this.setSpeedRelative.bind(this);
     this.handleVolumeBoostChange = this.handleVolumeBoostChange.bind(this);
-    this.handleNsfDurationChange = this.handleNsfDurationChange.bind(this);
 
     const audioElement = document.createElement('audio');
     audioElement.src = process.env.PUBLIC_URL + '/5-seconds-of-silence.mp3';
@@ -136,10 +119,6 @@ class App extends React.Component {
     this.contentAreaRef = React.createRef();
 
     // Initialize Firebase
-    const defaultSettings = {
-        boost: 1,
-        nsfDuration: 150,
-      };
     if(firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
     this.db = firebase.firestore();
     firebase.auth().onAuthStateChanged(user => {
@@ -154,18 +133,15 @@ class App extends React.Component {
               // Create user
               this.db.collection('users').doc(user.uid).set({
                 faves: [],
-                settings: defaultSettings,
+                settings: {},
               });
             } else {
               // Restore user
               const data = userSnapshot.data();
               this.setState({
                 faves: data.faves || [],
-                settings: Object.assign(defaultSettings, data.settings),
                 showPlayerSettings: data.settings ? data.settings.showPlayerSettings : false,
               });
-              this.audioCompressor.ratio.value = this.getCompressorRatio(this.state.settings.boost);
-              this.playerNode.gain.value = this.state.settings.boost;
             }
           })
           .finally(() => {
@@ -178,10 +154,10 @@ class App extends React.Component {
     const audioCtx = this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const compressor = audioCtx.createDynamicsCompressor();
     compressor.connect(audioCtx.destination);
-    compressor.ratio.value = this.getCompressorRatio(defaultSettings.boost);
+    compressor.ratio.value = this.getCompressorRatio(1.0);
     this.audioCompressor = compressor;
     const gainNode = audioCtx.createGain();
-    gainNode.gain.value = defaultSettings.boost;
+    gainNode.gain.value = 1;
     gainNode.connect(compressor);
     var playerNode = this.playerNode = gainNode;
 
@@ -210,7 +186,7 @@ class App extends React.Component {
       user: null,
       faves: [],
       songUrl: null,
-      settings: defaultSettings,
+      boost: 1.0,
 
       directories: {},
     };
@@ -408,7 +384,6 @@ class App extends React.Component {
       window.history.replaceState(null, '', search ? `?${search}` : './');
     } else {
       const player = this.sequencer.getPlayer();
-      if (player && player.setNsfDuration)  player.setNsfDuration(this.state.settings.nsfDuration);
       const url = this.sequencer.getCurrUrl();
       if (url && url !== this.state.songUrl) {
         const path = url.replace(CATALOG_PREFIX, '/');
@@ -609,21 +584,7 @@ class App extends React.Component {
     const gain = parseFloat((event.target ? event.target.value : event));
     this.audioCompressor.ratio.value = this.getCompressorRatio(gain); // avoid clipping
     this.playerNode.gain.value = gain;
-
-    this.handleUpdateGlobalSettings({boost: gain});
-  }
-
-  handleNsfDurationChange(event) {
-    const duration = parseInt((event.target ? event.target.value : event)) || 150;
-    const player = this.sequencer.getPlayer();
-    if (player && player.setNsfDuration) {
-      const oldValue = player.getDurationMs();
-      player.setNsfDuration(duration);
-      if (player.getDurationMs() !== oldValue)
-        this.setState({ currentSongDurationMs: duration * 1000 });
-    }
-
-    this.handleUpdateGlobalSettings({nsfDuration: duration});
+    this.setState({boost: gain});
   }
 
   romanToArabicSubstrings(str) {
@@ -915,10 +876,8 @@ class App extends React.Component {
               <br />
               <h3 style={{margin: '0 8px 19px 0'}}>Global Settings</h3>
               <GlobalParams
-                boost={this.state.settings.boost}
-                nsfDuration={this.state.settings.nsfDuration}
-                handleVolumeBoostChange={this.handleVolumeBoostChange}
-                handleNsfDurationChange={this.handleNsfDurationChange}/>
+                boost={this.state.boost}
+                handleVolumeBoostChange={this.handleVolumeBoostChange}/>
           </div>}
           {this.state.imageUrl &&
           <img alt="Cover art" className="App-footer-art" src={this.state.imageUrl}/>}
