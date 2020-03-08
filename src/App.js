@@ -540,13 +540,13 @@ class App extends React.Component {
   }
 
   handlePlayRandom() {
-    fetch(`${API_BASE}/random?limit=100`)
+    fetch(`${API_BASE}/random?limit=100`, {cache: "no-cache"})
       .then(response => response.json())
       .then(json => this.sequencer.playContext(json.items.map(item => item.file), 10));
   }
 
   handleShufflePlay(path) {
-    fetch(`${API_BASE}/shuffle?path=${encodeURI(path)}&limit=100`)
+    fetch(`${API_BASE}/shuffle?path=${encodeURI(path)}&limit=100`, {cache: "no-cache"})
       .then(response => response.json())
       .then(json => this.sequencer.playContext(json.items));
   }
@@ -584,7 +584,7 @@ class App extends React.Component {
   }
 
   fetchDirectory(path) {
-    fetch(`${API_BASE}/browse?path=%2F${encodeURIComponent(path)}`)
+    fetch(`${API_BASE}/browse?path=%2F${encodeURIComponent(path)}`,{cache: "no-cache"})
       .then(response => response.json())
       .then(json => {
         const arabicMap = {};
