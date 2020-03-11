@@ -171,7 +171,7 @@ export default class GMEPlayer extends Player {
     meta.intro_length = readInt32();
     meta.loop_length = readInt32();
     meta.play_length = readInt32();
-    if (['Famicom', 'Gameboy', 'PC-Engine', 'MSX'].includes(this.filepathMeta.system)) {
+    if (this.filepathMeta.title.match(/(\.nsf$|\.kss$|\.gbs$|\.hes$)/i)) { // .nsfe and others have a length as meta info
       meta.play_length = this.params.default_duration * 1000;
     }
 
