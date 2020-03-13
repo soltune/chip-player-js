@@ -12,6 +12,18 @@ export default class GlobalParams extends PureComponent {
           onInput={this.props.handleVolumeBoostChange}
           onChange={this.props.handleVolumeBoostChange} />{' '}
         {this.props.boost === 1.0 ? 'Off\u00A0' : 'x' + this.props.boost.toFixed(1)}
+        <br />
+        List Order:{' '}
+        <label className='inline'><input onClick={this.props.handleOrderClick}
+                                         type='radio'
+                                         value='orderByTitle'
+                                         defaultChecked={this.props.order === 'orderByTitle'}
+                                         name='order'/>Title</label>
+        <label className='inline'><input onClick={this.props.handleOrderClick}
+                                         type='radio'
+                                         value='orderBySize'
+                                         defaultChecked={this.props.order === 'orderBySize'}
+                                         name='order'/>Size</label>
       </div>
     );
   }

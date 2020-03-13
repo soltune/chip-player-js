@@ -110,6 +110,7 @@ class App extends React.Component {
     this.fetchDirectory = this.fetchDirectory.bind(this);
     this.setSpeedRelative = this.setSpeedRelative.bind(this);
     this.handleVolumeBoostChange = this.handleVolumeBoostChange.bind(this);
+    this.handleOrderClick = this.handleOrderClick.bind(this);
 
     const audioElement = document.createElement('audio');
     audioElement.src = process.env.PUBLIC_URL + '/5-seconds-of-silence.mp3';
@@ -187,6 +188,7 @@ class App extends React.Component {
       faves: [],
       songUrl: null,
       boost: 1.0,
+      order: App.orderBySize,
 
       directories: {},
     };
@@ -587,7 +589,15 @@ class App extends React.Component {
     this.setState({boost: gain});
   }
 
-  romanToArabicSubstrings(str) {
+  handleOrderClick(event) {
+    const order = event.target.value;
+    if (order === this.state.order.name) { return; }
+    this.setState({order: App[order], directories: {}});
+
+    // should we clear also context in Sequencer?
+  }
+
+  static romanToArabicSubstrings(str) {
     // Works up to 399 (CCCXCIX)
     try {
       str = str.replace(/\b([IVXLC]+|[ivxlc]+)[-.,)]/, (a, match, c, d) => {
@@ -606,26 +616,7 @@ class App extends React.Component {
     fetch(`${API_BASE}/browse?path=%2F${encodeURIComponent(path)}`,{cache: "no-cache"})
       .then(response => response.json())
       .then(json => {
-        const arabicMap = {};
-        const needsRomanNumeralSort = json.some(item => {
-          // Only convert Roman numerals if the list sort could benefit from it.
-          // Roman numerals less than 9 would be sorted incidentally.
-          // This assumes that
-          // - Roman numerals are formatted with a period.
-          // - Roman numeral ranges don't have gaps.
-          return item.path.toLowerCase().indexOf('ix') > -1;
-        });
-        if (needsRomanNumeralSort) {
-          console.log("Roman numeral sort is active for this directory");
-          json.forEach(item => arabicMap[item.path] = this.romanToArabicSubstrings(item.path));
-        }
-        const items = json
-          .sort((a, b) => {
-            const [strA, strB] = needsRomanNumeralSort ?
-              [arabicMap[a.path], arabicMap[b.path]] :
-              [a.path, b.path];
-            return NUMERIC_COLLATOR.compare(strA, strB);
-          })
+        const items = this.state.order(json)
           .sort((a, b) => {
             if (a.type < b.type) return -1;
             if (a.type > b.type) return 1;
@@ -661,6 +652,34 @@ class App extends React.Component {
       str += args[i];
     }
     return str;
+  }
+
+  static orderByTitle(json) {
+    const arabicMap = {};
+    const needsRomanNumeralSort = json.some(item => {
+      // Only convert Roman numerals if the list sort could benefit from it.
+      // Roman numerals less than 9 would be sorted incidentally.
+      // This assumes that
+      // - Roman numerals are formatted with a period.
+      // - Roman numeral ranges don't have gaps.
+      return item.path.toLowerCase().indexOf('ix') > -1;
+    });
+    if (needsRomanNumeralSort) {
+      console.log("Roman numeral sort is active for this directory");
+      json.forEach(item => arabicMap[item.path] = App.romanToArabicSubstrings(item.path));
+    }
+    return json.sort((a, b) => {
+      const [strA, strB] = needsRomanNumeralSort ?
+        [arabicMap[a.path], arabicMap[b.path]] :
+        [a.path, b.path];
+      return NUMERIC_COLLATOR.compare(strA, strB);
+    })
+  }
+
+  static orderBySize(json) {
+    return json.sort((a, b) => {
+      return a.size - b.size;
+    })
   }
 
   pathToLinks(path) {
@@ -877,7 +896,9 @@ class App extends React.Component {
               <h3 style={{margin: '0 8px 19px 0'}}>Global Settings</h3>
               <GlobalParams
                 boost={this.state.boost}
-                handleVolumeBoostChange={this.handleVolumeBoostChange}/>
+                order={this.state.order.name}
+                handleVolumeBoostChange={this.handleVolumeBoostChange}
+                handleOrderClick={this.handleOrderClick} />
           </div>}
           {this.state.imageUrl &&
           <img alt="Cover art" className="App-footer-art" src={this.state.imageUrl}/>}
