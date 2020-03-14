@@ -188,7 +188,7 @@ class App extends React.Component {
       faves: [],
       songUrl: null,
       boost: 1.0,
-      order: App.orderByTitle,
+      order: 'orderByTitle',
 
       directories: {},
     };
@@ -591,8 +591,8 @@ class App extends React.Component {
 
   handleOrderClick(event) {
     const order = event.target.value;
-    if (order === this.state.order.name) { return; }
-    this.setState({order: App[order], directories: {}});
+    if (order === this.state.order) { return; }
+    this.setState({order: order, directories: {}});
 
     // should we clear also context in Sequencer?
   }
@@ -616,7 +616,7 @@ class App extends React.Component {
     fetch(`${API_BASE}/browse?path=%2F${encodeURIComponent(path)}`,{cache: "no-cache"})
       .then(response => response.json())
       .then(json => {
-        const items = this.state.order(json)
+        const items = App[this.state.order](json)
           .sort((a, b) => {
             if (a.type < b.type) return -1;
             if (a.type > b.type) return 1;
@@ -902,7 +902,7 @@ class App extends React.Component {
               <h3 style={{margin: '0 8px 19px 0'}}>Global Settings</h3>
               <GlobalParams
                 boost={this.state.boost}
-                order={this.state.order.name}
+                order={this.state.order}
                 handleVolumeBoostChange={this.handleVolumeBoostChange}
                 handleOrderClick={this.handleOrderClick} />
           </div>}
