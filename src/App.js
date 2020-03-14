@@ -188,7 +188,7 @@ class App extends React.Component {
       faves: [],
       songUrl: null,
       boost: 1.0,
-      order: App.orderBySize,
+      order: App.orderByTitle,
 
       directories: {},
     };
@@ -679,6 +679,12 @@ class App extends React.Component {
   static orderBySize(json) {
     return json.sort((a, b) => {
       return a.size - b.size;
+    })
+  }
+
+  static orderByDate(json) {
+    return json.sort((a, b) => {
+      return a.mtimeMs - b.mtimeMs;
     })
   }
 

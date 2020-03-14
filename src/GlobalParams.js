@@ -24,6 +24,11 @@ export default class GlobalParams extends PureComponent {
                                          value='orderBySize'
                                          defaultChecked={this.props.order === 'orderBySize'}
                                          name='order'/>Size</label>
+        <label className='inline'><input onClick={this.props.handleOrderClick}
+                                         type='radio'
+                                         value='orderByDate'
+                                         defaultChecked={this.props.order === 'orderByDate'}
+                                         name='order'/>Date</label>
       </div>
     );
   }
