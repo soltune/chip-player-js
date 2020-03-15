@@ -40,6 +40,11 @@ This fork is to share my fixes like;
         - `ym2608_adpcm_rom.bin` must be located at `chip-player-js/public/rhythm` before building (the filename is case sensitive)
     - psf/minipsf ([webPSX](https://github.com/wothke/webpsx))
     - 2sf/mini2sf ([webDS](https://github.com/wothke/webDS))
+- additional soundfonts
+    - added two high quality piano soundfonts. if you'd like to listen piano solo this is good choice :)
+        - place the following .sf2 at public/sondfonts folder to enable them
+        - [Equinox Grand Pianos](http://www.mediafire.com/?12enyjv0ewj)
+        - [Warren S. Trachtman - Steinway Model-C Soundfont](https://archive.org/details/WST25FStein_00Sep22.sf2)
 ---
 
 ![Screen Shot 2019-11-19 at 1 21 04 PM](https://user-images.githubusercontent.com/946117/69187458-80955600-0acf-11ea-9a1f-e090032dcb00.png)

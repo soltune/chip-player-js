@@ -51,6 +51,8 @@ const SOUNDFONTS = [
       {label: 'Diddy Kong Racing DS (13.7 MB)', value: 'Diddy_Kong_Racing_DS_Soundfont.sf2'},
       {label: 'Regression FM v1.99g (14.4 MB)', value: 'R_FM_v1.99g-beta.sf2'},
       {label: 'Ultimate Megadrive (63.2 MB)', value: 'The Ultimate Megadrive Soundfont.sf2'},
+      {label: 'Equinox Grand Pianos (92 MB)', value: 'Equinox_Grand_Pianos.sf2'},
+      {label: 'Warren S. Trachtman - Steinway Model-C (22.2 MB)', value: 'WST25FStein_00Sep22.sf2'},
     ],
   },
 ];
