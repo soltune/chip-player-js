@@ -10,7 +10,7 @@ import {BrowserRouter as Router, NavLink, Route} from 'react-router-dom';
 import {API_BASE, CATALOG_PREFIX, MAX_VOICES, REPLACE_STATE_ON_SEEK} from "./config";
 import {Switch} from 'react-router';
 import Dropzone from 'react-dropzone';
-import { toArabic } from 'roman-numerals';
+import {toArabic} from 'roman-numerals';
 
 import ChipCore from './chip-core';
 import promisify from './promisifyXhr';
@@ -38,6 +38,7 @@ import Browse from "./Browse";
 import DirectoryLink from "./DirectoryLink";
 import dice from './images/dice.png';
 import DropMessage from "./DropMessage";
+import {VolumeSlider} from "./VolumeSlider";
 
 const NUMERIC_COLLATOR = new Intl.Collator(undefined, {numeric: true, sensitivity: 'base'});
 
@@ -94,6 +95,7 @@ class App extends React.Component {
     this.nextSong = this.nextSong.bind(this);
     this.prevSubtune = this.prevSubtune.bind(this);
     this.nextSubtune = this.nextSubtune.bind(this);
+    this.handleVolumeChange = this.handleVolumeChange.bind(this);
     this.handleTimeSliderChange = this.handleTimeSliderChange.bind(this);
     this.handleTempoChange = this.handleTempoChange.bind(this);
     this.handleSetVoices = this.handleSetVoices.bind(this);
@@ -109,11 +111,7 @@ class App extends React.Component {
     this.fetchDirectory = this.fetchDirectory.bind(this);
     this.setSpeedRelative = this.setSpeedRelative.bind(this);
 
-    const audioElement = document.createElement('audio');
-    audioElement.src = process.env.PUBLIC_URL + '/5-seconds-of-silence.mp3';
-    audioElement.volume = 0;
-    audioElement.loop = true;
-    this.attachMediaKeyHandlers(audioElement);
+    this.attachMediaKeyHandlers();
     this.contentAreaRef = React.createRef();
 
     // Initialize Firebase
@@ -153,10 +151,13 @@ class App extends React.Component {
     const gainNode = audioCtx.createGain();
     gainNode.gain.value = 1;
     gainNode.connect(audioCtx.destination);
-    var playerNode = this.playerNode = gainNode;
+    const playerNode = this.playerNode = gainNode;
 
-    this._unlockAudioContext(audioCtx, audioElement);
+    this._unlockAudioContext(audioCtx);
     console.log('Sample rate: %d hz', audioCtx.sampleRate);
+
+    // Initialize sequencer with empty players array
+    this.sequencer = new Sequencer([], this.handleSequencerStateUpdate, this.handlePlayerError);
 
     this.state = {
       loading: true,
@@ -180,6 +181,7 @@ class App extends React.Component {
       user: null,
       faves: [],
       songUrl: null,
+      volume: 100,
 
       directories: {},
     };
@@ -243,11 +245,9 @@ class App extends React.Component {
         loading: false
       });
     }
-
-    this.sequencer = new Sequencer([], this.handleSequencerStateUpdate, this.handlePlayerError);
   }
 
-  _unlockAudioContext(context, audioElement) {
+  _unlockAudioContext(context) {
     // https://hackernoon.com/unlocking-web-audio-the-smarter-way-8858218c0e09
     console.log('AudioContext initial state is %s.', context.state);
     if (context.state === 'suspended') {
@@ -255,10 +255,10 @@ class App extends React.Component {
       const unlock = () => {
         context.resume().then(() => events.forEach(event => document.body.removeEventListener(event, unlock)));
 
-        if (audioElement.paused) {  // workaround for iOS 13 (background play)
-          const mediaSourceNode = context.createMediaElementSource(audioElement);
+        if (this.mediaSessionAudio.paused) {  // workaround for iOS 13 (background play)
+          const mediaSourceNode = context.createMediaElementSource(this.mediaSessionAudio);
           mediaSourceNode.connect(this.playerNode);
-          audioElement.play();
+          this.mediaSessionAudio.play();
         }
       };
       events.forEach(event => document.body.addEventListener(event, unlock, false));
@@ -267,16 +267,21 @@ class App extends React.Component {
 
   attachMediaKeyHandlers(audioElement) {
 
+    // Limitations of MediaSession: there must always be an active audio element :(
+    this.mediaSessionAudio = document.createElement('audio');
+    this.mediaSessionAudio.src = process.env.PUBLIC_URL + '/5-seconds-of-silence.mp3';
+    this.mediaSessionAudio.loop = true;
+    this.mediaSessionAudio.volume = 0;
+
     if ('mediaSession' in navigator) {
       console.log('Attaching Media Key event handlers.');
-
-      // Limitations of MediaSession: there must always be an active audio element :(
-      audioElement.play();
 
       navigator.mediaSession.setActionHandler('play', () => { console.debug('Media Key: play'); this.togglePause(); });
       navigator.mediaSession.setActionHandler('pause', () => { console.debug('Media Key: pause'); this.togglePause(); });
       navigator.mediaSession.setActionHandler('previoustrack', () => { console.debug('Media Key: previoustrack'); this.prevSong(); });
       navigator.mediaSession.setActionHandler('nexttrack', () => { console.debug('Media Key: nexttrack'); this.nextSong(); });
+      navigator.mediaSession.setActionHandler('seekbackward', () => { console.debug('Media Key: seekbackward'); this.seekRelative(-5000); });
+      navigator.mediaSession.setActionHandler('seekforward', () => { console.debug('Media Key: seekforward'); this.seekRelative(5000); });
     }
 
     document.addEventListener('keydown', (e) => {
@@ -375,6 +380,15 @@ class App extends React.Component {
       delete urlParams.play;
       const search = queryString.stringify(urlParams);
       window.history.replaceState(null, '', search ? `?${search}` : './');
+
+      if ('mediaSession' in navigator) {
+        this.mediaSessionAudio.pause();
+
+        navigator.mediaSession.playbackState = 'none';
+        if ('MediaMetadata' in window) {
+          navigator.mediaSession.metadata = new window.MediaMetadata({});
+        }
+      }
     } else {
       const player = this.sequencer.getPlayer();
       const url = this.sequencer.getCurrUrl();
@@ -405,6 +419,14 @@ class App extends React.Component {
             if (xhr.status >= 200 && xhr.status < 400) {
               const { imageUrl, infoTexts } = xhr.response;
               this.setState({imageUrl: imageUrl, infoTexts: infoTexts});
+
+              if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata.artwork = [{
+                  src: imageUrl,
+                  sizes: '512x512',
+                }];
+              }
+
               if (infoTexts.length === 0) {
                 this.setState({ showInfo: false });
               }
@@ -418,6 +440,23 @@ class App extends React.Component {
         this.setState({imageUrl: null, infoTexts: [], showInfo: false});
       }
 
+      const metadata = player.getMetadata();
+
+      if ('mediaSession' in navigator) {
+        this.mediaSessionAudio.play();
+
+        if ('MediaMetadata' in window) {
+          console.log('metadata', metadata);
+          navigator.mediaSession.metadata = new window.MediaMetadata({
+            title: metadata.title || metadata.formatted?.title,
+            artist: metadata.artist || metadata.formatted?.subtitle,
+            album: metadata.game,
+            artwork: []
+          });
+        }
+      }
+
+      // Wrap in blob player state?
       this.setState({
         ejected: false,
         paused: player.isPaused(),
@@ -440,9 +479,17 @@ class App extends React.Component {
   }
 
   togglePause() {
-    if (!this.sequencer.getPlayer()) return;
+    if (this.state.ejected || !this.sequencer.getPlayer()) return;
 
-    this.setState({paused: this.sequencer.getPlayer().togglePause()});
+    const paused = this.sequencer.getPlayer().togglePause();
+    if ('mediaSession' in navigator) {
+      if (paused) {
+        this.mediaSessionAudio.pause();
+      } else {
+        this.mediaSessionAudio.play();
+      }
+    }
+    this.setState({paused: paused});
   }
 
   toggleSettings() {
@@ -465,8 +512,10 @@ class App extends React.Component {
     if (!this.sequencer.getPlayer()) return;
 
     const pos = event.target ? event.target.value : event;
-
     const seekMs = Math.floor(pos * this.state.currentSongDurationMs);
+
+    this.seekRelativeInner(seekMs);
+
     if (REPLACE_STATE_ON_SEEK) {
       const urlParams = {
         ...queryString.parse(window.location.search.substr(1)),
@@ -477,19 +526,6 @@ class App extends React.Component {
         .replace(/%2F/g, '/');
       window.history.replaceState(null, '', stateUrl);
     }
-
-    // Seek in song
-    this.sequencer.getPlayer().seekMs(seekMs);
-    this.setState({
-      currentSongPositionMs: seekMs, // Smooth
-    });
-    setTimeout(() => {
-      if (this.sequencer.getPlayer().isPlaying()) {
-        this.setState({
-          currentSongPositionMs: this.sequencer.getPlayer().getPositionMs(), // Accurate
-        });
-      }
-    }, 100);
   }
 
   seekRelative(ms) {
@@ -498,7 +534,10 @@ class App extends React.Component {
     const durationMs = this.state.currentSongDurationMs;
     const seekMs = clamp(this.sequencer.getPlayer().getPositionMs() + ms, 0, durationMs);
 
-    // Seek in song
+    this.seekRelativeInner(seekMs);
+  }
+
+  seekRelativeInner(seekMs) {
     this.sequencer.getPlayer().seekMs(seekMs);
     this.setState({
       currentSongPositionMs: seekMs, // Smooth
@@ -562,6 +601,11 @@ class App extends React.Component {
     }
   }
 
+  handleVolumeChange(volume) {
+    this.setState({ volume });
+    this.playerNode.gain.value = Math.max(0, Math.min(1, volume * 0.01));
+  }
+
   toggleInfo() {
     this.setState({
       showInfo: !this.state.showInfo,
@@ -598,6 +642,7 @@ class App extends React.Component {
         });
         if (needsRomanNumeralSort) {
           console.log("Roman numeral sort is active for this directory");
+          // Movement IV. Wow => Movement 0004. Wow
           json.forEach(item => arabicMap[item.path] = this.romanToArabicSubstrings(item.path));
         }
         const items = json
@@ -607,6 +652,7 @@ class App extends React.Component {
               [a.path, b.path];
             return NUMERIC_COLLATOR.compare(strA, strB);
           })
+
           .sort((a, b) => {
             if (a.type < b.type) return -1;
             if (a.type > b.type) return 1;
@@ -633,7 +679,7 @@ class App extends React.Component {
     const subtitle = [metadata.game, metadata.system].filter(x => x).join(' - ') +
       App.allOrNone(' (', metadata.copyright, ')');
     return {title, subtitle};
-  }
+   }
 
   static allOrNone(...args) {
     let str = '';
@@ -696,9 +742,12 @@ class App extends React.Component {
         <div className="App-main">
           <div className="App-main-inner">
             <div className="tab-container">
-              <NavLink className="tab" activeClassName="tab-selected" to={{ pathname: "/", ...search }} exact>Search</NavLink>
-              <NavLink className="tab" activeClassName="tab-selected" to={{ pathname: "/browse", ...search }}>Browse</NavLink>
-              <NavLink className="tab" activeClassName="tab-selected" to={{ pathname: "/favorites", ...search }}>Favorites</NavLink>
+              <NavLink className="tab" activeClassName="tab-selected" to={{pathname: "/", ...search}}
+                       exact>Search</NavLink>
+              <NavLink className="tab" activeClassName="tab-selected"
+                       to={{pathname: "/browse", ...search}}>Browse</NavLink>
+              <NavLink className="tab" activeClassName="tab-selected"
+                       to={{pathname: "/favorites", ...search}}>Favorites</NavLink>
             </div>
             <div className="App-main-content-area" ref={this.contentAreaRef}>
               <Switch>
@@ -748,84 +797,90 @@ class App extends React.Component {
         <div className="App-footer">
           <div className="App-footer-main">
             <div className="App-footer-main-inner">
-            <button onClick={this.prevSong}
-                    className="box-button"
-                    disabled={this.state.ejected}>
-              &lt;
-            </button>
-            {' '}
-            <button onClick={this.togglePause}
-                    className="box-button"
-                    disabled={this.state.ejected}>
-              {this.state.paused ? 'Resume' : 'Pause'}
-            </button>
-            {' '}
-            <button onClick={this.nextSong}
-                    className="box-button"
-                    disabled={this.state.ejected}>
-              &gt;
-            </button>
-            {' '}
-            {this.state.currentSongNumSubtunes > 1 &&
-            <span style={{whiteSpace: 'nowrap'}}>
-              Tune {this.state.currentSongSubtune + 1} of {this.state.currentSongNumSubtunes}{' '}
-              <button
-                className="box-button"
-                disabled={this.state.ejected}
-                onClick={this.prevSubtune}>&lt;
+              <button onClick={this.prevSong}
+                      className="box-button"
+                      disabled={this.state.ejected}>
+                &lt;
               </button>
               {' '}
-              <button
-                className="box-button"
-                disabled={this.state.ejected}
-                onClick={this.nextSubtune}>&gt;
+              <button onClick={this.togglePause}
+                      className="box-button"
+                      disabled={this.state.ejected}>
+                {this.state.paused ? 'Resume' : 'Pause'}
+              </button>
+              {' '}
+              <button onClick={this.nextSong}
+                      className="box-button"
+                      disabled={this.state.ejected}>
+                &gt;
+              </button>
+              {' '}
+              {this.state.currentSongNumSubtunes > 1 &&
+              <span style={{whiteSpace: 'nowrap'}}>
+              Tune {this.state.currentSongSubtune + 1} of {this.state.currentSongNumSubtunes}{' '}
+                <button
+                  className="box-button"
+                  disabled={this.state.ejected}
+                  onClick={this.prevSubtune}>&lt;
+              </button>
+                {' '}
+                <button
+                  className="box-button"
+                  disabled={this.state.ejected}
+                  onClick={this.nextSubtune}>&gt;
               </button>
             </span>}
-            <span style={{float: 'right'}}>
+              <span style={{float: 'right'}}>
               <button className="box-button" onClick={this.handlePlayRandom}>
                 <img alt="Roll the dice" src={dice} style={{verticalAlign: 'bottom'}}/>
                 Random
               </button>
-              {' '}
-              {!this.state.showPlayerSettings &&
-              <button className="box-button" onClick={this.toggleSettings}>
-                Settings &gt;
-              </button>}
-            </span>
-            {this.state.playerError &&
-            <div className="App-error">ERROR: {this.state.playerError}</div>
-            }
-            <TimeSlider
-              currentSongDurationMs={this.state.currentSongDurationMs}
-              getCurrentPositionMs={() => {
-                const sequencer = this.sequencer;
-                if (sequencer && sequencer.getPlayer()) {
-                  return sequencer.getPlayer().getPositionMs();
-                }
-                return 0;
-              }}
-              onChange={this.handleTimeSliderChange}/>
-            {!this.state.ejected &&
-            <div className="SongDetails">
-              {this.state.faves && this.state.songUrl &&
-              <div style={{float: 'left', marginBottom: '58px'}}>
-                <FavoriteButton favorites={this.state.faves}
-                                toggleFavorite={this.handleToggleFavorite}
-                                href={this.state.songUrl}/>
-              </div>}
-              <div className="SongDetails-title">
-                {title}
                 {' '}
-                {this.state.infoTexts.length > 0 &&
-                <a onClick={(e) => this.toggleInfo(e)} href='#'>
-                  тхт
-                </a>
-                }
+                {!this.state.showPlayerSettings &&
+                <button className="box-button" onClick={this.toggleSettings}>
+                  Settings &gt;
+                </button>}
+            </span>
+              {this.state.playerError &&
+              <div className="App-error">ERROR: {this.state.playerError}</div>
+              }
+              <div style={{display: 'flex', flexDirection: 'row'}}>
+                <TimeSlider
+                  currentSongDurationMs={this.state.currentSongDurationMs}
+                  getCurrentPositionMs={() => {
+                    const sequencer = this.sequencer;
+                    // TODO: reevaluate this approach
+                    if (sequencer && sequencer.getPlayer()) {
+                      return sequencer.getPlayer().getPositionMs();
+                    }
+                    return 0;
+                  }}
+                  onChange={this.handleTimeSliderChange}/>
+                <VolumeSlider onChange={(e) => {
+                  this.handleVolumeChange(e.target.value);
+                }} value={this.state.volume}/>
               </div>
-              <div className="SongDetails-subtitle">{subtitle}</div>
-              <div className="SongDetails-filepath">{pathLinks}</div>
-            </div>}
-          </div>
+              {!this.state.ejected &&
+              <div className="SongDetails">
+                {this.state.faves && this.state.songUrl &&
+                <div style={{float: 'left', marginBottom: '58px'}}>
+                  <FavoriteButton favorites={this.state.faves}
+                                  toggleFavorite={this.handleToggleFavorite}
+                                  href={this.state.songUrl}/>
+                </div>}
+                <div className="SongDetails-title">
+                  {title}
+                  {' '}
+                  {this.state.infoTexts.length > 0 &&
+                  <a onClick={(e) => this.toggleInfo(e)} href='#'>
+                    тхт
+                  </a>
+                  }
+                </div>
+                <div className="SongDetails-subtitle">{subtitle}</div>
+                <div className="SongDetails-filepath">{pathLinks}</div>
+              </div>}
+            </div>
           </div>
           {this.state.showPlayerSettings &&
           <div className="App-footer-settings">

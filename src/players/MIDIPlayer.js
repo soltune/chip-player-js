@@ -89,13 +89,6 @@ export default class MIDIPlayer extends Player {
       defaultValue: 0,
     },
     {
-      id: 'autoengine',
-      label: 'Auto Synth Engine Switching',
-      hint: 'Switch synth engine based on filenames. Files containing "FM" will play through Adlib/OPL3 synth.',
-      type: 'toggle',
-      defaultValue: true,
-    },
-    {
       id: 'soundfont',
       label: 'Soundfont',
       type: 'enum',
@@ -144,6 +137,19 @@ export default class MIDIPlayer extends Player {
         value: MIDI_ENGINE_WEBMIDI,
       },
     },
+    {
+      id: 'autoengine',
+      label: 'Auto Synth Engine Switching',
+      hint: 'Switch synth engine based on filenames. Files containing "FM" will play through Adlib/OPL3 synth.',
+      type: 'toggle',
+      defaultValue: true,
+    },
+    {
+      id: 'gmreset',
+      label: 'GM Reset',
+      hint: 'Send a GM Reset sysex and reset all controllers on all channels.',
+      type: 'button',
+    },
   ];
 
   constructor(audioCtx, destNode, chipCore, onPlayerStateUpdate = function() {}) {
@@ -173,6 +179,7 @@ export default class MIDIPlayer extends Player {
     this.midiFilePlayer = new MIDIFilePlayer({
       output: dummyMidiOutput,
       skipSilence: true,
+      sampleRate: this.sampleRate,
       synth: {
         noteOn: lib._tp_note_on,
         noteOff: lib._tp_note_off,
@@ -271,6 +278,9 @@ export default class MIDIPlayer extends Player {
     const parts = filepath.split('/');
     const len = parts.length;
     const meta = {};
+    // HACK: MIDI metadata is guessed from filepath
+    // based on the directory structure of Chip Player catalog.
+    // Ideally, this data should be embedded in the MIDI files.
     if (parts.length >= 3) {
       meta.formatted = {
         title: `${parts[1]} - ${parts[len - 1]}`,
@@ -447,6 +457,9 @@ export default class MIDIPlayer extends Player {
         break;
       case 'mididevice':
         this.midiFilePlayer.setOutput(midiDevices[value]);
+        break;
+      case 'gmreset':
+        this.midiFilePlayer.reset();
         break;
       default:
         console.warn('MIDIPlayer has no parameter with id "%s".', id);

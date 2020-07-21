@@ -72,6 +72,8 @@ export default class Sequencer {
   }
 
   advanceSong(direction) {
+    if (this.context == null) return;
+
     this.currIdx += direction;
 
     if (this.currIdx < 0 || this.currIdx >= this.context.length) {
@@ -167,6 +169,12 @@ export default class Sequencer {
         this.currUrl = url;
         const filepath = url.replace(CATALOG_PREFIX, '');
         this.playSongBuffer(filepath, buffer)
+      })
+      .catch(e => {
+        // TODO: recover from this error
+        this.onSequencerStateUpdate(true);
+        this.player = null;
+        this.onPlayerError(`${e.status} ${e.statusText}`);
       });
   }
 
