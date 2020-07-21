@@ -613,7 +613,7 @@ class App extends React.Component {
 
   handleVolumeChange(volume) {
     this.setState({ volume });
-    this.playerNode.gain.value = Math.max(0, Math.min(1, volume * 0.01));
+    this.playerNode.gain.value = Math.max(0, volume * 0.01 * this.state.boost);
   }
 
   toggleInfo() {
@@ -622,16 +622,16 @@ class App extends React.Component {
     });
   }
 
-  getCompressorRatio(gain) {
+  getCompressorRatio(ratio) {
     const maxGain = 9.0, maxCompressorRatio = 12;
-    return (gain > 1.0)? (gain / maxGain * maxCompressorRatio) : 1.0;
+    return (ratio > 1.0)? (ratio / maxGain * maxCompressorRatio) : 1.0;
   }
 
   handleVolumeBoostChange(event) {
-    const gain = parseFloat((event.target ? event.target.value : event));
-    this.audioCompressor.ratio.value = this.getCompressorRatio(gain); // avoid clipping
-    this.playerNode.gain.value = gain;
-    this.setState({boost: gain});
+    const ratio = parseFloat((event.target ? event.target.value : event));
+    this.audioCompressor.ratio.value = this.getCompressorRatio(ratio); // avoid clipping
+    this.playerNode.gain.value = this.state.volume * 0.01 * ratio;
+    this.setState({boost: ratio});
   }
 
   handleOrderClick(event) {
