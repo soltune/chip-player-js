@@ -39,6 +39,7 @@ import DirectoryLink from "./DirectoryLink";
 import dice from './images/dice.png';
 import DropMessage from "./DropMessage";
 import {VolumeSlider} from "./VolumeSlider";
+import GlobalParams from "./GlobalParams";
 
 const NUMERIC_COLLATOR = new Intl.Collator(undefined, {numeric: true, sensitivity: 'base'});
 
@@ -110,6 +111,8 @@ class App extends React.Component {
     this.attachMediaKeyHandlers = this.attachMediaKeyHandlers.bind(this);
     this.fetchDirectory = this.fetchDirectory.bind(this);
     this.setSpeedRelative = this.setSpeedRelative.bind(this);
+    this.handleVolumeBoostChange = this.handleVolumeBoostChange.bind(this);
+    this.handleOrderClick = this.handleOrderClick.bind(this);
 
     this.attachMediaKeyHandlers();
     this.contentAreaRef = React.createRef();
@@ -148,9 +151,14 @@ class App extends React.Component {
 
     // Initialize audio graph
     const audioCtx = this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const compressor = audioCtx.createDynamicsCompressor();
+    compressor.connect(audioCtx.destination);
+    compressor.ratio.value = this.getCompressorRatio(1.0);
+    this.audioCompressor = compressor;
     const gainNode = audioCtx.createGain();
     gainNode.gain.value = 1;
-    gainNode.connect(audioCtx.destination);
+
+    gainNode.connect(compressor);
     const playerNode = this.playerNode = gainNode;
 
     this._unlockAudioContext(audioCtx);
@@ -182,6 +190,8 @@ class App extends React.Component {
       faves: [],
       songUrl: null,
       volume: 100,
+      boost: 1.0,
+      order: 'orderByTitle',
 
       directories: {},
     };
@@ -612,7 +622,27 @@ class App extends React.Component {
     });
   }
 
-  romanToArabicSubstrings(str) {
+  getCompressorRatio(gain) {
+    const maxGain = 9.0, maxCompressorRatio = 12;
+    return (gain > 1.0)? (gain / maxGain * maxCompressorRatio) : 1.0;
+  }
+
+  handleVolumeBoostChange(event) {
+    const gain = parseFloat((event.target ? event.target.value : event));
+    this.audioCompressor.ratio.value = this.getCompressorRatio(gain); // avoid clipping
+    this.playerNode.gain.value = gain;
+    this.setState({boost: gain});
+  }
+
+  handleOrderClick(event) {
+    const order = event.target.value;
+    if (order === this.state.order) { return; }
+    this.setState({order: order, directories: {}});
+
+    // should we clear also context in Sequencer?
+  }
+
+  static romanToArabicSubstrings(str) {
     // Works up to 399 (CCCXCIX)
     try {
       str = str.replace(/\b([IVXLC]+|[ivxlc]+)[-.,)]/, (a, match, c, d) => {
@@ -631,28 +661,7 @@ class App extends React.Component {
     fetch(`${API_BASE}/browse?path=%2F${encodeURIComponent(path)}`,{cache: "no-cache"})
       .then(response => response.json())
       .then(json => {
-        const arabicMap = {};
-        const needsRomanNumeralSort = json.some(item => {
-          // Only convert Roman numerals if the list sort could benefit from it.
-          // Roman numerals less than 9 would be sorted incidentally.
-          // This assumes that
-          // - Roman numerals are formatted with a period.
-          // - Roman numeral ranges don't have gaps.
-          return item.path.toLowerCase().indexOf('ix') > -1;
-        });
-        if (needsRomanNumeralSort) {
-          console.log("Roman numeral sort is active for this directory");
-          // Movement IV. Wow => Movement 0004. Wow
-          json.forEach(item => arabicMap[item.path] = this.romanToArabicSubstrings(item.path));
-        }
-        const items = json
-          .sort((a, b) => {
-            const [strA, strB] = needsRomanNumeralSort ?
-              [arabicMap[a.path], arabicMap[b.path]] :
-              [a.path, b.path];
-            return NUMERIC_COLLATOR.compare(strA, strB);
-          })
-
+        const items = App[this.state.order](json)
           .sort((a, b) => {
             if (a.type < b.type) return -1;
             if (a.type > b.type) return 1;
@@ -688,6 +697,40 @@ class App extends React.Component {
       str += args[i];
     }
     return str;
+  }
+
+  static orderByTitle(json) {
+    const arabicMap = {};
+    const needsRomanNumeralSort = json.some(item => {
+      // Only convert Roman numerals if the list sort could benefit from it.
+      // Roman numerals less than 9 would be sorted incidentally.
+      // This assumes that
+      // - Roman numerals are formatted with a period.
+      // - Roman numeral ranges don't have gaps.
+      return item.path.toLowerCase().indexOf('ix') > -1;
+    });
+    if (needsRomanNumeralSort) {
+      console.log("Roman numeral sort is active for this directory");
+      json.forEach(item => arabicMap[item.path] = App.romanToArabicSubstrings(item.path));
+    }
+    return json.sort((a, b) => {
+      const [strA, strB] = needsRomanNumeralSort ?
+        [arabicMap[a.path], arabicMap[b.path]] :
+        [a.path, b.path];
+      return NUMERIC_COLLATOR.compare(strA, strB);
+    })
+  }
+
+  static orderBySize(json) {
+    return json.sort((a, b) => {
+      return a.size - b.size;
+    })
+  }
+
+  static orderByDate(json) {
+    return json.sort((a, b) => {
+      return a.mtimeMs - b.mtimeMs;
+    })
   }
 
   pathToLinks(path) {
@@ -909,6 +952,13 @@ class App extends React.Component {
                 paramDefs={this.sequencer.getPlayer().getParamDefs()}/>
               :
               <div>(No active player)</div>}
+              <br />
+              <h3 style={{margin: '0 8px 19px 0'}}>Global Settings</h3>
+              <GlobalParams
+                boost={this.state.boost}
+                order={this.state.order}
+                handleVolumeBoostChange={this.handleVolumeBoostChange}
+                handleOrderClick={this.handleOrderClick} />
           </div>}
           {this.state.imageUrl &&
           <img alt="Cover art" className="App-footer-art" src={this.state.imageUrl}/>}
