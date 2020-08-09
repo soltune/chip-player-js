@@ -55,7 +55,7 @@ const char *getEmscriptenRhythmPath() {
 #define SAMPLE_FREQ	55466
 
 
-Int16 sample_buffer[SAMPLE_BUF_SIZE * CHANNELS];
+static Int16 sample_buffer[SAMPLE_BUF_SIZE * CHANNELS];
 int s98_samples_available= 0;
 
 char* s98_info_texts[9];

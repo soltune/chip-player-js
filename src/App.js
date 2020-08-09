@@ -25,6 +25,8 @@ import FMPPlayer from "./players/FMPPlayer";
 import PSFPlayer from "./players/PSFPlayer";
 import NDSPlayer from "./players/NDSPlayer";
 import StreamPlayer from "./players/StreamPlayer";
+import VGMPlayer from "./players/VGMPlayer";
+
 
 import PlayerParams from './PlayerParams';
 import Search from './Search';
@@ -216,6 +218,7 @@ class App extends React.Component {
             new FMPPlayer(audioCtx, playerNode, chipCore),
             new PSFPlayer(audioCtx, playerNode, chipCore),
             new NDSPlayer(audioCtx, playerNode, chipCore),
+            new VGMPlayer(audioCtx, playerNode, chipCore),
             new StreamPlayer(audioCtx, playerNode, chipCore),
           ]);
           this.setState({loading: false});
@@ -296,6 +299,7 @@ class App extends React.Component {
 
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
+      if (e.ctrlKey || e.metaKey) return;
 
       switch (e.key) {
         case 'Escape':
