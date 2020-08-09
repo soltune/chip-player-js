@@ -234,8 +234,10 @@ class VGMLibWrapper {
     const result = this.vgmLib.ccall('vgm_init', 'number', ['number', 'string', 'string'], [sampleRate, path, filename]);
     if (result === 0) { // result -> 0: success, 1: error
       this.currentFile = filename;
+      this.vgmLib.ccall('vgm_set_subsong', 'number', ['number', 'number'], [0, 0]);
+    } else {
+      this.close();
     }
-    this.vgmLib.ccall('vgm_set_subsong', 'number', ['number', 'number'], [0, 0]);
     return result;
   }
 

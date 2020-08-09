@@ -432,13 +432,15 @@ class App extends React.Component {
           .then(xhr => {
             if (xhr.status >= 200 && xhr.status < 400) {
               const { imageUrl, infoTexts } = xhr.response;
-              this.setState({imageUrl: imageUrl, infoTexts: infoTexts});
+              if (imageUrl) {
+                this.setState({imageUrl: imageUrl, infoTexts: infoTexts});
 
-              if ('mediaSession' in navigator) {
-                navigator.mediaSession.metadata.artwork = [{
-                  src: imageUrl,
-                  sizes: '512x512',
-                }];
+                if ('mediaSession' in navigator) {
+                  navigator.mediaSession.metadata.artwork = [{
+                    src: imageUrl,
+                    sizes: '512x512',
+                  }];
+                }
               }
 
               if (infoTexts.length === 0) {
