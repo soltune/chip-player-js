@@ -216,9 +216,9 @@ extern "C" int EMSCRIPTEN_KEEPALIVE psf_get_psf_version() {
 	return he_get_psf_version(song_info);
 }
 
-extern "C" void psf_set_mask(uint64 mask) __attribute__((noinline));
-extern "C" void EMSCRIPTEN_KEEPALIVE psf_set_mask(uint64 mask) {
-	he_set_channel_mask(song_info, mask);
+extern "C" void psf_set_mask(uint32 mask0, uint32 mask1) __attribute__((noinline));
+extern "C" void EMSCRIPTEN_KEEPALIVE psf_set_mask(uint32 mask0, uint32 mask1) {
+	he_set_channel_mask(song_info, (mask0 + ((uint64) mask1 << 24))); // both masks are 24bits
 }
 
 extern "C" void psf_set_reverb(uint8 enable) __attribute__((noinline));

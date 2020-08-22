@@ -862,7 +862,7 @@ struct SPU_STATE {
 void he_set_channel_mask (DB_fileinfo_t *_info, uint64 mask) {
     he_info_t *info = (he_info_t *)_info;
     for (int i = 0; i < 48; i++) {
-        spu_enable_mute(iop_get_spu_state(psx_get_iop_state(info->emu)), i, mask & 1 << i);
+        spu_enable_mute(iop_get_spu_state(psx_get_iop_state(info->emu)), i, (mask & ((uint64) 1 << i)) != 0);
     }
 }
 
