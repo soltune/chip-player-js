@@ -123,8 +123,8 @@ class PSFLibWrapper {
     return this.currentFile === null;
   }
 
-  setVoices(voices) {
-    this.psflib.ccall('psf_set_mask', null, ['number'], [voices]);
+  setVoices(voices0, voices1) {
+    this.psflib.ccall('psf_set_mask', null, ['number', 'number'], [voices0, voices1]);
   }
 
   setTempo(tempo) {
@@ -536,13 +536,15 @@ export default class PSFPlayer extends Player {
   }
 
   setVoices(voices) {
-    let mask = 0;
+    let masks = [0, 0];
+    const channelCount = 24;
     voices.forEach((enabled, i) => {
+      const paramIdx = Math.floor(i / channelCount);
       if (!enabled) {
-        mask += (1 << i);
+        masks[paramIdx] += (1 << (i - paramIdx * channelCount));
       }
     });
-    this.lib.setVoices(mask);
+    this.lib.setVoices(masks[0], masks[1]);
   }
 
   seekMs(positionMs) {

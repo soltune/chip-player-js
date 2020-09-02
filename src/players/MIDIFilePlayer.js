@@ -9,6 +9,8 @@ const DELAY_MS_PER_XG_SYSTEM_EVENT = 500;
 const CC_SUSTAIN_PEDAL = 64;
 const CC_ALL_SOUND_OFF = 120;
 const CC_RESET_ALL_CONTROLLERS = 121;
+const SYSEX_GM_RESET = [0x7E, 0x7F, 0x09, 0x01, 0xF7];
+const SEQUENCED_CONTROLLERS = [6, 38, 96, 97, 98, 99, 100, 101];
 
 function printSysex(data) {
   return ('[F0 ' + data.map(n => ('0' + n.toString(16)).slice(-2)).join(' ') + ']').toUpperCase();
@@ -26,6 +28,7 @@ function MIDIPlayer(options) {
   this.events = [];
   this.paused = true;
   this.useWebMIDI = false;
+  this.sampleRate = options.sampleRate || 44100;
 
   this.channelsInUse = [];
   this.channelsMuted = [];
@@ -124,9 +127,9 @@ MIDIPlayer.prototype.doSkipSilence = function() {
 };
 
 MIDIPlayer.prototype.play = function(endCallback) {
-  this.endCallback = endCallback;
   if(0 === this.position) {
-    this.panic();
+    this.endCallback = endCallback;
+    this.reset();
 
     this.lastProcessPlayTimestamp = performance.now();
     if (this.skipSilence) {
@@ -146,7 +149,7 @@ MIDIPlayer.prototype.processPlaySynth = function(buffer, bufferSize) {
   let batchSize = 64;
   let event = null;
   const synth = this.synth;
-  const msPerBatch = this.speed * 1000 * (batchSize / 44100) / 2;
+  const msPerBatch = this.speed * 1000 * (batchSize / this.sampleRate) / 2;
 
   for (let samplesRemaining = bufferSize * 2;
        samplesRemaining > 0;
@@ -327,14 +330,15 @@ MIDIPlayer.prototype.panic = function(timestamp) {
 };
 
 MIDIPlayer.prototype.reset = function(timestamp) {
-  if (this.synth) {
-    this.synth.reset();
-  } else {
+  if (this.useWebMIDI) {
+    this.send([MIDIEvents.EVENT_SYSEX, ...SYSEX_GM_RESET]);
     for (let ch = 0; ch < 16; ch++) {
       this.send([(MIDIEvents.EVENT_MIDI_CONTROLLER << 4) + ch, CC_SUSTAIN_PEDAL, 0], timestamp);
       this.send([(MIDIEvents.EVENT_MIDI_CONTROLLER << 4) + ch, CC_ALL_SOUND_OFF, 0], timestamp);
       this.send([(MIDIEvents.EVENT_MIDI_CONTROLLER << 4) + ch, CC_RESET_ALL_CONTROLLERS, 0], timestamp);
     }
+  } else {
+    this.synth.reset();
   }
 };
 
@@ -354,15 +358,17 @@ MIDIPlayer.prototype.getPosition = function() {
 MIDIPlayer.prototype.setOutput = function(output) {
   this.panic(this.lastSendTimestamp + 10);
   this.output = output;
+  // Trigger replay of all program change events
+  this.setPosition(this.getPosition() - 10);
 };
 
 MIDIPlayer.prototype.setSpeed = function (speed) {
   this.speed = Math.max(0.1, Math.min(10, speed));
 };
 
-MIDIPlayer.prototype.setPositionSynth = function(eventMap) {
+MIDIPlayer.prototype.setPositionSynth = function(eventList) {
   const synth = this.synth;
-  Object.values(eventMap).forEach(event => {
+  eventList.forEach(event => {
     switch (event.subtype) {
       case MIDIEvents.EVENT_MIDI_PROGRAM_CHANGE:
         synth.programChange(event.channel, event.param1);
@@ -375,11 +381,12 @@ MIDIPlayer.prototype.setPositionSynth = function(eventMap) {
   });
 };
 
-MIDIPlayer.prototype.setPositionWebMidi = function(ms, eventMap) {
+MIDIPlayer.prototype.setPositionWebMidi = function(ms, eventList) {
+  const wasPaused = this.paused;
   this.paused = true;
 
   let message;
-  Object.values(eventMap).forEach((event, i) => {
+  eventList.forEach((event, i) => {
     if (event.subtype === MIDIEvents.EVENT_MIDI_PROGRAM_CHANGE) {
       message = [(event.subtype << 4) + event.channel, event.param1];
     } else if (event.subtype === MIDIEvents.EVENT_MIDI_CONTROLLER) {
@@ -388,10 +395,12 @@ MIDIPlayer.prototype.setPositionWebMidi = function(ms, eventMap) {
     this.send(message, this.lastSendTimestamp + 20 + i * DELAY_MS_PER_CC_EVENT);
   });
 
-  const numEvents = Object.values(eventMap).length;
+  const numEvents = eventList.length;
   const messageDelay = numEvents * DELAY_MS_PER_CC_EVENT;
   console.log("Scheduled %s events. Resuming playback in %s ms...", numEvents, messageDelay);
-  setTimeout(this.resume, messageDelay);
+  if (!wasPaused) {
+    setTimeout(this.resume, messageDelay);
+  }
 };
 
 MIDIPlayer.prototype.setPosition = function(ms) {
@@ -400,6 +409,7 @@ MIDIPlayer.prototype.setPosition = function(ms) {
   this.lastProcessPlayTimestamp = performance.now();
   this.panic(this.lastSendTimestamp + 10);
   let eventMap = {};
+  let eventList = [];
   let pos = this.position;
 
   if (ms < this.elapsedTime) {
@@ -411,15 +421,24 @@ MIDIPlayer.prototype.setPosition = function(ms) {
     if (event.subtype === MIDIEvents.EVENT_MIDI_PROGRAM_CHANGE) {
       eventMap[`${event.subtype}-${event.channel}`] = event;
     } else if (event.subtype === MIDIEvents.EVENT_MIDI_CONTROLLER) {
-      eventMap[`${event.subtype}-${event.channel}-${event.param1}`] = event;
+      // These controllers (RPN, NRPN, Data Entry) must be sequenced in order
+      if (SEQUENCED_CONTROLLERS.includes(event.param1)) {
+        // console.log('Sequenced event: ch %d -- %d - %d -- %d ms', event.channel, event.param1, event.param2, event.playTime);
+        eventList.push(event);
+      } else {
+        // All others, we only care about the last event
+        eventMap[`${event.subtype}-${event.channel}-${event.param1}`] = event;
+      }
     }
     pos++;
   }
 
+  eventList = Object.values(eventMap).concat(eventList);
+
   if (this.useWebMIDI) {
-    this.setPositionWebMidi(ms, eventMap);
+    this.setPositionWebMidi(ms, eventList);
   } else {
-    this.setPositionSynth(eventMap);
+    this.setPositionSynth(eventList);
   }
 
   this.elapsedTime = ms;
@@ -468,7 +487,8 @@ MIDIPlayer.prototype.setChannelMute = function(ch, isMuted) {
 
 MIDIPlayer.prototype.setUseWebMIDI = function(useWebMIDI) {
   this.useWebMIDI = useWebMIDI;
-
+  // Trigger replay of all program change events
+  this.setPosition(this.getPosition() - 10);
 };
 
 export default MIDIPlayer;

@@ -178,12 +178,12 @@ export default class S98Player extends Player {
 
           this.currentPlaytime = this.getPositionMs();
           const detectLoop = this.s98lib.computeAudioSamples();
-          if (!this.isFadingOut && detectLoop && this.getDurationMs() < this.currentPlaytime) {
+          if (!this.isFadingOut && detectLoop > 0 && this.getDurationMs() <= this.currentPlaytime) {
             this.setFadeout(this.currentPlaytime);
           }
 
-          if (this.currentPlaytime >= (this.getDurationMs() + (detectLoop * fadeoutTimeMs))) {
-            // no frame left
+          if ((detectLoop === -1 && this.currentPlaytime >= this.getDurationMs() )  // without loop
+             || this.currentPlaytime >= (this.getDurationMs() + fadeoutTimeMs) ) {  // with loop
             this.fillEmpty(outSize);
             this.stop();
             return;

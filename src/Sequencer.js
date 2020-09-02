@@ -72,6 +72,8 @@ export default class Sequencer {
   }
 
   advanceSong(direction) {
+    if (this.context == null) return;
+
     this.currIdx += direction;
 
     if (this.currIdx < 0 || this.currIdx >= this.context.length) {
@@ -98,16 +100,24 @@ export default class Sequencer {
     this.player.playSubtune(subtune);
   }
 
-  prevSubtune() {
+  hasPrevSubtune() {
     const subtune = this.player.getSubtune() - 1;
-    if (subtune < 0) return;
-    this.playSubtune(subtune);
+    return (subtune >= 0);
+  }
+
+  prevSubtune() {
+    if (! this.hasPrevSubtune()) return;
+    this.playSubtune( this.player.getSubtune() - 1);
+  }
+
+  hasNextSubtune() {
+    const subtune = this.player.getSubtune() + 1;
+    return (subtune < this.player.getNumSubtunes());
   }
 
   nextSubtune() {
-    const subtune = this.player.getSubtune() + 1;
-    if (subtune >= this.player.getNumSubtunes()) return;
-    this.playSubtune(subtune);
+    if (! this.hasNextSubtune()) return;
+    this.playSubtune(this.player.getSubtune() + 1);
   }
 
   getPlayer() {
@@ -159,6 +169,12 @@ export default class Sequencer {
         this.currUrl = url;
         const filepath = url.replace(CATALOG_PREFIX, '');
         this.playSongBuffer(filepath, buffer)
+      })
+      .catch(e => {
+        // TODO: recover from this error
+        this.onSequencerStateUpdate(true);
+        this.player = null;
+        this.onPlayerError(`${e.status} ${e.statusText}`);
       });
   }
 

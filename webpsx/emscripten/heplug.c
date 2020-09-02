@@ -859,10 +859,11 @@ struct SPU_STATE {
 
 };
 
-void he_set_channel_mask (DB_fileinfo_t *_info, uint64 mask) {
+void he_set_channel_mask (DB_fileinfo_t *_info, uint32 mask0, uint32 mask1) {
     he_info_t *info = (he_info_t *)_info;
     for (int i = 0; i < 48; i++) {
-        spu_enable_mute(iop_get_spu_state(psx_get_iop_state(info->emu)), i, mask & 1 << i);
+        uint8 mask = (i < 24)? (mask0 >> i) & 1 : (mask1 >> (i - 24)) & 1;
+        spu_enable_mute(iop_get_spu_state(psx_get_iop_state(info->emu)), i, mask);
     }
 }
 

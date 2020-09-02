@@ -1,4 +1,5 @@
 import React, {PureComponent} from "react";
+import {CATALOG_PREFIX} from "./config";
 
 export default class FavoriteButton extends PureComponent {
   constructor(props) {

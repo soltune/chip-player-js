@@ -29,15 +29,15 @@
 }
 
 @font-face {
-    font-family: pc98;
-    src: url(fonts/PC9800S.ttf) format('truetype');
-    font-weight: 400;
+    font-family: x68k;
+    src: url(fonts/KH-Dot-Kodenmachou-16_chipplayerjs.ttf) format('truetype');
+    font-weight: 100;
     font-style: normal
 }
 
 * {
     font-size: 24px !important;
-    font-family: VGA_SquarePx, pc98, monospace !important;
+    font-family: VGA_SquarePx, x68k, monospace !important;
     -webkit-font-smoothing: none;
     -webkit-tap-highlight-color: rgba(0,0,0,0);
     line-height: var(--charH);
@@ -366,10 +366,8 @@ body,#root {
 .Visualizer-analyzer { display: block; image-rendering: pixelated; }
 .Visualizer-spectrogram { display: block; flex-grow: 1; min-height: 0; image-rendering: pixelated; }
 
-.TimeSlider { margin: var(--charH) 0; }
-.TimeSlider-time { display: flex; flex-direction: row; justify-content: space-between; }
-.TimeSlider-elapsed {}
-.TimeSlider-total {}
+.TimeSlider { margin: var(--charH) 0; flex-grow: 1 }
+.TimeSlider-labels, .VolumeSlider-labels { display: flex; flex-direction: row; justify-content: space-between; }
 
 .Song-now-playing {
     background-color: var(--button);

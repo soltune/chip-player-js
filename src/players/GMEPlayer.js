@@ -11,10 +11,10 @@ const fileExtensions = [
   'nsfe',
   'spc',
   'gym',
-  'vgm',
-  'vgz',
+  // 'vgm',
+  // 'vgz',
   'ay',
-  'sgc',
+  // 'sgc',
   'kss',
   'gbs',
   'hes',
@@ -32,7 +32,7 @@ export default class GMEPlayer extends Player {
     this.fileExtensions = fileExtensions;
     this.subtune = 0;
     this.tempo = 1.0;
-    this.params = { subbass: 1 };
+    this.params = { subbass: 1, default_duration: 150 };
 
     this.buffer = libgme.allocate(this.bufferSize * 16, 'i16', libgme.ALLOC_NORMAL);
     this.emuPtr = libgme.allocate(1, 'i32', libgme.ALLOC_NORMAL);
@@ -171,6 +171,9 @@ export default class GMEPlayer extends Player {
     meta.intro_length = readInt32();
     meta.loop_length = readInt32();
     meta.play_length = readInt32();
+    if (this.filepathMeta.title.match(/(\.nsf$|\.kss$|\.gbs$|\.hes$)/i)) { // .nsfe and others have a length as meta info
+      meta.play_length = this.params.default_duration * 1000;
+    }
 
     offset += 4 * 12; // skip unused bytes
 
@@ -237,6 +240,15 @@ export default class GMEPlayer extends Player {
         step: 0.01,
         value: 1.0,
       },
+      {
+        id: 'default_duration',
+        label: 'Default Duration',
+        type: 'number',
+        min: 60,
+        max: 600,
+        step: 10,
+        value: 150,
+      },
     ];
   }
 
@@ -244,6 +256,10 @@ export default class GMEPlayer extends Player {
     switch (id) {
       case 'subbass':
         this.params[id] = parseFloat(value);
+        break;
+      case 'default_duration':
+        this.params[id] = parseInt(value);
+        //this.app.setState({ currentSongDurationMs: this.params.default_duration * 1000 }); // to affect current length immediately, the access for app needed
         break;
       default:
         console.warn('GMEPlayer has no parameter with id "%s".', id);

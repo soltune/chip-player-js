@@ -53,6 +53,7 @@ export default class Browse extends PureComponent {
     const fetchDirectory = this.props.fetchDirectory;
     if (!directories[browsePath]) {
       fetchDirectory(browsePath);
+      delete this.contexts[browsePath]; // delete cache when order is changed
     }
     if (directories[browsePath] && !this.contexts[browsePath]) {
       this.contexts[browsePath] = directories[browsePath].map(item =>

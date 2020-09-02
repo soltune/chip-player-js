@@ -34,7 +34,7 @@ fs.writeSync(fs.openSync(trieOutputPath, 'w+'), trieData);
 console.log('Wrote %d entries in %s (%d bytes).', files.length, trieOutputPath, trieData.length);
 
 const dirDict = {};
-directoryTree(catalogRoot, { extensions: formatsRegex }, null, item => {
+directoryTree(catalogRoot, { extensions: formatsRegex, attributes: ['mtimeMs']}, null, item => {
     if (item.children) {
         item.children = item.children.map(child => {
             child.path = child.path.replace(catalogRoot, '/');

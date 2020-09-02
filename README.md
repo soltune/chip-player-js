@@ -7,9 +7,14 @@ This fork is to share my fixes like;
 - Small bugfixes and improvements
     - [GME] fixed incorrect text encoding handling in the tags
     - [GME/nsf] supported `FDS write protect` for some tunes which use multi extend chips
+    - [Font] added additional font to improve rendering Japanese text
+        - the font is created by [MM of 自家製フォント工房](http://jikasei.me/font/kh-dotfont/) licensed by SIL Open Font License (with some modifications made by me)
 - additional file formats support
-    - gbs, hes
-    - s98 ([webS98](https://github.com/wothke/webS98/), based on [m_s98.kpi S98V3](http://www.vesta.dti.ne.jp/~tsato/soft_s98v3.html))
+    - **gbs, hes**
+    - **vgm, vgz** ([webVGM](https://github.com/wothke/vgmplay-0.40.9), based on [VGMPlay](https://github.com/vgmrips/vgmplay))
+        - Replaced GME to improve .vgm/vgz support
+        - `yrw801.rom` must be located at `chip-player-js/public/instruments` to play OPL4(YMF278)
+    - **s98** ([webS98](https://github.com/wothke/webS98/), based on [m_s98.kpi S98V3](http://www.vesta.dti.ne.jp/~tsato/soft_s98v3.html))
         - supports rhythm samples for OPNA
         - corrects volume balance for PC-9801
             - the player reduces the volume of PSG ch if there's `9801` in 'system' tag.
@@ -20,7 +25,7 @@ This fork is to share my fixes like;
             - 2608_SD.WAV
             - 2608_TOM.WAV
             - 2608_TOP.WAV
-    - pmd ([webMDX](https://github.com/wothke/webMDX), based on [pmdmini](https://github.com/mistydemeo/pmdmini))
+    - **pmd** ([webMDX](https://github.com/wothke/webMDX), based on [pmdmini](https://github.com/mistydemeo/pmdmini))
         - supports rhythm samples for OPNA
         - supports ADPCM/PCM (.pps, .ppc, .p86, .pzi)
         - the following sound samples must be located at `chip-player-js/public/rhythm` before building (each filenames are case sensitive)
@@ -30,14 +35,22 @@ This fork is to share my fixes like;
             - 2608_SD.WAV
             - 2608_TOM.WAV
             - 2608_TOP.WAV
-    - mdx ([webMDX](https://github.com/wothke/webMDX), based on [mdxmini](https://github.com/mistydemeo/mdxmini))
+    - **mdx** ([webMDX](https://github.com/wothke/webMDX), based on [mdxmini](https://github.com/mistydemeo/mdxmini))
         - supports ADPCM/PCM (.pdx)
-    - fmp ([fmplayer](https://github.com/takamichih/fmplayer/))
+    - **fmp** ([fmplayer](https://github.com/takamichih/fmplayer/))
         - supports rhythm rom for OPNA
         - supports ADPCM/PCM (.pvi, .pzi(for PPZ8))
         - `ym2608_adpcm_rom.bin` must be located at `chip-player-js/public/rhythm` before building (the filename is case sensitive)
-    - psf/minipsf ([webPSX](https://github.com/wothke/webpsx))
-    - 2sf/mini2sf ([webDS](https://github.com/wothke/webDS))
+    - **psf, minipsf** ([webPSX](https://github.com/wothke/webpsx))
+    - **2sf, mini2sf** ([webDS](https://github.com/wothke/webDS))
+- additional soundfonts
+    - added two high quality piano soundfonts. if you'd like to listen piano solo this is good choice :)
+        - place the following .sf2 at public/sondfonts folder to enable them
+        - [Equinox Grand Pianos](http://www.mediafire.com/?12enyjv0ewj)
+        - [Warren S. Trachtman - Steinway Model-C Soundfont](https://archive.org/details/WST25FStein_00Sep22.sf2)
+
+**This player assumes each pcm files(.pzi, .pvi, .pdx ...) are in the same directory where the music files are.**
+
 ---
 
 ![Screen Shot 2019-11-19 at 1 21 04 PM](https://user-images.githubusercontent.com/946117/69187458-80955600-0acf-11ea-9a1f-e090032dcb00.png)
@@ -85,7 +98,7 @@ Prerequisites: yarn, cmake, emsdk.
 * Clone the repository. 
 * Run `yarn install`.
 
-In building the subprojects, we ultimately invoke `emmake make` instead of `make` to yield an object file that can Emscripten can link to in the final build.
+In building the subprojects, we ultimately invoke `emmake make` instead of `make` to yield an object file that Emscripten can link to in the final build.
 
 * Install the [Emscripten SDK (emsdk)](https://github.com/emscripten-core/emsdk).
 * The build script in [package.json](package.json) looks for the emsdk in `~/src/emsdk`. Modify this line to match your emsdk install location if necessary:
@@ -141,6 +154,7 @@ source ~/src/emsdk/emsdk_env.sh  # load the emscripten environment variables
 mkdir build                      # create a build folder for Cmake output
 cd build                         
 emcmake cmake -DDISABLE_SF3=1 .. # Cmake will generate a Makefile by default
+                                 # Problems here? Try deleting CMake cache files
 emmake make fluidlite-static
 ```
 
@@ -170,6 +184,12 @@ Or deploy to Github Pages:
 
 ```sh
 yarn deploy
+```
+
+Deploy to Github Pages without rebuilding chip-core.wasm: 
+
+```sh
+yarn deploy-lite
 ```
 
 ### Related Projects and Resources
@@ -241,6 +261,14 @@ Diverse and usable GM SoundFonts.
 
 - The best pop music MIDI archive comes from [Colin Raffel's thesis work](https://colinraffel.com/projects/lmd/) on MIDI alignment. About 20,000 cleaned MIDI files
     * Colin Raffel. "Learning-Based Methods for Comparing Sequences, with Applications to Audio-to-MIDI Alignment and Matching". PhD Thesis, 2016.
+- VGM Rips: https://vgmrips.net
+- VGMusic.com: https://archive.org/details/vgmusic
+- Sound Canvas MIDI Collection: https://archive.org/details/sound_canvas_midi_collection
+- The Mod Archive: https://modarchive.org/
+- Zophar's Domain: https://www.zophar.net/music
+- OPL Archive: http://opl.wafflenet.com/
+- Piano E-Competition MIDI: http://www.piano-e-competition.com/midiinstructions.asp
+- Modland: https://modland.com/pub/modules/
 
 #### Miscellaneous
 
