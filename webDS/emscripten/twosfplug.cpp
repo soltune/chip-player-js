@@ -66,14 +66,14 @@ class exception_io_data: public std::runtime_error {
 public:
 	exception_io_data(const char *what= "exception_io_data") : std::runtime_error(what) {}
 };
-int stricmp_utf8(std::string const& s1, const char* s2) {	
+static int stricmp_utf8(std::string const& s1, const char* s2) {
     return strcasecmp(s1.c_str(), s2);
 }
-int stricmp_utf8(const char* s1, const char* s2) {	
+static int stricmp_utf8(const char* s1, const char* s2) {
     return strcasecmp(s1, s2);
 }
-int stricmp_utf8_partial(std::string const& s1,  const char* s2) {
-	std::string s1pref= s1.substr(0, strlen(s2));	
+static int stricmp_utf8_partial(std::string const& s1,  const char* s2) {
+	std::string s1pref= s1.substr(0, strlen(s2));
     return strcasecmp(s1pref.c_str(), s2);
 }
 
