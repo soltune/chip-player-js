@@ -6,7 +6,7 @@ import path from 'path';
 import DirectoryLink from './DirectoryLink';
 
 const ROMAN_NUMERAL_REGEX = /\b([IVXLC]+|[ivxlc]+)[-.,)]/; // All upper case or all lower case
-const CATALOG_PREFIX_REGEX = /^https?:\/\/[a-z0-9\-.:]+\/(static)?\/(music|catalog)\//;
+const CATALOG_PREFIX_REGEX = /^https?:\/\/[a-z0-9\-.:]+(\/static)?\/(music|catalog)\//;
 
 export function updateQueryString(newParams) {
   // Merge new params with current query string
