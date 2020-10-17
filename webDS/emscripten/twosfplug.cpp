@@ -246,7 +246,7 @@ static unsigned long parse_time_crap(const char *input)
 // hack: dummy impl to replace foobar2000 stuff
 const int MAX_INFO_LEN= 10;
 
-class file_info {
+class twosf_file_info {
 	double len;
 	
 	// no other keys implemented
@@ -256,11 +256,11 @@ class file_info {
 	std::vector<std::string> requiredLibs;
 	
 public:
-	file_info() {
+	twosf_file_info() {
 		sampleRate = (const char*)malloc(MAX_INFO_LEN);
 		channels = (const char*)malloc(MAX_INFO_LEN);
 	}
-	~file_info() {
+	~twosf_file_info() {
 		free((void*)channels);
 		free((void*)sampleRate);
 	}
@@ -316,7 +316,7 @@ public:
 };
 
 
-static void info_meta_ansi( file_info & info )
+static void info_meta_ansi( twosf_file_info & info )
 {
 /* FIXME eventually migrate original impl
  
@@ -340,7 +340,7 @@ static void info_meta_ansi( file_info & info )
 
 struct psf_info_meta_state
 {
-	file_info * info;
+	twosf_file_info * info;
 
 	std::string name;
 
@@ -719,7 +719,7 @@ class input_twosf
 	NDS_state *m_emu;
 	
 	std::string m_path;
-	file_info m_info;
+	twosf_file_info m_info;
 		
 	// copy/paste standard play loop handling
 	bool no_loop, eof;
@@ -760,14 +760,14 @@ public:
 
 	void reset() {
 		silence_test_buffer.reset();
-		
+
 		// redundant: see decode_initialize
 		resetPlayback();
 
 //		do_filter= do_suppressendsilence= false;
 		song_len= fade_len= tag_song_ms= tag_fade_ms= 0;
 		memset(&m_output, 0, sizeof(m_output));
-		
+
 		m_info.reset();
 	}
 	
@@ -821,7 +821,7 @@ public:
 
 	int open(const char * p_path ) {
 		reset();
-		
+
 		m_path = p_path;
 
 		psf_info_meta_state info_state;
@@ -838,7 +838,7 @@ public:
 
 		//console::print(msgbuf);
 		//msgbuf.reset();
-		
+
 		if ( ret <= 0 )
 			throw exception_io_data( "Not a 2SF file" );
 
@@ -867,7 +867,7 @@ public:
 		std::vector<std::string> p = splitpath(m_path, delims);		
 		std::string path= m_path.substr(0, m_path.length()-p.back().length());
 		
-		
+
 		// make sure the file will be available in the FS when the song asks for it later..		
 		std::vector<std::string>libs= m_info.get_required_libs();
 		for (std::vector<std::string>::const_iterator iter = libs.begin(); iter != libs.end(); ++iter) {
@@ -1183,10 +1183,10 @@ int32_t ds_current_play_position() {
 
 int ds_load_file(const char *uri) {
 	try {
-		
+
 		int retVal= g_input_2sf->open(uri);
 		if (retVal < 0) return retVal;	// trigger retry later
-		
+
 		g_input_2sf->decode_initialize();
 
 		return 0;

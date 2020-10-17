@@ -130,10 +130,10 @@ extern "C" EMSCRIPTEN_KEEPALIVE int nds_init(char *basedir, char *songmodule)
 	ds_setup();	// basic init
 
 	meta_clear();
-	
+
 	std::string file= std::string(basedir)+"/"+std::string(songmodule);
 	
-	
+
 	if (ds_load_file(file.c_str()) == 0) {
 	} else {
 		return -1;
@@ -165,7 +165,7 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE nds_get_audio_buffer(void) {
 }
 
 extern "C" long EMSCRIPTEN_KEEPALIVE nds_get_audio_buffer_length(void) __attribute__((noinline));
-extern "C" long EMSCRIPTEN_KEEPALIVE nds_get_audio_buffer_length(void) {	
+extern "C" long EMSCRIPTEN_KEEPALIVE nds_get_audio_buffer_length(void) {
 	return samples_available;
 }
 

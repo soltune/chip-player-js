@@ -591,7 +591,7 @@ const chipModules = [
       '-DHAVE_ZLIB_H',
       '--js-library', 'webDS/nds_callback.js',
       '-IwebDS/vio2sf/desmume/',
-      '-IwebDS/psflib',
+      // '-IwebDS/psflib',
     ],
   },
   {
