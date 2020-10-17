@@ -551,8 +551,8 @@ const chipModules = [
     name: 'nds',
     enabled: true,
     sourceFiles: [
-      'psflib/dspsflib.c',
-      'psflib/dspsf2fs.c',
+      // 'psflib/psflib.c', // replaced to psflib/libpsflib.a
+      // 'psflib/psf2fs.c',
       'vio2sf/desmume/arm_instructions.c',
       'vio2sf/desmume/armcpu.c',
       'vio2sf/desmume/barray.c',

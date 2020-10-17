@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include "dspsf2fs.h"
+#include "psf2fs.h"
 
 #include <ctype.h>
 #include <string.h>
@@ -92,7 +92,7 @@ static void cache_cleanup(struct CACHEBLOCK *cacheblock) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void *ds_psf2fs_create(void) {
+void *psf2fs_create(void) {
   struct PSF2FS *fs;
   fs = ( struct PSF2FS * ) malloc( sizeof( struct PSF2FS ) );
   if(!fs) return NULL;
@@ -102,7 +102,7 @@ void *ds_psf2fs_create(void) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void ds_psf2fs_delete(void *psf2fs) {
+void psf2fs_delete(void *psf2fs) {
   struct PSF2FS *fs = (struct PSF2FS*)psf2fs;
   if(fs->sources) source_cleanup_free(fs->sources);
   if(fs->dir) dir_cleanup_free(fs->dir);
@@ -358,7 +358,7 @@ error:
 //
 //
 //
-int ds_psf2fs_load_callback(void * psf2fs, const uint8_t * exe, size_t exe_size,
+int psf2fs_load_callback(void * psf2fs, const uint8_t * exe, size_t exe_size,
                                   const uint8_t * reserved, size_t reserved_size) {
   struct PSF2FS *fs = (struct PSF2FS*)psf2fs;
   (void)exe;
@@ -458,7 +458,7 @@ error:
 //
 //
 //
-int ds_psf2fs_virtual_readfile(void *psf2fs, const char *path, int offset, char *buffer, int length) {
+int psf2fs_virtual_readfile(void *psf2fs, const char *path, int offset, char *buffer, int length) {
   struct PSF2FS *fs = (struct PSF2FS*)psf2fs;
   struct DIR_ENTRY *entry = fs->dir;
 

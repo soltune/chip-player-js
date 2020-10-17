@@ -25,20 +25,20 @@ THE SOFTWARE.
 #ifndef PSF2FS_H
 #define PSF2FS_H
 
-#include "dspsflib.h"
+#include "psflib.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void * ds_psf2fs_create();
+void * psf2fs_create();
 
-void ds_psf2fs_delete( void * );
+void psf2fs_delete( void * );
 
-int ds_psf2fs_load_callback(void * psf2vfs, const uint8_t * exe, size_t exe_size,
+int psf2fs_load_callback(void * psf2vfs, const uint8_t * exe, size_t exe_size,
                                   const uint8_t * reserved, size_t reserved_size);
 
-int ds_psf2fs_virtual_readfile(void *psf2vfs, const char *path, int offset, char *buffer, int length);
+int psf2fs_virtual_readfile(void *psf2vfs, const char *path, int offset, char *buffer, int length);
 
 #ifdef __cplusplus
 }

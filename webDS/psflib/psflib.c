@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include "dspsflib.h"
+#include "psflib.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -102,7 +102,7 @@ static int psf_load_internal(psf_load_state * state, const char * file_name);
 static int psf_want_status(psf_load_state * state);
 static void psf_status(psf_load_state * state, const char * message, int indent);
 
-int ds_psf_load(const char * uri, const psf_file_callbacks * file_callbacks, uint8_t allowed_version,
+int psf_load(const char * uri, const psf_file_callbacks * file_callbacks, uint8_t allowed_version,
 	psf_load_callback load_target, void * load_context, psf_info_callback info_target,
 	void * info_context, int info_want_nested_tags, psf_status_callback status_target,
 	void * status_context)

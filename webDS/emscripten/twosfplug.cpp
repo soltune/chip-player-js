@@ -41,7 +41,7 @@
 
 #include <string.h>
 
-#include <dspsflib.h>
+#include <psflib.h>
 #include <zlib.h>
 
 #include "../vio2sf/desmume/state.h"
@@ -108,7 +108,7 @@ struct FileAccess_t {
 };
 static struct FileAccess_t *g_file= 0;
 
-static void * psf_file_fopen( const char * uri ) {
+static void * psf_file_fopen( void * context, const char * uri ) {
     void *file= g_file->fopen( uri );
 	return file;
 }
@@ -130,6 +130,7 @@ static long psf_file_ftell( void * handle ) {
 }
 const psf_file_callbacks psf_file_system = {
     "\\/|:",
+    nullptr,
     psf_file_fopen,
     psf_file_fread,
     psf_file_fseek,
@@ -833,7 +834,7 @@ public:
 		//std::string_fast msgbuf;
 
 		//int ret = psf_load(p_path, &psf_file_system, 0x24, 0, 0, psf_info_meta, &info_state, 0, print_message, &msgbuf);
-		int ret = ds_psf_load(p_path, &psf_file_system, 0x24, 0, 0, psf_info_meta, &info_state, 0, print_message, 0);
+		int ret = psf_load(p_path, &psf_file_system, 0x24, 0, 0, psf_info_meta, &info_state, 0, print_message, 0);
 
 		//console::print(msgbuf);
 		//msgbuf.reset();
@@ -902,7 +903,7 @@ public:
 		{
 		//	std::string_fast msgbuf;
 
-			int ret = ds_psf_load(m_path.c_str(), &psf_file_system, 0x24, twosf_loader, m_state, twosf_info, m_state, 1, print_message, 0);
+			int ret = psf_load(m_path.c_str(), &psf_file_system, 0x24, twosf_loader, m_state, twosf_info, m_state, 1, print_message, 0);
 
 		//	console::print(msgbuf);
 		//	msgbuf.reset();
