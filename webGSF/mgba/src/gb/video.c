@@ -56,7 +56,7 @@ void GBVideoInit(struct GBVideo* video) {
 	video->renderer = &dummyRenderer;
 	video->renderer->cache = NULL;
 	video->renderer->sgbRenderMode = 0;
-	video->vram = (uint8_t*) anonymousMemoryMap(GB_SIZE_VRAM);
+	video->vram = anonymousMemoryMap(GB_SIZE_VRAM);
 	video->frameskip = 0;
 
 	video->modeEvent.context = video;
@@ -106,11 +106,11 @@ void GBVideoReset(struct GBVideo* video) {
 	memset(&video->palette, 0, sizeof(video->palette));
 
 	if (video->p->model == GB_MODEL_SGB) {
-		video->renderer->sgbCharRam = (uint8_t*) anonymousMemoryMap(SGB_SIZE_CHAR_RAM);
-		video->renderer->sgbMapRam = (uint8_t*) anonymousMemoryMap(SGB_SIZE_MAP_RAM);
-		video->renderer->sgbPalRam = (uint8_t*) anonymousMemoryMap(SGB_SIZE_PAL_RAM);
-		video->renderer->sgbAttributeFiles = (uint8_t*) anonymousMemoryMap(SGB_SIZE_ATF_RAM);
-		video->renderer->sgbAttributes = (uint8_t*) malloc(90 * 45);
+		video->renderer->sgbCharRam = anonymousMemoryMap(SGB_SIZE_CHAR_RAM);
+		video->renderer->sgbMapRam = anonymousMemoryMap(SGB_SIZE_MAP_RAM);
+		video->renderer->sgbPalRam = anonymousMemoryMap(SGB_SIZE_PAL_RAM);
+		video->renderer->sgbAttributeFiles = anonymousMemoryMap(SGB_SIZE_ATF_RAM);
+		video->renderer->sgbAttributes = malloc(90 * 45);
 		memset(video->renderer->sgbAttributes, 0, 90 * 45);
 		video->sgbCommandHeader = 0;
 	}
@@ -212,7 +212,7 @@ static bool _statIRQAsserted(struct GBVideo* video, GBRegisterSTAT stat) {
 }
 
 void _endMode0(struct mTiming* timing, void* context, uint32_t cyclesLate) {
-	struct GBVideo* video = (struct GBVideo*) context;
+	struct GBVideo* video = context;
 	if (video->frameskipCounter <= 0) {
 		video->renderer->finishScanline(video->renderer, video->ly);
 	}
@@ -250,7 +250,7 @@ void _endMode0(struct mTiming* timing, void* context, uint32_t cyclesLate) {
 }
 
 void _endMode1(struct mTiming* timing, void* context, uint32_t cyclesLate) {
-	struct GBVideo* video = (struct GBVideo*) context;
+	struct GBVideo* video = context;
 	if (!GBRegisterLCDCIsEnable(video->p->memory.io[REG_LCDC])) {
 		return;
 	}
@@ -287,7 +287,7 @@ void _endMode1(struct mTiming* timing, void* context, uint32_t cyclesLate) {
 }
 
 void _endMode2(struct mTiming* timing, void* context, uint32_t cyclesLate) {
-	struct GBVideo* video = (struct GBVideo*) context;
+	struct GBVideo* video = context;
 	_cleanOAM(video, video->ly);
 	video->x = 0;
 	video->dotClock = mTimingCurrentTime(timing) - cyclesLate;
@@ -305,7 +305,7 @@ void _endMode2(struct mTiming* timing, void* context, uint32_t cyclesLate) {
 }
 
 void _endMode3(struct mTiming* timing, void* context, uint32_t cyclesLate) {
-	struct GBVideo* video = (struct GBVideo*) context;
+	struct GBVideo* video = context;
 	GBVideoProcessDots(video, cyclesLate);
 	if (video->ly < GB_VIDEO_VERTICAL_PIXELS && video->p->memory.isHdma && video->p->memory.io[REG_HDMA5] != 0xFF) {
 		video->p->memory.hdmaRemaining = 0x10;
@@ -328,7 +328,7 @@ void _endMode3(struct mTiming* timing, void* context, uint32_t cyclesLate) {
 
 void _updateFrameCount(struct mTiming* timing, void* context, uint32_t cyclesLate) {
 	UNUSED(cyclesLate);
-	struct GBVideo* video = (struct GBVideo*) context;
+	struct GBVideo* video = context;
 	if (video->p->cpu->executionState != LR35902_CORE_FETCH) {
 		mTimingSchedule(timing, &video->frameEvent, 4 - ((video->p->cpu->executionState + 1) & 3));
 		return;

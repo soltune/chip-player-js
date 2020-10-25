@@ -26,7 +26,7 @@ bool GBPrinterInit(struct GBSIODriver* driver) {
 	struct GBPrinter* printer = (struct GBPrinter*) driver;
 
 	printer->checksum = 0;
-	printer->command = (enum GBPrinterCommand) 0;
+	printer->command = 0;
 	printer->remainingBytes = 0;
 	printer->currentIndex = 0;
 	printer->compression = false;
@@ -35,7 +35,7 @@ bool GBPrinterInit(struct GBSIODriver* driver) {
 	printer->status = 0;
 	printer->printWait = -1;
 
-	printer->buffer = (uint8_t*) malloc(GB_VIDEO_HORIZONTAL_PIXELS * GB_VIDEO_VERTICAL_PIXELS / 2);
+	printer->buffer = malloc(GB_VIDEO_HORIZONTAL_PIXELS * GB_VIDEO_VERTICAL_PIXELS / 2);
 
 	return true;
 }
@@ -87,7 +87,7 @@ static uint8_t GBPrinterWriteSC(struct GBSIODriver* driver, uint8_t value) {
 			break;
 		case GB_PRINTER_BYTE_COMMAND:
 			printer->checksum = printer->byte;
-			printer->command = (enum GBPrinterCommand) printer->byte;
+			printer->command = printer->byte;
 			printer->next = GB_PRINTER_BYTE_COMPRESSION;
 			break;
 		case GB_PRINTER_BYTE_COMPRESSION:

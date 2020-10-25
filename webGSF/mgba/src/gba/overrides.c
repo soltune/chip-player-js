@@ -183,7 +183,7 @@ static const struct GBACartridgeOverride _overrides[] = {
 	// Aging cartridge
 	{ "TCHK", SAVEDATA_EEPROM, HW_NONE, IDLE_LOOP_NONE, false },
 
-	{ { 0, 0, 0, 0, 0 }, (enum SavedataType) 0, 0, IDLE_LOOP_NONE, false }
+	{ { 0, 0, 0, 0 }, 0, 0, IDLE_LOOP_NONE, false }
 };
 
 bool GBAOverrideFind(const struct Configuration* config, struct GBACartridgeOverride* override) {

@@ -87,7 +87,7 @@ void GBAMemoryInit(struct GBA* gba) {
 	memset(&gba->memory.agbPrintCtx, 0, sizeof(gba->memory.agbPrintCtx));
 	gba->memory.agbPrintBuffer = NULL;
 
-	gba->memory.wram = (uint32_t*) anonymousMemoryMap(SIZE_WORKING_RAM + SIZE_WORKING_IRAM);
+	gba->memory.wram = anonymousMemoryMap(SIZE_WORKING_RAM + SIZE_WORKING_IRAM);
 	gba->memory.iwram = &gba->memory.wram[SIZE_WORKING_RAM >> 2];
 
 	GBADMAInit(gba);
@@ -967,8 +967,7 @@ void GBAStore8(struct ARMCore* cpu, uint32_t address, int8_t value, int* cycleCo
 			} else {
 				memory->savedata.data[address & (SIZE_CART_SRAM - 1)] = value;
 			}
-//			memory->savedata.dirty |= SAVEDATA_DIRT_NEW;
-            memory->savedata.dirty = (enum SavedataDirty) ((int) memory->savedata.dirty | SAVEDATA_DIRT_NEW);
+			memory->savedata.dirty |= SAVEDATA_DIRT_NEW;
 		} else if (memory->hw.devices & HW_TILT) {
 			GBAHardwareTiltWrite(&memory->hw, address & OFFSET_MASK, value);
 		} else {
@@ -1626,7 +1625,7 @@ void _pristineCow(struct GBA* gba) {
 	memcpy(newRom, gba->memory.rom, gba->memory.romSize);
 	memset(((uint8_t*) newRom) + gba->memory.romSize, 0xFF, SIZE_CART0 - gba->memory.romSize);
 	if (gba->cpu->memory.activeRegion == gba->memory.rom) {
-		gba->cpu->memory.activeRegion = (uint32_t*) newRom;
+		gba->cpu->memory.activeRegion = newRom;
 	}
 	if (gba->romVf) {
 #ifndef FIXED_ROM_BUFFER
@@ -1635,7 +1634,7 @@ void _pristineCow(struct GBA* gba) {
 		gba->romVf->close(gba->romVf);
 		gba->romVf = NULL;
 	}
-	gba->memory.rom = (uint32_t*) newRom;
+	gba->memory.rom = newRom;
 	gba->memory.hw.gpioBase = &((uint16_t*) gba->memory.rom)[GPIO_REG_DATA >> 1];
 	gba->isPristine = false;
 }
@@ -1664,7 +1663,7 @@ static void _agbPrintStore(struct GBA* gba, uint32_t address, int16_t value) {
 	struct GBAMemory* memory = &gba->memory;
 	if ((address & 0x00FFFFFF) < AGB_PRINT_TOP) {
 		if (!memory->agbPrintBuffer) {
-			memory->agbPrintBuffer = (uint16_t*) anonymousMemoryMap(SIZE_AGB_PRINT);
+			memory->agbPrintBuffer = anonymousMemoryMap(SIZE_AGB_PRINT);
 		}
 		STORE_16(value, address & (SIZE_AGB_PRINT - 2), memory->agbPrintBuffer);
 	} else if ((address & 0x00FFFFF8) == (AGB_PRINT_STRUCT & 0x00FFFFF8)) {

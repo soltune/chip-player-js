@@ -20,10 +20,10 @@ void deinitPatchFast(struct PatchFast* patch) {
 	PatchFastExtentsDeinit(&patch->extents);
 }
 
-bool diffPatchFast(struct PatchFast* patch, const void* /* restrict */ in, const void* /* restrict */ out, size_t size) {
+bool diffPatchFast(struct PatchFast* patch, const void* restrict in, const void* restrict out, size_t size) {
 	PatchFastExtentsClear(&patch->extents);
-	const uint32_t* iptr = (const uint32_t*) in;
-	const uint32_t* optr = (const uint32_t*) out;
+	const uint32_t* iptr = in;
+	const uint32_t* optr = out;
 	size_t extentOff = 0;
 	struct PatchFastExtent* extent = NULL;
 	size_t off;
@@ -94,8 +94,8 @@ bool _fastApplyPatch(struct Patch* p, const void* in, size_t inSize, void* out, 
 	if (inSize != outSize) {
 		return false;
 	}
-	const uint32_t* iptr = (const uint32_t*) in;
-	uint32_t* optr = (uint32_t*) out;
+	const uint32_t* iptr = in;
+	uint32_t* optr = out;
 	size_t lastWritten = 0;
 	size_t s;
 	for (s = 0; s < PatchFastExtentsSize(&patch->extents); ++s) {

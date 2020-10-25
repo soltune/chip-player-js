@@ -16,7 +16,7 @@ struct TextCodecNode {
 };
 
 static void _cleanTree(void* value) {
-	struct TextCodecNode* node = (struct TextCodecNode*) value;
+	struct TextCodecNode* node = value;
 	if (node->leaf) {
 		free(node->leaf);
 	}
@@ -25,7 +25,7 @@ static void _cleanTree(void* value) {
 }
 
 static struct TextCodecNode* _createNode(void) {
-	struct TextCodecNode* node = (struct TextCodecNode*) malloc(sizeof(*node));
+	struct TextCodecNode* node = malloc(sizeof(*node));
 	node->leaf = NULL;
 	node->leafLength = 0;
 	TableInit(&node->children, 32, _cleanTree);
@@ -35,11 +35,11 @@ static struct TextCodecNode* _createNode(void) {
 static void _insertLeaf(struct TextCodecNode* node, uint8_t* word, size_t wordLength, uint8_t* output, size_t outputLength) {
 	if (!wordLength) {
 		node->leafLength = outputLength;
-		node->leaf = (uint8_t*) malloc(outputLength);
+		node->leaf = malloc(outputLength);
 		memcpy(node->leaf, output, outputLength);
 		return;
 	}
-	struct TextCodecNode* subnode = (struct TextCodecNode*) TableLookup(&node->children, word[0]);
+	struct TextCodecNode* subnode = TableLookup(&node->children, word[0]);
 	if (!subnode) {
 		subnode = _createNode();
 		TableInsert(&node->children, word[0], subnode);
@@ -158,7 +158,7 @@ static ssize_t _TextCodecFinishInternal(struct TextCodecNode* node, uint8_t* out
 }
 
 ssize_t TextCodecAdvance(struct TextCodecIterator* iter, uint8_t byte, uint8_t* output, size_t outputLength) {
-	struct TextCodecNode* node = (struct TextCodecNode*) TableLookup(&iter->current->children, byte);
+	struct TextCodecNode* node = TableLookup(&iter->current->children, byte);
 	if (!node) {
 		ssize_t size = _TextCodecFinishInternal(iter->current, output, outputLength);
 		if (size < 0) {

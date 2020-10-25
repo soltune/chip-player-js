@@ -41,7 +41,7 @@
 
 #include <string.h>
 
-#include <dspsflib.h>
+#include <psflib.h>
 #include <zlib.h>
 
 #include "../vio2sf/desmume/state.h"
@@ -66,14 +66,14 @@ class exception_io_data: public std::runtime_error {
 public:
 	exception_io_data(const char *what= "exception_io_data") : std::runtime_error(what) {}
 };
-int stricmp_utf8(std::string const& s1, const char* s2) {	
+static int stricmp_utf8(std::string const& s1, const char* s2) {
     return strcasecmp(s1.c_str(), s2);
 }
-int stricmp_utf8(const char* s1, const char* s2) {	
+static int stricmp_utf8(const char* s1, const char* s2) {
     return strcasecmp(s1, s2);
 }
-int stricmp_utf8_partial(std::string const& s1,  const char* s2) {
-	std::string s1pref= s1.substr(0, strlen(s2));	
+static int stricmp_utf8_partial(std::string const& s1,  const char* s2) {
+	std::string s1pref= s1.substr(0, strlen(s2));
     return strcasecmp(s1pref.c_str(), s2);
 }
 
@@ -108,7 +108,7 @@ struct FileAccess_t {
 };
 static struct FileAccess_t *g_file= 0;
 
-static void * psf_file_fopen( const char * uri ) {
+static void * psf_file_fopen( void * context, const char * uri ) {
     void *file= g_file->fopen( uri );
 	return file;
 }
@@ -130,6 +130,7 @@ static long psf_file_ftell( void * handle ) {
 }
 const psf_file_callbacks psf_file_system = {
     "\\/|:",
+    nullptr,
     psf_file_fopen,
     psf_file_fread,
     psf_file_fseek,
@@ -245,7 +246,7 @@ static unsigned long parse_time_crap(const char *input)
 // hack: dummy impl to replace foobar2000 stuff
 const int MAX_INFO_LEN= 10;
 
-class file_info {
+class twosf_file_info {
 	double len;
 	
 	// no other keys implemented
@@ -255,11 +256,11 @@ class file_info {
 	std::vector<std::string> requiredLibs;
 	
 public:
-	file_info() {
+	twosf_file_info() {
 		sampleRate = (const char*)malloc(MAX_INFO_LEN);
 		channels = (const char*)malloc(MAX_INFO_LEN);
 	}
-	~file_info() {
+	~twosf_file_info() {
 		free((void*)channels);
 		free((void*)sampleRate);
 	}
@@ -315,7 +316,7 @@ public:
 };
 
 
-static void info_meta_ansi( file_info & info )
+static void info_meta_ansi( twosf_file_info & info )
 {
 /* FIXME eventually migrate original impl
  
@@ -339,7 +340,7 @@ static void info_meta_ansi( file_info & info )
 
 struct psf_info_meta_state
 {
-	file_info * info;
+	twosf_file_info * info;
 
 	std::string name;
 
@@ -718,7 +719,7 @@ class input_twosf
 	NDS_state *m_emu;
 	
 	std::string m_path;
-	file_info m_info;
+	twosf_file_info m_info;
 		
 	// copy/paste standard play loop handling
 	bool no_loop, eof;
@@ -759,14 +760,14 @@ public:
 
 	void reset() {
 		silence_test_buffer.reset();
-		
+
 		// redundant: see decode_initialize
 		resetPlayback();
 
 //		do_filter= do_suppressendsilence= false;
 		song_len= fade_len= tag_song_ms= tag_fade_ms= 0;
 		memset(&m_output, 0, sizeof(m_output));
-		
+
 		m_info.reset();
 	}
 	
@@ -820,7 +821,7 @@ public:
 
 	int open(const char * p_path ) {
 		reset();
-		
+
 		m_path = p_path;
 
 		psf_info_meta_state info_state;
@@ -833,11 +834,11 @@ public:
 		//std::string_fast msgbuf;
 
 		//int ret = psf_load(p_path, &psf_file_system, 0x24, 0, 0, psf_info_meta, &info_state, 0, print_message, &msgbuf);
-		int ret = ds_psf_load(p_path, &psf_file_system, 0x24, 0, 0, psf_info_meta, &info_state, 0, print_message, 0);
+		int ret = psf_load(p_path, &psf_file_system, 0x24, 0, 0, psf_info_meta, &info_state, 0, print_message, 0);
 
 		//console::print(msgbuf);
 		//msgbuf.reset();
-		
+
 		if ( ret <= 0 )
 			throw exception_io_data( "Not a 2SF file" );
 
@@ -866,7 +867,7 @@ public:
 		std::vector<std::string> p = splitpath(m_path, delims);		
 		std::string path= m_path.substr(0, m_path.length()-p.back().length());
 		
-		
+
 		// make sure the file will be available in the FS when the song asks for it later..		
 		std::vector<std::string>libs= m_info.get_required_libs();
 		for (std::vector<std::string>::const_iterator iter = libs.begin(); iter != libs.end(); ++iter) {
@@ -902,7 +903,7 @@ public:
 		{
 		//	std::string_fast msgbuf;
 
-			int ret = ds_psf_load(m_path.c_str(), &psf_file_system, 0x24, twosf_loader, m_state, twosf_info, m_state, 1, print_message, 0);
+			int ret = psf_load(m_path.c_str(), &psf_file_system, 0x24, twosf_loader, m_state, twosf_info, m_state, 1, print_message, 0);
 
 		//	console::print(msgbuf);
 		//	msgbuf.reset();
@@ -1182,10 +1183,10 @@ int32_t ds_current_play_position() {
 
 int ds_load_file(const char *uri) {
 	try {
-		
+
 		int retVal= g_input_2sf->open(uri);
 		if (retVal < 0) return retVal;	// trigger retry later
-		
+
 		g_input_2sf->decode_initialize();
 
 		return 0;

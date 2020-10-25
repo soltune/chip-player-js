@@ -91,7 +91,7 @@ void GBACheatSetGameSharkVersion(struct GBACheatSet* cheats, enum GBACheatGameSh
 }
 
 bool GBACheatAddGameSharkRaw(struct GBACheatSet* cheats, uint32_t op1, uint32_t op2) {
-	enum GBAGameSharkType type = (enum GBAGameSharkType) (op1 >> 28);
+	enum GBAGameSharkType type = op1 >> 28;
 	struct mCheat* cheat = 0;
 
 	if (cheats->incompleteCheat != COMPLETE) {
@@ -203,7 +203,7 @@ bool GBACheatAddGameSharkRaw(struct GBACheatSet* cheats, uint32_t op1, uint32_t 
 		if (cheats->hook) {
 			return false;
 		}
-		cheats->hook = (struct GBACheatHook*) malloc(sizeof(*cheats->hook));
+		cheats->hook = malloc(sizeof(*cheats->hook));
 		cheats->hook->address = BASE_CART0 | (op1 & (SIZE_CART0 - 1));
 		cheats->hook->mode = MODE_THUMB;
 		cheats->hook->refs = 1;

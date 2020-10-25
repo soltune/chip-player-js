@@ -849,7 +849,7 @@ static void GBVideoSoftwareRendererPutPixels(struct GBVideoRenderer* renderer, s
 	struct GBVideoSoftwareRenderer* softwareRenderer = (struct GBVideoSoftwareRenderer*) renderer;
 	// TODO: Share with GBAVideoSoftwareRendererGetPixels
 
-	const color_t* colorPixels = (const color_t *) pixels;
+	const color_t* colorPixels = pixels;
 	unsigned i;
 	for (i = 0; i < GB_VIDEO_VERTICAL_PIXELS; ++i) {
 		memmove(&softwareRenderer->outputBuffer[softwareRenderer->outputBufferStride * i], &colorPixels[stride * i], GB_VIDEO_HORIZONTAL_PIXELS * BYTES_PER_PIXEL);

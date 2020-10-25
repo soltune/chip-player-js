@@ -170,7 +170,7 @@ void GBADMARunDisplayStart(struct GBA* gba, int32_t cycles) {
 void _dmaEvent(struct mTiming* timing, void* context, uint32_t cyclesLate) {
 	UNUSED(timing);
 	UNUSED(cyclesLate);
-	struct GBA* gba = (struct GBA*) context;
+	struct GBA* gba = context;
 	struct GBAMemory* memory = &gba->memory;
 	struct GBADMA* dma = &memory->dma[memory->activeDMA];
 	if (dma->nextCount == dma->count) {
@@ -193,7 +193,7 @@ void _dmaEvent(struct mTiming* timing, void* context, uint32_t cyclesLate) {
 			dma->nextDest = dma->dest;
 		}
 		if (GBADMARegisterIsDoIRQ(dma->reg)) {
-			GBARaiseIRQ(gba, (enum GBAIRQ) (IRQ_DMA0 + memory->activeDMA));
+			GBARaiseIRQ(gba, IRQ_DMA0 + memory->activeDMA);
 		}
 		GBADMAUpdate(gba);
 	}

@@ -464,7 +464,7 @@ enum GBAMGMTag _readTag(struct GBAMGMContext* mgm, struct VFile* vf) {
 	if (vf->read(vf, &tagBuffer, 1) != 1) {
 		mgm->peekedTag = TAG_EOF;
 	} else {
-		mgm->peekedTag = (enum GBAMGMTag) tagBuffer;
+		mgm->peekedTag = tagBuffer;
 	}
 
 	if (mgm->peekedTag == TAG_END) {

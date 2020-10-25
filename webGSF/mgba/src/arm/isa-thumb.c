@@ -384,7 +384,7 @@ DEFINE_INSTRUCTION_THUMB(BL2,
 
 DEFINE_INSTRUCTION_THUMB(BX,
 	int rm = (opcode >> 3) & 0xF;
-	_ARMSetMode(cpu, (enum ExecutionMode) (cpu->gprs[rm] & 0x00000001));
+	_ARMSetMode(cpu, cpu->gprs[rm] & 0x00000001);
 	int misalign = 0;
 	if (rm == ARM_PC) {
 		misalign = cpu->gprs[rm] & 0x00000002;

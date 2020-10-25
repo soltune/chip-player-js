@@ -31,7 +31,7 @@ char* strdup(const char* str) {
 }
 #endif
 
-char* strnrstr(const char* /* restrict */ haystack, const char* /* restrict */ needle, size_t len) {
+char* strnrstr(const char* restrict haystack, const char* restrict needle, size_t len) {
 	char* last = 0;
 	const char* next = haystack;
 	size_t needleLen = strlen(needle);
@@ -43,7 +43,7 @@ char* strnrstr(const char* /* restrict */ haystack, const char* /* restrict */ n
 	return last;
 }
 
-bool endswith(const char* /* restrict */ s1, const char* /* restrict */ end) {
+bool endswith(const char* restrict s1, const char* restrict end) {
 	size_t len = strlen(s1);
 	size_t endLen = strlen(end);
 	if (len < endLen) {
@@ -52,7 +52,7 @@ bool endswith(const char* /* restrict */ s1, const char* /* restrict */ end) {
 	return strcmp(&s1[len - endLen], end) == 0;
 }
 
-bool startswith(const char* /* restrict */ s1, const char* /* restrict */ start) {
+bool startswith(const char* restrict s1, const char* restrict start) {
 	size_t len = strlen(s1);
 	size_t startLen = strlen(start);
 	if (len < startLen) {
@@ -201,7 +201,7 @@ char* utf16to8(const uint16_t* utf16, size_t length) {
 			memcpy(offset, buffer, bytes);
 			offset += bytes;
 		} else if (!utf8) {
-			utf8 = (char*) malloc(length);
+			utf8 = malloc(length);
 			if (!utf8) {
 				return 0;
 			}
@@ -210,7 +210,7 @@ char* utf16to8(const uint16_t* utf16, size_t length) {
 			offset = utf8 + bytes;
 		} else if (utf8Length >= utf8TotalBytes) {
 			ptrdiff_t o = offset - utf8;
-			char* newUTF8 = (char*) realloc(utf8, utf8TotalBytes * 2);
+			char* newUTF8 = realloc(utf8, utf8TotalBytes * 2);
 			offset = o + newUTF8;
 			if (!newUTF8) {
 				free(utf8);
@@ -222,7 +222,7 @@ char* utf16to8(const uint16_t* utf16, size_t length) {
 		}
 	}
 
-	char* newUTF8 = (char*) realloc(utf8, utf8Length + 1);
+	char* newUTF8 = realloc(utf8, utf8Length + 1);
 	if (!newUTF8) {
 		free(utf8);
 		return 0;

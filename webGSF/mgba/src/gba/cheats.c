@@ -44,7 +44,7 @@ static void _patchROM(struct mCheatDevice* device, struct GBACheatSet* cheats) {
 		if (!cheats->romPatches[i].exists || cheats->romPatches[i].applied) {
 			continue;
 		}
-		GBAPatch16((struct ARMCore*) device->p->cpu, cheats->romPatches[i].address, cheats->romPatches[i].newValue, &cheats->romPatches[i].oldValue);
+		GBAPatch16(device->p->cpu, cheats->romPatches[i].address, cheats->romPatches[i].newValue, &cheats->romPatches[i].oldValue);
 		cheats->romPatches[i].applied = true;
 	}
 }
@@ -58,7 +58,7 @@ static void _unpatchROM(struct mCheatDevice* device, struct GBACheatSet* cheats)
 		if (!cheats->romPatches[i].exists || !cheats->romPatches[i].applied) {
 			continue;
 		}
-		GBAPatch16((struct ARMCore*) device->p->cpu, cheats->romPatches[i].address, cheats->romPatches[i].oldValue, 0);
+		GBAPatch16(device->p->cpu, cheats->romPatches[i].address, cheats->romPatches[i].oldValue, 0);
 		cheats->romPatches[i].applied = false;
 	}
 }
@@ -74,7 +74,7 @@ static bool GBACheatAddLine(struct mCheatSet*, const char* line, int type);
 
 static struct mCheatSet* GBACheatSetCreate(struct mCheatDevice* device, const char* name) {
 	UNUSED(device);
-	struct GBACheatSet* set = (struct GBACheatSet*) malloc(sizeof(*set));
+	struct GBACheatSet* set = malloc(sizeof(*set));
 	mCheatSetInit(&set->d, name);
 	set->incompleteCheat = -1;
 	set->incompletePatch = 0;
@@ -105,7 +105,7 @@ static struct mCheatSet* GBACheatSetCreate(struct mCheatDevice* device, const ch
 }
 
 struct mCheatDevice* GBACheatDeviceCreate(void) {
-	struct mCheatDevice* device = (struct mCheatDevice*) malloc(sizeof(*device));
+	struct mCheatDevice* device = malloc(sizeof(*device));
 	mCheatDeviceCreate(device);
 	device->createSet = GBACheatSetCreate;
 	return device;

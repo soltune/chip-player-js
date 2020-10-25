@@ -41,7 +41,7 @@ CXX_GUARD_START
 			capacity = 4; \
 		} \
 		vector->capacity = capacity; \
-		vector->vector = (TYPE* /*struct GBCheatPatch* */) malloc(sizeof(TYPE) * capacity); \
+		vector->vector = malloc(sizeof(TYPE) * capacity); \
 	} \
 	void NAME ## Deinit(struct NAME* vector) { \
 		free(vector->vector); \
@@ -74,7 +74,7 @@ CXX_GUARD_START
 		while (capacity > vector->capacity) { \
 			vector->capacity <<= 1; \
 		} \
-		vector->vector = (TYPE* /* struct GBCheatPatch* */) realloc(vector->vector, vector->capacity * sizeof(TYPE)); \
+		vector->vector = realloc(vector->vector, vector->capacity * sizeof(TYPE)); \
 	} \
 	void NAME ## Shift(struct NAME* vector, size_t location, size_t difference) { \
 		memmove(&vector->vector[location], &vector->vector[location + difference], (vector->size - location - difference) * sizeof(TYPE)); \

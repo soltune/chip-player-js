@@ -60,7 +60,7 @@ void GBSIOSetDriver(struct GBSIO* sio, struct GBSIODriver* driver) {
 
 void _GBSIOProcessEvents(struct mTiming* timing, void* context, uint32_t cyclesLate) {
 	UNUSED(cyclesLate);
-	struct GBSIO* sio = (struct GBSIO*) context;
+	struct GBSIO* sio = context;
 	bool doIRQ = false;
 	if (sio->remainingBits) {
 		doIRQ = true;

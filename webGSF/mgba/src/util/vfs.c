@@ -162,7 +162,7 @@ void separatePath(const char* path, char* dirname, char* basename, char* extensi
 	if (!path) {
 		return;
 	}
-	char* dotPoint = (char*) strrchr(path, '.');
+	char* dotPoint = strrchr(path, '.');
 	char* separatorPoint = strnrstr(path, PATH_SEP, strlen(path));
 	if (separatorPoint) {
 		if (dirname) {

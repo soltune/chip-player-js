@@ -154,7 +154,7 @@ bool GBDeserialize(struct GB* gb, const struct GBSerializedState* state) {
 
 	LOAD_16LE(gb->cpu->index, 0, &state->cpu.index);
 	gb->cpu->bus = state->cpu.bus;
-	gb->cpu->executionState = (enum LR35902ExecutionState) state->cpu.executionState;
+	gb->cpu->executionState = state->cpu.executionState;
 
 	GBSerializedCpuFlags flags;
 	LOAD_32LE(flags, 0, &state->cpu.flags);
@@ -174,7 +174,7 @@ bool GBDeserialize(struct GB* gb, const struct GBSerializedState* state) {
 	}
 
 	enum GBModel oldModel = gb->model;
-	gb->model = (enum GBModel) state->model;
+	gb->model = state->model;
 
 	if (gb->model < GB_MODEL_CGB) {
 		gb->audio.style = GB_AUDIO_DMG;
@@ -245,19 +245,19 @@ void GBSGBDeserialize(struct GB* gb, const struct GBSerializedState* state) {
 	memcpy(gb->sgbPacket, state->sgb.packet, sizeof(state->sgb.packet));
 
 	if (!gb->video.renderer->sgbCharRam) {
-		gb->video.renderer->sgbCharRam = (uint8_t*) anonymousMemoryMap(SGB_SIZE_CHAR_RAM);
+		gb->video.renderer->sgbCharRam = anonymousMemoryMap(SGB_SIZE_CHAR_RAM);
 	}
 	if (!gb->video.renderer->sgbMapRam) {
-		gb->video.renderer->sgbMapRam = (uint8_t*) anonymousMemoryMap(SGB_SIZE_MAP_RAM);
+		gb->video.renderer->sgbMapRam = anonymousMemoryMap(SGB_SIZE_MAP_RAM);
 	}
 	if (!gb->video.renderer->sgbPalRam) {
-		gb->video.renderer->sgbPalRam = (uint8_t*) anonymousMemoryMap(SGB_SIZE_PAL_RAM);
+		gb->video.renderer->sgbPalRam = anonymousMemoryMap(SGB_SIZE_PAL_RAM);
 	}
 	if (!gb->video.renderer->sgbAttributeFiles) {
-		gb->video.renderer->sgbAttributeFiles = (uint8_t*) anonymousMemoryMap(SGB_SIZE_ATF_RAM);
+		gb->video.renderer->sgbAttributeFiles = anonymousMemoryMap(SGB_SIZE_ATF_RAM);
 	}
 	if (!gb->video.renderer->sgbAttributes) {
-		gb->video.renderer->sgbAttributes = (uint8_t*) malloc(90 * 45);
+		gb->video.renderer->sgbAttributes = malloc(90 * 45);
 	}
 
 	memcpy(gb->video.renderer->sgbCharRam, state->sgb.charRam, sizeof(state->sgb.charRam));

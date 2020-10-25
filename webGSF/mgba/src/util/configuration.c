@@ -24,7 +24,7 @@ struct ConfigurationHandlerData {
 };
 
 static void _tableDeinit(void* table) {
-	TableDeinit((struct Table*) table);
+	TableDeinit(table);
 	free(table);
 }
 
@@ -36,13 +36,13 @@ static int _iniRead(void* configuration, const char* section, const char* key, c
 	if (section && !section[0]) {
 		section = 0;
 	}
-	ConfigurationSetValue((struct Configuration*) configuration, section, key, value);
+	ConfigurationSetValue(configuration, section, key, value);
 	return 1;
 }
 
 static void _keyHandler(const char* key, void* value, void* user) {
 	char line[256];
-	struct VFile* vf = (struct VFile*) user;
+	struct VFile* vf = user;
 	size_t len = snprintf(line, sizeof(line), "%s=%s\n", key, (const char*) value);
 	if (len >= sizeof(line)) {
 		len = sizeof(line) - 1;
@@ -52,25 +52,25 @@ static void _keyHandler(const char* key, void* value, void* user) {
 
 static void _sectionHandler(const char* key, void* section, void* user) {
 	char line[256];
-	struct VFile* vf = (struct VFile*) user;
+	struct VFile* vf = user;
 	size_t len = snprintf(line, sizeof(line), "[%s]\n", key);
 	if (len >= sizeof(line)) {
 		len = sizeof(line) - 1;
 	}
 	vf->write(vf, line, len);
-	HashTableEnumerate((const struct Table*) section, _keyHandler, user);
+	HashTableEnumerate(section, _keyHandler, user);
 	vf->write(vf, "\n", 1);
 }
 
 static void _sectionEnumHandler(const char* key, void* section, void* user) {
-	struct ConfigurationSectionHandlerData* data = (struct ConfigurationSectionHandlerData*) user;
+	struct ConfigurationSectionHandlerData* data = user;
 	UNUSED(section);
 	data->handler(key, data->data);
 }
 
 static void _enumHandler(const char* key, void* value, void* user) {
-	struct ConfigurationHandlerData* data = (struct ConfigurationHandlerData*) user;
-	data->handler(key, (const char*) value, data->data);
+	struct ConfigurationHandlerData* data = user;
+	data->handler(key, value, data->data);
 }
 
 void ConfigurationInit(struct Configuration* configuration) {
@@ -87,10 +87,10 @@ void ConfigurationSetValue(struct Configuration* configuration, const char* sect
 
 	struct Table* currentSection = &configuration->root;
 	if (section) {
-		currentSection = (struct Table*) HashTableLookup(&configuration->sections, section);
+		currentSection = HashTableLookup(&configuration->sections, section);
 		if (!currentSection) {
 			if (value) {
-				currentSection = (struct Table*) malloc(sizeof(*currentSection));
+				currentSection = malloc(sizeof(*currentSection));
 				HashTableInit(currentSection, 0, _sectionDeinit);
 				HashTableInsert(&configuration->sections, section, currentSection);
 			} else {
@@ -126,7 +126,7 @@ void ConfigurationSetFloatValue(struct Configuration* configuration, const char*
 void ConfigurationClearValue(struct Configuration* configuration, const char* section, const char* key) {
 	struct Table* currentSection = &configuration->root;
 	if (section) {
-		currentSection = (struct Table*) HashTableLookup(&configuration->sections, section);
+		currentSection = HashTableLookup(&configuration->sections, section);
 		if (!currentSection) {
 			return;
 		}
@@ -141,16 +141,16 @@ bool ConfigurationHasSection(const struct Configuration* configuration, const ch
 const char* ConfigurationGetValue(const struct Configuration* configuration, const char* section, const char* key) {
 	const struct Table* currentSection = &configuration->root;
 	if (section) {
-		currentSection = (const struct Table*) HashTableLookup(&configuration->sections, section);
+		currentSection = HashTableLookup(&configuration->sections, section);
 		if (!currentSection) {
 			return 0;
 		}
 	}
-	return (const char*) HashTableLookup(currentSection, key);
+	return HashTableLookup(currentSection, key);
 }
 
 static char* _vfgets(char* stream, int size, void* user) {
-	struct VFile* vf = (struct VFile*) user;
+	struct VFile* vf = user;
 	if (vf->readline(vf, stream, size) > 0) {
 		return stream;
 	}
@@ -191,7 +191,7 @@ bool ConfigurationWriteSection(const struct Configuration* configuration, const 
 		return false;
 	}
 	if (section) {
-		currentSection = (const struct Table*) HashTableLookup(&configuration->sections, section);
+		currentSection = HashTableLookup(&configuration->sections, section);
 		char line[256];
 		size_t len = snprintf(line, sizeof(line), "[%s]\n", section);
 		if (len >= sizeof(line)) {
@@ -215,7 +215,7 @@ void ConfigurationEnumerate(const struct Configuration* configuration, const cha
 	struct ConfigurationHandlerData handlerData = { handler, user };
 	const struct Table* currentSection = &configuration->root;
 	if (section) {
-		currentSection = (const struct Table*) HashTableLookup(&configuration->sections, section);
+		currentSection = HashTableLookup(&configuration->sections, section);
 	}
 	if (currentSection) {
 		HashTableEnumerate(currentSection, _enumHandler, &handlerData);

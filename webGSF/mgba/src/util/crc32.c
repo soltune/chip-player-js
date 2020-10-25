@@ -97,7 +97,7 @@ static uint32_t crc32Table[] = {
 #endif
 
 uint32_t doCrc32(const void* buf, size_t size) {
-	return crc32(0, (const Bytef*) buf, size);
+	return crc32(0, buf, size);
 }
 
 #ifndef HAVE_CRC32

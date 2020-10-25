@@ -24,10 +24,10 @@ static void _patchROM(struct mCheatDevice* device, struct GBCheatSet* cheats) {
 		}
 		int segment = 0;
 		if (patch->checkByte) {
-			struct GB* gb = (struct GB*) device->p->board;
+			struct GB* gb = device->p->board;
 			int maxSegment = (gb->memory.romSize + GB_SIZE_CART_BANK0 - 1) / GB_SIZE_CART_BANK0;
 			for (; segment < maxSegment; ++segment) {
-				int8_t value = GBView8((struct LR35902Core*) device->p->cpu, patch->address, segment);
+				int8_t value = GBView8(device->p->cpu, patch->address, segment);
 				if (value == patch->oldValue) {
 					break;
 				}
@@ -37,7 +37,7 @@ static void _patchROM(struct mCheatDevice* device, struct GBCheatSet* cheats) {
 			}
 		}
 		// TODO: More than one segment
-		GBPatch8((struct LR35902Core*) device->p->cpu, patch->address, patch->newValue, &patch->oldValue, segment);
+		GBPatch8(device->p->cpu, patch->address, patch->newValue, &patch->oldValue, segment);
 		patch->applied = true;
 		patch->segment = segment;
 	}
@@ -53,7 +53,7 @@ static void _unpatchROM(struct mCheatDevice* device, struct GBCheatSet* cheats) 
 		if (!patch->applied) {
 			continue;
 		}
-		GBPatch8((struct LR35902Core*) device->p->cpu, patch->address, patch->oldValue, &patch->newValue, patch->segment);
+		GBPatch8(device->p->cpu, patch->address, patch->oldValue, &patch->newValue, patch->segment);
 		patch->applied = false;
 	}
 }
@@ -69,7 +69,7 @@ static bool GBCheatAddLine(struct mCheatSet*, const char* line, int type);
 
 static struct mCheatSet* GBCheatSetCreate(struct mCheatDevice* device, const char* name) {
 	UNUSED(device);
-	struct GBCheatSet* set = (struct GBCheatSet*) malloc(sizeof(*set));
+	struct GBCheatSet* set = malloc(sizeof(*set));
 	mCheatSetInit(&set->d, name);
 
 	GBCheatPatchListInit(&set->romPatches, 0);
@@ -89,7 +89,7 @@ static struct mCheatSet* GBCheatSetCreate(struct mCheatDevice* device, const cha
 }
 
 struct mCheatDevice* GBCheatDeviceCreate(void) {
-	struct mCheatDevice* device = (struct mCheatDevice*) malloc(sizeof(*device));
+	struct mCheatDevice* device = malloc(sizeof(*device));
 	mCheatDeviceCreate(device);
 	device->createSet = GBCheatSetCreate;
 	return device;

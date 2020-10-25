@@ -78,7 +78,7 @@ bool _UPSApplyPatch(struct Patch* patch, const void* in, size_t inSize, void* ou
 
 	size_t offset = 0;
 	size_t alreadyRead = 0;
-	uint8_t* buf = (uint8_t*) out;
+	uint8_t* buf = out;
 	while (alreadyRead < filesize + IN_CHECKSUM) {
 		offset += _decodeLength(patch->vf);
 		uint8_t byte;
@@ -141,8 +141,8 @@ bool _BPSApplyPatch(struct Patch* patch, const void* in, size_t inSize, void* ou
 	ssize_t readSourceLocation = 0;
 	ssize_t readTargetLocation = 0;
 	size_t readOffset;
-	uint8_t* writeBuffer = (uint8_t*) out;
-	const uint8_t* readBuffer = (uint8_t*) in;
+	uint8_t* writeBuffer = out;
+	const uint8_t* readBuffer = in;
 	while (patch->vf->seek(patch->vf, 0, SEEK_CUR) < filesize + IN_CHECKSUM) {
 		size_t command = _decodeLength(patch->vf);
 		size_t length = (command >> 2) + 1;

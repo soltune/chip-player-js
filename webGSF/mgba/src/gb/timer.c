@@ -13,7 +13,7 @@
 void _GBTimerIRQ(struct mTiming* timing, void* context, uint32_t cyclesLate) {
 	UNUSED(timing);
 	UNUSED(cyclesLate);
-	struct GBTimer* timer = (struct GBTimer*) context;
+	struct GBTimer* timer = context;
 	timer->p->memory.io[REG_TIMA] = timer->p->memory.io[REG_TMA];
 	timer->p->memory.io[REG_IF] |= (1 << GB_IRQ_TIMER);
 	GBUpdateIRQs(timer->p);
@@ -36,7 +36,7 @@ static void _GBTimerDivIncrement(struct GBTimer* timer, uint32_t cyclesLate) {
 }
 
 void _GBTimerUpdate(struct mTiming* timing, void* context, uint32_t cyclesLate) {
-	struct GBTimer* timer = (struct GBTimer*) context;
+	struct GBTimer* timer = context;
 	timer->nextDiv += cyclesLate;
 	_GBTimerDivIncrement(timer, cyclesLate);
 	// Batch div increments

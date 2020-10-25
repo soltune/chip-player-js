@@ -743,31 +743,31 @@ static void _unFilter(struct GBA* gba, int inwidth, int outwidth) {
 	uint16_t old = 0;
 	source += 4;
 	while (remaining > 0) {
-		uint16_t new_;
+		uint16_t new;
 		if (inwidth == 1) {
-			new_ = cpu->memory.load8(cpu, source, 0);
+			new = cpu->memory.load8(cpu, source, 0);
 		} else {
-			new_ = cpu->memory.load16(cpu, source, 0);
+			new = cpu->memory.load16(cpu, source, 0);
 		}
-		new_ += old;
+		new += old;
 		if (outwidth > inwidth) {
 			halfword >>= 8;
-			halfword |= (new_ << 8);
+			halfword |= (new << 8);
 			if (source & 1) {
 				cpu->memory.store16(cpu, dest, halfword, 0);
 				dest += outwidth;
 				remaining -= outwidth;
 			}
 		} else if (outwidth == 1) {
-			cpu->memory.store8(cpu, dest, new_, 0);
+			cpu->memory.store8(cpu, dest, new, 0);
 			dest += outwidth;
 			remaining -= outwidth;
 		} else {
-			cpu->memory.store16(cpu, dest, new_, 0);
+			cpu->memory.store16(cpu, dest, new, 0);
 			dest += outwidth;
 			remaining -= outwidth;
 		}
-		old = new_;
+		old = new;
 		source += inwidth;
 	}
 	cpu->gprs[0] = source;

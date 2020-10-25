@@ -16,32 +16,32 @@ static void GBATimerIrq(struct GBA* gba, int timerId) {
 	struct GBATimer* timer = &gba->timers[timerId];
 	if (GBATimerFlagsIsIrqPending(timer->flags)) {
 		timer->flags = GBATimerFlagsClearIrqPending(timer->flags);
-		GBARaiseIRQ(gba, (enum GBAIRQ) (IRQ_TIMER0 + timerId));
+		GBARaiseIRQ(gba, IRQ_TIMER0 + timerId);
 	}
 }
 
 static void GBATimerIrq0(struct mTiming* timing, void* context, uint32_t cyclesLate) {
 	UNUSED(timing);
 	UNUSED(cyclesLate);
-	GBATimerIrq((struct GBA*) context, 0);
+	GBATimerIrq(context, 0);
 }
 
 static void GBATimerIrq1(struct mTiming* timing, void* context, uint32_t cyclesLate) {
 	UNUSED(timing);
 	UNUSED(cyclesLate);
-	GBATimerIrq((struct GBA*) context, 1);
+	GBATimerIrq(context, 1);
 }
 
 static void GBATimerIrq2(struct mTiming* timing, void* context, uint32_t cyclesLate) {
 	UNUSED(timing);
 	UNUSED(cyclesLate);
-	GBATimerIrq((struct GBA*) context, 2);
+	GBATimerIrq(context, 2);
 }
 
 static void GBATimerIrq3(struct mTiming* timing, void* context, uint32_t cyclesLate) {
 	UNUSED(timing);
 	UNUSED(cyclesLate);
-	GBATimerIrq((struct GBA*) context, 3);
+	GBATimerIrq(context, 3);
 }
 
 static void GBATimerUpdate(struct GBA* gba, int timerId, uint32_t cyclesLate) {
@@ -75,7 +75,7 @@ static void GBATimerUpdate(struct GBA* gba, int timerId, uint32_t cyclesLate) {
 		if (GBATimerFlagsIsCountUp(nextTimer->flags)) { // TODO: Does this increment while disabled?
 			++gba->memory.io[(REG_TM1CNT_LO >> 1) + (timerId << 1)];
 			if (!gba->memory.io[(REG_TM1CNT_LO >> 1) + (timerId << 1)] && GBATimerFlagsIsEnable(nextTimer->flags)) {
-				GBATimerUpdate((struct GBA*) gba, timerId + 1, cyclesLate);
+				GBATimerUpdate(gba, timerId + 1, cyclesLate);
 			}
 		}
 	}
@@ -83,22 +83,22 @@ static void GBATimerUpdate(struct GBA* gba, int timerId, uint32_t cyclesLate) {
 
 static void GBATimerUpdate0(struct mTiming* timing, void* context, uint32_t cyclesLate) {
 	UNUSED(timing);
-	GBATimerUpdate((struct GBA*) context, 0, cyclesLate);
+	GBATimerUpdate(context, 0, cyclesLate);
 }
 
 static void GBATimerUpdate1(struct mTiming* timing, void* context, uint32_t cyclesLate) {
 	UNUSED(timing);
-	GBATimerUpdate((struct GBA*) context, 1, cyclesLate);
+	GBATimerUpdate(context, 1, cyclesLate);
 }
 
 static void GBATimerUpdate2(struct mTiming* timing, void* context, uint32_t cyclesLate) {
 	UNUSED(timing);
-	GBATimerUpdate((struct GBA*) context, 2, cyclesLate);
+	GBATimerUpdate(context, 2, cyclesLate);
 }
 
 static void GBATimerUpdate3(struct mTiming* timing, void* context, uint32_t cyclesLate) {
 	UNUSED(timing);
-	GBATimerUpdate((struct GBA*) context, 3, cyclesLate);
+	GBATimerUpdate(context, 3, cyclesLate);
 }
 
 void GBATimerInit(struct GBA* gba) {

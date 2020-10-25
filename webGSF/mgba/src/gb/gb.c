@@ -58,7 +58,7 @@ void GBCreate(struct GB* gb) {
 
 static void GBInit(void* cpu, struct mCPUComponent* component) {
 	struct GB* gb = (struct GB*) component;
-	gb->cpu = (struct LR35902Core*) cpu;
+	gb->cpu = cpu;
 	gb->sync = NULL;
 
 	GBInterruptHandlerInit(&gb->cpu->irqh);
@@ -118,7 +118,7 @@ bool GBLoadROM(struct GB* gb, struct VFile* vf) {
 		vf->read(vf, romBuffer, gb->pristineRomSize);
 	}
 #else
-	gb->memory.rom = (uint8_t*) vf->map(vf, gb->pristineRomSize, MAP_READ);
+	gb->memory.rom = vf->map(vf, gb->pristineRomSize, MAP_READ);
 #endif
 	if (!gb->memory.rom) {
 		return false;
@@ -183,25 +183,25 @@ void GBResizeSram(struct GB* gb, size_t size) {
 					vf->seek(vf, size, SEEK_SET);
 					vf->write(vf, extdataBuffer, vfSize & 0xFF);
 				}
-				gb->memory.sram = (uint8_t*) vf->map(vf, size, MAP_WRITE);
+				gb->memory.sram = vf->map(vf, size, MAP_WRITE);
 				memset(&gb->memory.sram[gb->sramSize], 0xFF, size - gb->sramSize);
 			} else if (size > gb->sramSize || !gb->memory.sram) {
 				if (gb->memory.sram) {
 					vf->unmap(vf, gb->memory.sram, gb->sramSize);
 				}
-				gb->memory.sram = (uint8_t*) vf->map(vf, size, MAP_WRITE);
+				gb->memory.sram = vf->map(vf, size, MAP_WRITE);
 			}
 		} else {
 			if (gb->memory.sram) {
 				vf->unmap(vf, gb->memory.sram, gb->sramSize);
 			}
-			gb->memory.sram = (uint8_t*) vf->map(vf, size, MAP_READ);
+			gb->memory.sram = vf->map(vf, size, MAP_READ);
 		}
 		if (gb->memory.sram == (void*) -1) {
 			gb->memory.sram = NULL;
 		}
 	} else {
-		uint8_t* newSram = (uint8_t*) anonymousMemoryMap(size);
+		uint8_t* newSram = anonymousMemoryMap(size);
 		if (gb->memory.sram) {
 			if (size > gb->sramSize) {
 				memcpy(newSram, gb->memory.sram, gb->sramSize);
@@ -251,7 +251,7 @@ void GBSavedataMask(struct GB* gb, struct VFile* vf, bool writeback) {
 	GBSramDeinit(gb);
 	gb->sramVf = vf;
 	gb->sramMaskWriteback = writeback;
-	gb->memory.sram = (uint8_t*) vf->map(vf, gb->sramSize, MAP_READ);
+	gb->memory.sram = vf->map(vf, gb->sramSize, MAP_READ);
 	GBMBCSwitchSramBank(gb, gb->memory.sramCurrentBank);
 }
 
@@ -262,7 +262,7 @@ void GBSavedataUnmask(struct GB* gb) {
 	struct VFile* vf = gb->sramVf;
 	GBSramDeinit(gb);
 	gb->sramVf = gb->sramRealVf;
-	gb->memory.sram = (uint8_t*) gb->sramVf->map(gb->sramVf, gb->sramSize, MAP_WRITE);
+	gb->memory.sram = gb->sramVf->map(gb->sramVf, gb->sramSize, MAP_WRITE);
 	if (gb->sramMaskWriteback) {
 		vf->seek(vf, 0, SEEK_SET);
 		vf->read(vf, gb->memory.sram, gb->sramSize);
@@ -345,9 +345,9 @@ void GBApplyPatch(struct GB* gb, struct Patch* patch) {
 	}
 	gb->isPristine = false;
 	if (gb->memory.romBase == gb->memory.rom) {
-		gb->memory.romBase = (uint8_t*) newRom;
+		gb->memory.romBase = newRom;
 	}
-	gb->memory.rom = (uint8_t*) newRom;
+	gb->memory.rom = newRom;
 	gb->memory.romSize = patchedSize;
 	gb->romCrc32 = doCrc32(gb->memory.rom, gb->memory.romSize);
 	gb->cpu->memory.setActiveRegion(gb->cpu, gb->cpu->pc);
@@ -413,7 +413,7 @@ void GBReset(struct LR35902Core* cpu) {
 			gb->biosVf = NULL;
 		} else {
 			gb->biosVf->seek(gb->biosVf, 0, SEEK_SET);
-			gb->memory.romBase = (uint8_t*) malloc(GB_SIZE_CART_BANK0);
+			gb->memory.romBase = malloc(GB_SIZE_CART_BANK0);
 			ssize_t size = gb->biosVf->read(gb->biosVf, gb->memory.romBase, GB_SIZE_CART_BANK0);
 			memcpy(&gb->memory.romBase[size], &gb->memory.rom[size], GB_SIZE_CART_BANK0 - size);
 			if (size > 0x100) {
@@ -692,7 +692,7 @@ uint16_t GBIRQVector(struct LR35902Core* cpu) {
 static void _enableInterrupts(struct mTiming* timing, void* user, uint32_t cyclesLate) {
 	UNUSED(timing);
 	UNUSED(cyclesLate);
-	struct GB* gb = (struct GB*) user;
+	struct GB* gb = user;
 	gb->memory.ime = true;
 	GBUpdateIRQs(gb);
 }

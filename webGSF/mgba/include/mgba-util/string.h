@@ -27,9 +27,9 @@ char* strndup(const char* start, size_t len);
 char* strdup(const char* str);
 #endif
 
-char* strnrstr(const char* /* restrict */ s1, const char* /* restrict */ s2, size_t len);
-bool endswith(const char* /* restrict */ s1, const char* /* restrict */ end);
-bool startswith(const char* /* restrict */ s1, const char* /* restrict */ start);
+char* strnrstr(const char* restrict s1, const char* restrict s2, size_t len);
+bool endswith(const char* restrict s1, const char* restrict end);
+bool startswith(const char* restrict s1, const char* restrict start);
 
 size_t toUtf8(uint32_t unichar, char* buffer);
 int utfcmp(const uint16_t* utf16, const char* utf8, size_t utf16Length, size_t utf8Length);

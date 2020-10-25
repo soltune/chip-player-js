@@ -59,7 +59,7 @@ void GBACreate(struct GBA* gba) {
 
 static void GBAInit(void* cpu, struct mCPUComponent* component) {
 	struct GBA* gba = (struct GBA*) component;
-	gba->cpu = (struct ARMCore*) cpu;
+	gba->cpu = cpu;
 	gba->debugger = 0;
 	gba->sync = 0;
 
@@ -304,7 +304,7 @@ bool GBALoadNull(struct GBA* gba) {
 	gba->romVf = NULL;
 	gba->pristineRomSize = 0;
 #ifndef FIXED_ROM_BUFFER
-	gba->memory.rom = (uint32_t*) anonymousMemoryMap(SIZE_CART0);
+	gba->memory.rom = anonymousMemoryMap(SIZE_CART0);
 #else
 	gba->memory.rom = romBuffer;
 #endif
@@ -364,7 +364,7 @@ bool GBALoadROM(struct GBA* gba, struct VFile* vf) {
 		vf->read(vf, romBuffer, gba->pristineRomSize);
 	}
 #else
-	gba->memory.rom = (uint32_t*) vf->map(vf, gba->pristineRomSize, MAP_READ);
+	gba->memory.rom = vf->map(vf, gba->pristineRomSize, MAP_READ);
 #endif
 	if (!gba->memory.rom) {
 		mLOG(GBA, WARN, "Couldn't map ROM");
@@ -382,7 +382,7 @@ bool GBALoadROM(struct GBA* gba, struct VFile* vf) {
 #ifndef FIXED_ROM_BUFFER
 		void* newRom = anonymousMemoryMap(SIZE_CART0);
 		memcpy(newRom, gba->memory.rom, gba->pristineRomSize);
-		gba->memory.rom = (uint32_t*) newRom;
+		gba->memory.rom = newRom;
 #endif
 		gba->memory.romSize = SIZE_CART0;
 		gba->isPristine = false;
@@ -408,7 +408,7 @@ void GBAYankROM(struct GBA* gba) {
 
 void GBALoadBIOS(struct GBA* gba, struct VFile* vf) {
 	gba->biosVf = vf;
-	uint32_t* bios = (uint32_t*) vf->map(vf, SIZE_BIOS, MAP_READ);
+	uint32_t* bios = vf->map(vf, SIZE_BIOS, MAP_READ);
 	if (!bios) {
 		mLOG(GBA, WARN, "Couldn't map BIOS");
 		return;
@@ -449,7 +449,7 @@ void GBAApplyPatch(struct GBA* gba, struct Patch* patch) {
 		gba->romVf = NULL;
 	}
 	gba->isPristine = false;
-	gba->memory.rom = (uint32_t*) newRom;
+	gba->memory.rom = newRom;
 	gba->memory.hw.gpioBase = &((uint16_t*) gba->memory.rom)[GPIO_REG_DATA >> 1];
 	gba->memory.romSize = patchedSize;
 	gba->memory.romMask = SIZE_CART0 - 1;
@@ -511,7 +511,7 @@ void GBADebug(struct GBA* gba, uint16_t flags) {
 		char oolBuf[0x101];
 		strncpy(oolBuf, gba->debugString, sizeof(gba->debugString));
 		oolBuf[0x100] = '\0';
-		mLog(_mLOG_CAT_GBA_DEBUG(), (enum mLogLevel) level, "%s", oolBuf);
+		mLog(_mLOG_CAT_GBA_DEBUG(), level, "%s", oolBuf);
 	}
 	gba->debugFlags = GBADebugFlagsClearSend(gba->debugFlags);
 }

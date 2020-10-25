@@ -121,7 +121,7 @@ void GBMemoryReset(struct GB* gb) {
 	if (gb->memory.wram) {
 		mappedMemoryFree(gb->memory.wram, GB_SIZE_WORKING_RAM);
 	}
-	gb->memory.wram = (uint8_t*) anonymousMemoryMap(GB_SIZE_WORKING_RAM);
+	gb->memory.wram = anonymousMemoryMap(GB_SIZE_WORKING_RAM);
 	if (gb->model >= GB_MODEL_CGB) {
 		uint32_t* base = (uint32_t*) gb->memory.wram;
 		size_t i;
@@ -483,7 +483,7 @@ uint8_t GBMemoryWriteHDMA5(struct GB* gb, uint8_t value) {
 }
 
 void _GBMemoryDMAService(struct mTiming* timing, void* context, uint32_t cyclesLate) {
-	struct GB* gb = (struct GB*) context;
+	struct GB* gb = context;
 	int dmaRemaining = gb->memory.dmaRemaining;
 	gb->memory.dmaRemaining = 0;
 	uint8_t b = GBLoad8(gb->cpu, gb->memory.dmaSource);
@@ -499,7 +499,7 @@ void _GBMemoryDMAService(struct mTiming* timing, void* context, uint32_t cyclesL
 }
 
 void _GBMemoryHDMAService(struct mTiming* timing, void* context, uint32_t cyclesLate) {
-	struct GB* gb = (struct GB*) context;
+	struct GB* gb = context;
 	gb->cpuBlocked = true;
 	uint8_t b = gb->cpu->memory.load8(gb->cpu, gb->memory.hdmaSource);
 	gb->cpu->memory.store8(gb->cpu, gb->memory.hdmaDest, b);
@@ -719,7 +719,7 @@ void GBMemoryDeserialize(struct GB* gb, const struct GBSerializedState* state) {
 		LOAD_64LE(gb->memory.rtcLastLatch, 0, &state->memory.rtc.lastLatch);
 		break;
 	case GB_MBC7:
-		memory->mbcState.mbc7.state = (enum GBMBC7MachineState) state->memory.mbc7.state;
+		memory->mbcState.mbc7.state = state->memory.mbc7.state;
 		memory->mbcState.mbc7.eeprom = state->memory.mbc7.eeprom;
 		memory->mbcState.mbc7.address = state->memory.mbc7.address & 0x7F;
 		memory->mbcState.mbc7.access = state->memory.mbc7.access;
@@ -741,9 +741,9 @@ void _pristineCow(struct GB* gb) {
 	memcpy(newRom, gb->memory.rom, gb->memory.romSize);
 	memset(((uint8_t*) newRom) + gb->memory.romSize, 0xFF, GB_SIZE_CART_MAX - gb->memory.romSize);
 	if (gb->memory.rom == gb->memory.romBase) {
-		gb->memory.romBase = (uint8_t*) newRom;
+		gb->memory.romBase = newRom;
 	}
-	gb->memory.rom = (uint8_t*) newRom;
+	gb->memory.rom = newRom;
 	GBMBCSwitchBank(gb, gb->memory.currentBank);
 	gb->isPristine = false;
 }

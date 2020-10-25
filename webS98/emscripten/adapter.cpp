@@ -209,7 +209,7 @@ void extractStructFileInfo(char *filename) {
 	} else {
 		/*
 		note: V3 files contain tagged info, e.g.
-		[S98]
+		[S98](BOM)?
 		"title=Opening" 0x0a
 		"artist=Yuzo Koshiro" 0x0a
 		"game=Sorcerian" 0x0a
@@ -232,7 +232,8 @@ void extractStructFileInfo(char *filename) {
 		}
 		
 		if (hasPrefix || g_soundinfo.dwIsV3) {
-			std::string s= std::string(raw_info_buffer + (hasPrefix?strlen(pfx):0));
+			// skip 3 bytes (BOM) when tag is encoded to UTF-8
+			std::string s= std::string(raw_info_buffer + (hasPrefix ? strlen(pfx) + (isUnicodeTag ? 3 : 0) : 0));
 
 			std::string delimiter(1, (char)0xa);
 

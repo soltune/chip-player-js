@@ -46,7 +46,7 @@ void CircleBufferClear(struct CircleBuffer* buffer) {
 }
 
 int CircleBufferWrite8(struct CircleBuffer* buffer, int8_t value) {
-	int8_t* data = (int8_t*) buffer->writePtr;
+	int8_t* data = buffer->writePtr;
 	if (buffer->size + sizeof(int8_t) > buffer->capacity) {
 		return 0;
 	}
@@ -68,7 +68,7 @@ int CircleBufferWrite8(struct CircleBuffer* buffer, int8_t value) {
 }
 
 int CircleBufferWrite32(struct CircleBuffer* buffer, int32_t value) {
-	int32_t* data = (int32_t*) buffer->writePtr;
+	int32_t* data = buffer->writePtr;
 	if (buffer->size + sizeof(int32_t) > buffer->capacity) {
 		return 0;
 	}
@@ -98,7 +98,7 @@ int CircleBufferWrite32(struct CircleBuffer* buffer, int32_t value) {
 }
 
 int CircleBufferWrite16(struct CircleBuffer* buffer, int16_t value) {
-	int16_t* data = (int16_t*) buffer->writePtr;
+	int16_t* data = buffer->writePtr;
 	if (buffer->size + sizeof(int16_t) > buffer->capacity) {
 		return 0;
 	}
@@ -126,7 +126,7 @@ int CircleBufferWrite16(struct CircleBuffer* buffer, int16_t value) {
 }
 
 size_t CircleBufferWrite(struct CircleBuffer* buffer, const void* input, size_t length) {
-	int8_t* data = (int8_t*) buffer->writePtr;
+	int8_t* data = buffer->writePtr;
 	if (buffer->size + length > buffer->capacity) {
 		return 0;
 	}
@@ -154,7 +154,7 @@ size_t CircleBufferWrite(struct CircleBuffer* buffer, const void* input, size_t 
 }
 
 int CircleBufferRead8(struct CircleBuffer* buffer, int8_t* value) {
-	int8_t* data = (int8_t*) buffer->readPtr;
+	int8_t* data = buffer->readPtr;
 	if (buffer->size < sizeof(int8_t)) {
 		return 0;
 	}
@@ -176,7 +176,7 @@ int CircleBufferRead8(struct CircleBuffer* buffer, int8_t* value) {
 }
 
 int CircleBufferRead16(struct CircleBuffer* buffer, int16_t* value) {
-	int16_t* data = (int16_t*) buffer->readPtr;
+	int16_t* data = buffer->readPtr;
 	if (buffer->size < sizeof(int16_t)) {
 		return 0;
 	}
@@ -204,7 +204,7 @@ int CircleBufferRead16(struct CircleBuffer* buffer, int16_t* value) {
 }
 
 int CircleBufferRead32(struct CircleBuffer* buffer, int32_t* value) {
-	int32_t* data = (int32_t*) buffer->readPtr;
+	int32_t* data = buffer->readPtr;
 	if (buffer->size < sizeof(int32_t)) {
 		return 0;
 	}
@@ -234,7 +234,7 @@ int CircleBufferRead32(struct CircleBuffer* buffer, int32_t* value) {
 }
 
 size_t CircleBufferRead(struct CircleBuffer* buffer, void* output, size_t length) {
-	int8_t* data = (int8_t*) buffer->readPtr;
+	int8_t* data = buffer->readPtr;
 	if (buffer->size == 0) {
 		return 0;
 	}
@@ -265,7 +265,7 @@ size_t CircleBufferRead(struct CircleBuffer* buffer, void* output, size_t length
 }
 
 size_t CircleBufferDump(const struct CircleBuffer* buffer, void* output, size_t length) {
-	int8_t* data = (int8_t*) buffer->readPtr;
+	int8_t* data = buffer->readPtr;
 	if (buffer->size == 0) {
 		return 0;
 	}

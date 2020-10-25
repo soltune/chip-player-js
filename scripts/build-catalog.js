@@ -1,7 +1,8 @@
 const fs = require('fs');
 const glob = require('glob');
-const {listToTrie} = require('../src/ResigTrie');
 const directoryTree = require('directory-tree');
+const { listToTrie } = require('./ResigTrie');
+const { FORMATS } = require('../src/config');
 
 // Point this to the place where you keep all the music.
 // this location is untracked, so put a symlink here.
@@ -11,16 +12,14 @@ const catalogRoot = 'catalog/';
 const outputPath = 'public/catalog.json';
 const trieOutputPath = 'public/catalog-trie.json';
 const dirDictOutputPath = 'public/directories.json';
-const formats = 'spc,vgm,vgz,nsf,nsfe,mid,s3m,it,mod,xm,ay,sgc,kss,v2m,gbs,s98,mdx,m,m2,mz,hes,opi,ovi,ozi,psf,psf2,minipsf,minipsf2,2sf,mini2sf,mp3';
-
-const formatsRegex = new RegExp(`\\.(${formats.split(',').join('|')})$`);
+const formatsRegex = new RegExp(`\\.(${FORMATS.join('|')})$`);
 
 if(!fs.existsSync(catalogRoot)) {
     console.log('Couldn\'t find a music folder for indexing. Create a folder or symlink at \'%s\'.', catalogRoot);
     process.exit(1);
 }
 
-const files = glob.sync(`${catalogRoot}**/*.{${formats}}`, {nocase: true},)
+const files = glob.sync(`${catalogRoot}**/*.{${FORMATS.join(',')}}`, {nocase: true},)
   .map(file => file.replace(catalogRoot, ''));
 
 const data = JSON.stringify(files, null, 2);

@@ -47,7 +47,7 @@ void GBASavedataInit(struct GBASavedata* savedata, struct VFile* vf) {
 	savedata->vf = vf;
 	savedata->realVf = vf;
 	savedata->mapMode = MAP_WRITE;
-	savedata->dirty = (enum SavedataDirty) 0;
+	savedata->dirty = 0;
 	savedata->dirtAge = 0;
 	savedata->dust.name = "GBA Savedata Settling";
 	savedata->dust.priority = 0x70;
@@ -234,13 +234,13 @@ void GBASavedataInitFlash(struct GBASavedata* savedata, bool realisticTiming) {
 	off_t end;
 	if (!savedata->vf) {
 		end = 0;
-		savedata->data = (uint8_t*) anonymousMemoryMap(SIZE_CART_FLASH1M);
+		savedata->data = anonymousMemoryMap(SIZE_CART_FLASH1M);
 	} else {
 		end = savedata->vf->size(savedata->vf);
 		if (end < flashSize) {
 			savedata->vf->truncate(savedata->vf, flashSize);
 		}
-		savedata->data = (uint8_t*) savedata->vf->map(savedata->vf, flashSize, savedata->mapMode);
+		savedata->data = savedata->vf->map(savedata->vf, flashSize, savedata->mapMode);
 	}
 
 	savedata->currentBank = savedata->data;
@@ -261,7 +261,7 @@ void GBASavedataInitEEPROM(struct GBASavedata* savedata, bool realisticTiming) {
 	off_t end;
 	if (!savedata->vf) {
 		end = 0;
-		savedata->data = (uint8_t*) anonymousMemoryMap(SIZE_CART_EEPROM);
+		savedata->data = anonymousMemoryMap(SIZE_CART_EEPROM);
 	} else {
 		end = savedata->vf->size(savedata->vf);
 		if (end < SIZE_CART_EEPROM512) {
@@ -269,7 +269,7 @@ void GBASavedataInitEEPROM(struct GBASavedata* savedata, bool realisticTiming) {
 		} else if (end > SIZE_CART_EEPROM512) {
 			eepromSize = SIZE_CART_EEPROM;
 		}
-		savedata->data = (uint8_t*) savedata->vf->map(savedata->vf, eepromSize, savedata->mapMode);
+		savedata->data = savedata->vf->map(savedata->vf, eepromSize, savedata->mapMode);
 	}
 	savedata->realisticTiming = realisticTiming;
 	if (end < SIZE_CART_EEPROM512) {
@@ -287,13 +287,13 @@ void GBASavedataInitSRAM(struct GBASavedata* savedata) {
 	off_t end;
 	if (!savedata->vf) {
 		end = 0;
-		savedata->data = (uint8_t*) anonymousMemoryMap(SIZE_CART_SRAM);
+		savedata->data = anonymousMemoryMap(SIZE_CART_SRAM);
 	} else {
 		end = savedata->vf->size(savedata->vf);
 		if (end < SIZE_CART_SRAM) {
 			savedata->vf->truncate(savedata->vf, SIZE_CART_SRAM);
 		}
-		savedata->data = (uint8_t*) savedata->vf->map(savedata->vf, SIZE_CART_SRAM, savedata->mapMode);
+		savedata->data = savedata->vf->map(savedata->vf, SIZE_CART_SRAM, savedata->mapMode);
 	}
 
 	if (end < SIZE_CART_SRAM) {
@@ -324,7 +324,7 @@ void GBASavedataWriteFlash(struct GBASavedata* savedata, uint16_t address, uint8
 	case FLASH_STATE_RAW:
 		switch (savedata->command) {
 		case FLASH_COMMAND_PROGRAM:
-			savedata->dirty = (enum SavedataDirty) ((int) savedata->dirty | SAVEDATA_DIRT_NEW); // savedata->dirty |= SAVEDATA_DIRT_NEW;
+			savedata->dirty |= SAVEDATA_DIRT_NEW;
 			savedata->currentBank[address] = value;
 			savedata->command = FLASH_COMMAND_NONE;
 			if (savedata->realisticTiming) {
@@ -368,7 +368,7 @@ void GBASavedataWriteFlash(struct GBASavedata* savedata, uint16_t address, uint8
 				case FLASH_COMMAND_ID:
 				case FLASH_COMMAND_PROGRAM:
 				case FLASH_COMMAND_SWITCH_BANK:
-					savedata->command = (enum SavedataCommand) value;
+					savedata->command = value;
 					break;
 				default:
 					mLOG(GBA_SAVE, GAME_ERROR, "Unsupported flash operation: %#02x", value);
@@ -417,7 +417,7 @@ static void _ensureEeprom(struct GBASavedata* savedata, uint32_t size) {
 	}
 	savedata->vf->unmap(savedata->vf, savedata->data, SIZE_CART_EEPROM512);
 	savedata->vf->truncate(savedata->vf, SIZE_CART_EEPROM);
-	savedata->data = (uint8_t*) savedata->vf->map(savedata->vf, SIZE_CART_EEPROM, savedata->mapMode);
+	savedata->data = savedata->vf->map(savedata->vf, SIZE_CART_EEPROM, savedata->mapMode);
 	memset(&savedata->data[SIZE_CART_EEPROM512], 0xFF, SIZE_CART_EEPROM - SIZE_CART_EEPROM512);
 }
 
@@ -426,11 +426,11 @@ void GBASavedataWriteEEPROM(struct GBASavedata* savedata, uint16_t value, uint32
 	// Read header
 	case EEPROM_COMMAND_NULL:
 	default:
-		savedata->command = (enum SavedataCommand) (value & 0x1);
+		savedata->command = value & 0x1;
 		break;
 	case EEPROM_COMMAND_PENDING:
-		savedata->command = (enum SavedataCommand) ((int) savedata->command << 1);  // savedata->command <<= 1;
-		savedata->command = (enum SavedataCommand) ((int) savedata->command | (value & 0x1)); // savedata->command |= value & 0x1;
+		savedata->command <<= 1;
+		savedata->command |= value & 0x1;
 		if (savedata->command == EEPROM_COMMAND_WRITE) {
 			savedata->writeAddress = 0;
 		} else {
@@ -450,7 +450,7 @@ void GBASavedataWriteEEPROM(struct GBASavedata* savedata, uint16_t value, uint32
 			uint8_t current = savedata->data[savedata->writeAddress >> 3];
 			current &= ~(1 << (0x7 - (savedata->writeAddress & 0x7)));
 			current |= (value & 0x1) << (0x7 - (savedata->writeAddress & 0x7));
-			savedata->dirty = (enum SavedataDirty) ((int) savedata->dirty | SAVEDATA_DIRT_NEW); // savedata->dirty |= SAVEDATA_DIRT_NEW;
+			savedata->dirty |= SAVEDATA_DIRT_NEW;
 			savedata->data[savedata->writeAddress >> 3] = current;
 			if (savedata->realisticTiming) {
 				mTimingDeschedule(savedata->timing, &savedata->dust);
@@ -508,16 +508,16 @@ void GBASavedataClean(struct GBASavedata* savedata, uint32_t frameCount) {
 	}
 	if (savedata->dirty & SAVEDATA_DIRT_NEW) {
 		savedata->dirtAge = frameCount;
-		savedata->dirty = (enum SavedataDirty) ((int) savedata->dirty & ~SAVEDATA_DIRT_NEW); // savedata->dirty &= ~SAVEDATA_DIRT_NEW;
+		savedata->dirty &= ~SAVEDATA_DIRT_NEW;
 		if (!(savedata->dirty & SAVEDATA_DIRT_SEEN)) {
-			savedata->dirty = (enum SavedataDirty) ((int) savedata->dirty | SAVEDATA_DIRT_SEEN); // savedata->dirty |= SAVEDATA_DIRT_SEEN;
+			savedata->dirty |= SAVEDATA_DIRT_SEEN;
 		}
 	} else if ((savedata->dirty & SAVEDATA_DIRT_SEEN) && frameCount - savedata->dirtAge > CLEANUP_THRESHOLD) {
 		if (savedata->maskWriteback) {
 			GBASavedataUnmask(savedata);
 		}
 		size_t size = GBASavedataSize(savedata);
-		savedata->dirty = (enum SavedataDirty) 0;
+		savedata->dirty = 0;
 		if (savedata->data && savedata->vf->sync(savedata->vf, savedata->data, size)) {
 			mLOG(GBA_SAVE, INFO, "Savedata synced");
 		} else {
@@ -549,11 +549,11 @@ void GBASavedataSerialize(const struct GBASavedata* savedata, struct GBASerializ
 void GBASavedataDeserialize(struct GBASavedata* savedata, const struct GBASerializedState* state) {
 	if (savedata->type != state->savedata.type) {
 		mLOG(GBA_SAVE, DEBUG, "Switching save types");
-		GBASavedataForceType(savedata, (enum SavedataType) state->savedata.type, savedata->realisticTiming);
+		GBASavedataForceType(savedata, state->savedata.type, savedata->realisticTiming);
 	}
-	savedata->command = (enum SavedataCommand) state->savedata.command;
+	savedata->command = state->savedata.command;
 	GBASerializedSavedataFlags flags = state->savedata.flags;
-	savedata->flashState = (enum FlashStateMachine) GBASerializedSavedataFlagsGetFlashState(flags);
+	savedata->flashState = GBASerializedSavedataFlagsGetFlashState(flags);
 	savedata->readBitsRemaining = state->savedata.readBitsRemaining;
 	LOAD_32(savedata->readAddress, 0, &state->savedata.readAddress);
 	LOAD_32(savedata->writeAddress, 0, &state->savedata.writeAddress);
@@ -580,10 +580,10 @@ void _flashSwitchBank(struct GBASavedata* savedata, int bank) {
 			savedata->vf->unmap(savedata->vf, savedata->data, SIZE_CART_FLASH512);
 			if (savedata->vf->size(savedata->vf) == SIZE_CART_FLASH512) {
 				savedata->vf->truncate(savedata->vf, SIZE_CART_FLASH1M);
-				savedata->data = (uint8_t*) savedata->vf->map(savedata->vf, SIZE_CART_FLASH1M, MAP_WRITE);
+				savedata->data = savedata->vf->map(savedata->vf, SIZE_CART_FLASH1M, MAP_WRITE);
 				memset(&savedata->data[SIZE_CART_FLASH512], 0xFF, SIZE_CART_FLASH512);
 			} else {
-				savedata->data = (uint8_t*) savedata->vf->map(savedata->vf, SIZE_CART_FLASH1M, MAP_WRITE);
+				savedata->data = savedata->vf->map(savedata->vf, SIZE_CART_FLASH1M, MAP_WRITE);
 			}
 		}
 	}
@@ -591,7 +591,7 @@ void _flashSwitchBank(struct GBASavedata* savedata, int bank) {
 
 void _flashErase(struct GBASavedata* savedata) {
 	mLOG(GBA_SAVE, DEBUG, "Performing flash chip erase");
-	savedata->dirty = (enum SavedataDirty) ((int) savedata->dirty | SAVEDATA_DIRT_NEW); // savedata->dirty |= SAVEDATA_DIRT_NEW;
+	savedata->dirty |= SAVEDATA_DIRT_NEW;
 	size_t size = SIZE_CART_FLASH512;
 	if (savedata->type == SAVEDATA_FLASH1M) {
 		size = SIZE_CART_FLASH1M;
@@ -601,7 +601,7 @@ void _flashErase(struct GBASavedata* savedata) {
 
 void _flashEraseSector(struct GBASavedata* savedata, uint16_t sectorStart) {
 	mLOG(GBA_SAVE, DEBUG, "Performing flash sector erase at 0x%04x", sectorStart);
-	savedata->dirty = (enum SavedataDirty) ((int) savedata->dirty | SAVEDATA_DIRT_NEW); // savedata->dirty |= SAVEDATA_DIRT_NEW;
+	savedata->dirty |= SAVEDATA_DIRT_NEW;
 	size_t size = 0x1000;
 	if (savedata->type == SAVEDATA_FLASH1M) {
 		mLOG(GBA_SAVE, DEBUG, "Performing unknown sector-size erase at 0x%04x", sectorStart);

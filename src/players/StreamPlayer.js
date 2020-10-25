@@ -1,5 +1,4 @@
 import Player from "./Player.js";
-import {CATALOG_PREFIX} from "../config";
 const encoding = require('encoding-japanese');
 
 const fileExtensions = [

@@ -92,14 +92,14 @@ static inline void _ARMSetMode(struct ARMCore* cpu, enum ExecutionMode execution
 }
 
 static inline void _ARMReadCPSR(struct ARMCore* cpu) {
-	_ARMSetMode(cpu, (enum ExecutionMode) cpu->cpsr.t);
-	ARMSetPrivilegeMode(cpu, (enum PrivilegeMode) cpu->cpsr.priv);
+	_ARMSetMode(cpu, cpu->cpsr.t);
+	ARMSetPrivilegeMode(cpu, cpu->cpsr.priv);
 	cpu->irqh.readCPSR(cpu);
 }
 
 static inline uint32_t _ARMPCAddress(struct ARMCore* cpu) {
 	int instructionLength;
-	enum ExecutionMode mode = (enum ExecutionMode) cpu->cpsr.t;
+	enum ExecutionMode mode = cpu->cpsr.t;
 	if (mode == MODE_ARM) {
 		instructionLength = WORD_SIZE_ARM;
 	} else {

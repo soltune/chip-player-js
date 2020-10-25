@@ -35,7 +35,7 @@ struct VFile* VFileFromMemory(void* mem, size_t size) {
 		return 0;
 	}
 
-	struct VFileMem* vfm = (struct VFileMem*) malloc(sizeof(struct VFileMem));
+	struct VFileMem* vfm = malloc(sizeof(struct VFileMem));
 	if (!vfm) {
 		return 0;
 	}
@@ -63,7 +63,7 @@ struct VFile* VFileFromConstMemory(const void* mem, size_t size) {
 		return 0;
 	}
 
-	struct VFileMem* vfm = (struct VFileMem*) malloc(sizeof(struct VFileMem));
+	struct VFileMem* vfm = malloc(sizeof(struct VFileMem));
 	if (!vfm) {
 		return 0;
 	}
@@ -87,7 +87,7 @@ struct VFile* VFileFromConstMemory(const void* mem, size_t size) {
 }
 
 struct VFile* VFileMemChunk(const void* mem, size_t size) {
-	struct VFileMem* vfm = (struct VFileMem*) malloc(sizeof(struct VFileMem));
+	struct VFileMem* vfm = malloc(sizeof(struct VFileMem));
 	if (!vfm) {
 		return 0;
 	}

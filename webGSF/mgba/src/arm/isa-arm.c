@@ -185,7 +185,7 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 // Beware pre-processor antics
 
 #define ARM_ADDITION_S(M, N, D) \
-	if (rd == ARM_PC && _ARMModeHasSPSR((enum PrivilegeMode) cpu->cpsr.priv)) { \
+	if (rd == ARM_PC && _ARMModeHasSPSR(cpu->cpsr.priv)) { \
 		cpu->cpsr = cpu->spsr; \
 		_ARMReadCPSR(cpu); \
 	} else { \
@@ -196,7 +196,7 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 	}
 
 #define ARM_SUBTRACTION_S(M, N, D) \
-	if (rd == ARM_PC && _ARMModeHasSPSR((enum PrivilegeMode) cpu->cpsr.priv)) { \
+	if (rd == ARM_PC && _ARMModeHasSPSR(cpu->cpsr.priv)) { \
 		cpu->cpsr = cpu->spsr; \
 		_ARMReadCPSR(cpu); \
 	} else { \
@@ -207,7 +207,7 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 	}
 
 #define ARM_SUBTRACTION_CARRY_S(M, N, D, C) \
-	if (rd == ARM_PC && _ARMModeHasSPSR((enum PrivilegeMode) cpu->cpsr.priv)) { \
+	if (rd == ARM_PC && _ARMModeHasSPSR(cpu->cpsr.priv)) { \
 		cpu->cpsr = cpu->spsr; \
 		_ARMReadCPSR(cpu); \
 	} else { \
@@ -218,7 +218,7 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 	}
 
 #define ARM_NEUTRAL_S(M, N, D) \
-	if (rd == ARM_PC && _ARMModeHasSPSR((enum PrivilegeMode) cpu->cpsr.priv)) { \
+	if (rd == ARM_PC && _ARMModeHasSPSR(cpu->cpsr.priv)) { \
 		cpu->cpsr = cpu->spsr; \
 		_ARMReadCPSR(cpu); \
 	} else { \
@@ -623,7 +623,7 @@ DEFINE_INSTRUCTION_ARM(BL,
 
 DEFINE_INSTRUCTION_ARM(BX,
 	int rm = opcode & 0x0000000F;
-	_ARMSetMode(cpu, (enum ExecutionMode) (cpu->gprs[rm] & 0x00000001));
+	_ARMSetMode(cpu, cpu->gprs[rm] & 0x00000001);
 	cpu->gprs[ARM_PC] = cpu->gprs[rm] & 0xFFFFFFFE;
 	if (cpu->executionMode == MODE_THUMB) {
 		THUMB_WRITE_PC;

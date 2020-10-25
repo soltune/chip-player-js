@@ -90,7 +90,7 @@ void GBAHardwareGPIOWrite(struct GBACartridgeHardware* hw, uint32_t address, uin
 		hw->direction = value;
 		break;
 	case GPIO_REG_CONTROL:
-		hw->readWrite = (enum GPIODirection) value;
+		hw->readWrite = value;
 		break;
 	default:
 		mLOG(GBA_HW, WARN, "Invalid GPIO address");
@@ -568,7 +568,7 @@ uint16_t _gbpSioWriteRegister(struct GBASIODriver* driver, uint32_t address, uin
 void _gbpSioProcessEvents(struct mTiming* timing, void* user, uint32_t cyclesLate) {
 	UNUSED(timing);
 	UNUSED(cyclesLate);
-	struct GBAGBPSIODriver* gbp = (struct GBAGBPSIODriver*) user;
+	struct GBAGBPSIODriver* gbp = user;
 	uint32_t tx = 0;
 	int txPosition = gbp->p->gbpTxPosition;
 	if (txPosition > 16) {
@@ -625,7 +625,7 @@ void GBAHardwareSerialize(const struct GBACartridgeHardware* hw, struct GBASeria
 void GBAHardwareDeserialize(struct GBACartridgeHardware* hw, const struct GBASerializedState* state) {
 	GBASerializedHWFlags1 flags1;
 	LOAD_16(flags1, 0, &state->hw.flags1);
-	hw->readWrite = (enum GPIODirection) GBASerializedHWFlags1GetReadWrite(flags1);
+	hw->readWrite = GBASerializedHWFlags1GetReadWrite(flags1);
 	LOAD_16(hw->pinState, 0, &state->hw.pinState);
 	LOAD_16(hw->direction, 0, &state->hw.pinDirection);
 	hw->devices = state->hw.devices;

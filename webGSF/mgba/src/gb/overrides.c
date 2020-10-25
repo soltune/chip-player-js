@@ -13,7 +13,7 @@
 
 static const struct GBCartridgeOverride _overrides[] = {
 	// None yet
-	{ 0, (enum GBModel) 0, (enum GBMemoryBankControllerType) 0, { 0 } }
+	{ 0, 0, 0, { 0 } }
 };
 
 bool GBOverrideFind(const struct Configuration* config, struct GBCartridgeOverride* override) {
@@ -60,7 +60,7 @@ bool GBOverrideFind(const struct Configuration* config, struct GBCartridgeOverri
 			char* end;
 			long type = strtoul(mbc, &end, 0);
 			if (end && !*end) {
-				override->mbc = (enum GBMemoryBankControllerType) type;
+				override->mbc = type;
 				found = true;
 			}
 		}

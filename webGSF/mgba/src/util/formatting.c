@@ -7,7 +7,7 @@
 
 #include <float.h>
 
-int ftostr_l(char* /* restrict */ str, size_t size, float f, locale_t locale) {
+int ftostr_l(char* restrict str, size_t size, float f, locale_t locale) {
 #ifdef EMSCRIPTEN
 	UNUSED(locale);
 	return snprintf(str, size, "%.*g", FLT_DIG, f);
@@ -30,7 +30,7 @@ int ftostr_l(char* /* restrict */ str, size_t size, float f, locale_t locale) {
 }
 
 #ifndef HAVE_STRTOF_L
-float strtof_l(const char* /* restrict */ str, char** /* restrict */ end, locale_t locale) {
+float strtof_l(const char* restrict str, char** restrict end, locale_t locale) {
 #ifdef EMSCRIPTEN
 	UNUSED(locale);
 	return strtof(str, end);
@@ -51,7 +51,7 @@ float strtof_l(const char* /* restrict */ str, char** /* restrict */ end, locale
 }
 #endif
 
-int ftostr_u(char* /* restrict */ str, size_t size, float f) {
+int ftostr_u(char* restrict str, size_t size, float f) {
 #ifdef EMSCRIPTEN
 	int res = ftostr_l(str, size, f, 0);
 #else	
@@ -68,7 +68,7 @@ int ftostr_u(char* /* restrict */ str, size_t size, float f) {
 	return res;
 }
 
-float strtof_u(const char* /* restrict */ str, char** /* restrict */ end) {
+float strtof_u(const char* restrict str, char** restrict end) {
 #ifdef EMSCRIPTEN
 	float res = strtof(str, end);
 #else	

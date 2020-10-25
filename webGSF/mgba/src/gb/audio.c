@@ -485,7 +485,7 @@ void GBAudioWriteNR52(struct GBAudio* audio, uint8_t value) {
 }
 
 void _updateFrame(struct mTiming* timing, void* user, uint32_t cyclesLate) {
-	struct GBAudio* audio = (struct GBAudio*) user;
+	struct GBAudio* audio = user;
 
 	int frame = (audio->frame + 1) & 7;
 	audio->frame = frame;
@@ -630,7 +630,7 @@ void GBAudioSamplePSG(struct GBAudio* audio, int16_t* left, int16_t* right) {
 }
 
 static void _sample(struct mTiming* timing, void* user, uint32_t cyclesLate) {
-	struct GBAudio* audio = (struct GBAudio*) user;
+	struct GBAudio* audio = user;
 	int16_t sampleLeft = 0;
 	int16_t sampleRight = 0;
 	GBAudioSamplePSG(audio, &sampleLeft, &sampleRight);
@@ -795,21 +795,21 @@ static bool _updateSweep(struct GBAudioSquareChannel* ch, bool initial) {
 }
 
 static void _updateChannel1(struct mTiming* timing, void* user, uint32_t cyclesLate) {
-	struct GBAudio* audio = (struct GBAudio*) user;
+	struct GBAudio* audio = user;
 	struct GBAudioSquareChannel* ch = &audio->ch1;
 	int cycles = _updateSquareChannel(ch);
 	mTimingSchedule(timing, &audio->ch1Event, audio->timingFactor * cycles - cyclesLate);
 }
 
 static void _updateChannel2(struct mTiming* timing, void* user, uint32_t cyclesLate) {
-	struct GBAudio* audio = (struct GBAudio*) user;
+	struct GBAudio* audio = user;
 	struct GBAudioSquareChannel* ch = &audio->ch2;
 	int cycles = _updateSquareChannel(ch);
 	mTimingSchedule(timing, &audio->ch2Event, audio->timingFactor * cycles - cyclesLate);
 }
 
 static void _updateChannel3(struct mTiming* timing, void* user, uint32_t cyclesLate) {
-	struct GBAudio* audio = (struct GBAudio*) user;
+	struct GBAudio* audio = user;
 	struct GBAudioWaveChannel* ch = &audio->ch3;
 	int i;
 	int volume;
@@ -877,12 +877,12 @@ static void _updateChannel3(struct mTiming* timing, void* user, uint32_t cyclesL
 static void _fadeChannel3(struct mTiming* timing, void* user, uint32_t cyclesLate) {
 	UNUSED(timing);
 	UNUSED(cyclesLate);
-	struct GBAudio* audio = (struct GBAudio*) user;
+	struct GBAudio* audio = user;
 	audio->ch3.readable = false;
 }
 
 static void _updateChannel4(struct mTiming* timing, void* user, uint32_t cyclesLate) {
-	struct GBAudio* audio = (struct GBAudio*) user;
+	struct GBAudio* audio = user;
 	struct GBAudioNoiseChannel* ch = &audio->ch4;
 
 	int32_t baseCycles = ch->ratio ? 2 * ch->ratio : 1;

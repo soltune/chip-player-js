@@ -257,7 +257,7 @@ static int _applyBias(struct GBAAudio* audio, int sample) {
 }
 
 static void _sample(struct mTiming* timing, void* user, uint32_t cyclesLate) {
-	struct GBAAudio* audio = (struct GBAAudio*) user;
+	struct GBAAudio* audio = user;
 	int16_t sampleLeft = 0;
 	int16_t sampleRight = 0;
 	int psgShift = 4 - audio->volume;

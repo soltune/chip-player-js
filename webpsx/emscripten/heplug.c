@@ -361,7 +361,7 @@ int psf1_load(void * context, const uint8_t * exe, size_t exe_size,
     return 0;
 }
 
-static void * psf_file_fopen( const char * uri )
+static void * psf_file_fopen( void *context, const char * uri )
 {
 	return (void*)fopen(uri, "r");
 }
@@ -390,6 +390,7 @@ static long psf_file_ftell( void * handle )
 const psf_file_callbacks psf_file_system =
 {
     "\\/|:",
+    nullptr,
     psf_file_fopen,
     psf_file_fread,
     psf_file_fseek,
@@ -638,7 +639,7 @@ int he_init (DB_fileinfo_t *_info, const char * uri) {
 	
  //   int psf_version = psf_load( uri, &psf_file_system, 0, 0, 0, 0, 0, 0 );
 	requiredLib[0]= 0;
-    int psf_version = psf_load( uri, &psf_file_system, 0, 0, 0, psf_lib_meta, 0, 0 );
+    int psf_version = psf_load( uri, &psf_file_system, 0, 0, 0, psf_lib_meta, 0, 0, 0, NULL );
     if (psf_version < 0) {
         trace ("he: failed to open %s\n", uri);
         return -1;
@@ -680,7 +681,7 @@ int he_init (DB_fileinfo_t *_info, const char * uri) {
     psx_clear_state( state.emu, psf_version );
 
     if ( psf_version == 1 ) {
-        if ( psf_load( uri, &psf_file_system, 1, psf1_load, &state, psf_info_meta, &state, 0 ) <= 0 ) {
+        if ( psf_load( uri, &psf_file_system, 1, psf1_load, &state, psf_info_meta, &state, 0, 0, NULL ) <= 0 ) {
             trace( "he: invalid PSF file\n" );
             return -1;
         }
@@ -690,7 +691,7 @@ int he_init (DB_fileinfo_t *_info, const char * uri) {
             trace( "he: out of memory\n" );
             return -1;
         }
-        if ( psf_load( uri, &psf_file_system, 2, psf2fs_load_callback, info->psf2fs, psf_info_meta, &state, 0 ) <= 0 ) {
+        if ( psf_load( uri, &psf_file_system, 2, psf2fs_load_callback, info->psf2fs, psf_info_meta, &state, 0, 0, NULL ) <= 0 ) {
             trace( "he: invalid PSF file\n" );
             return -1;
         }
@@ -799,13 +800,13 @@ int he_seek_sample (DB_fileinfo_t *_info, int sample) {
 
         if ( !info->psf2fs ) {
             psx_clear_state( info->emu, 1 );
-            if ( psf_load( info->path, &psf_file_system, 1, psf1_load, &state, psf_info_meta, &state, 0 ) <= 0 ) {
+            if ( psf_load( info->path, &psf_file_system, 1, psf1_load, &state, psf_info_meta, &state, 0, 0, NULL ) <= 0 ) {
                 trace( "he: invalid PSF file\n" );
                 return -1;
             }
         } else {
             psx_clear_state( info->emu, 2 );
-            if ( psf_load( info->path, &psf_file_system, 2, 0, 0, psf_info_meta, &state, 0 ) <= 0 ) {
+            if ( psf_load( info->path, &psf_file_system, 2, 0, 0, psf_info_meta, &state, 0, 0, NULL ) <= 0 ) {
                 trace( "he: invalid PSF file\n" );
                 return -1;
             }

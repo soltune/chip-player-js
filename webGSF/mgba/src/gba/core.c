@@ -142,8 +142,8 @@ struct GBACore {
 static bool _GBACoreInit(struct mCore* core) {
 	struct GBACore* gbacore = (struct GBACore*) core;
 
-	struct ARMCore* cpu = (struct ARMCore*) anonymousMemoryMap(sizeof(struct ARMCore));
-	struct GBA* gba = (struct GBA*) anonymousMemoryMap(sizeof(struct GBA));
+	struct ARMCore* cpu = anonymousMemoryMap(sizeof(struct ARMCore));
+	struct GBA* gba = anonymousMemoryMap(sizeof(struct GBA));
 	if (!cpu || !gba) {
 		free(cpu);
 		free(gba);
@@ -190,8 +190,8 @@ static bool _GBACoreInit(struct mCore* core) {
 }
 
 static void _GBACoreDeinit(struct mCore* core) {
-	ARMDeinit((struct ARMCore*) core->cpu);
-	GBADestroy((struct GBA*) core->board);
+	ARMDeinit(core->cpu);
+	GBADestroy(core->board);
 	mappedMemoryFree(core->cpu, sizeof(struct ARMCore));
 	mappedMemoryFree(core->board, sizeof(struct GBA));
 #if !defined(MINIMAL_CORE) || MINIMAL_CORE < 2
@@ -214,12 +214,12 @@ static enum mPlatform _GBACorePlatform(const struct mCore* core) {
 }
 
 static void _GBACoreSetSync(struct mCore* core, struct mCoreSync* sync) {
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 	gba->sync = sync;
 }
 
 static void _GBACoreLoadConfig(struct mCore* core, const struct mCoreConfig* config) {
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 	if (core->opts.mute) {
 		gba->audio.masterVolume = 0;
 	} else {
@@ -284,7 +284,7 @@ static void _GBACorePutPixels(struct mCore* core, const void* buffer, size_t str
 }
 
 static struct blip_t* _GBACoreGetAudioChannel(struct mCore* core, int ch) {
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 	switch (ch) {
 	case 0:
 		return gba->audio.psg.left;
@@ -296,27 +296,27 @@ static struct blip_t* _GBACoreGetAudioChannel(struct mCore* core, int ch) {
 }
 
 static void _GBACoreSetAudioBufferSize(struct mCore* core, size_t samples) {
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 	GBAAudioResizeBuffer(&gba->audio, samples);
 }
 
 static size_t _GBACoreGetAudioBufferSize(struct mCore* core) {
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 	return gba->audio.samples;
 }
 
 static void _GBACoreAddCoreCallbacks(struct mCore* core, struct mCoreCallbacks* coreCallbacks) {
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 	*mCoreCallbacksListAppend(&gba->coreCallbacks) = *coreCallbacks;
 }
 
 static void _GBACoreClearCoreCallbacks(struct mCore* core) {
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 	mCoreCallbacksListClear(&gba->coreCallbacks);
 }
 
 static void _GBACoreSetAVStream(struct mCore* core, struct mAVStream* stream) {
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 	gba->stream = stream;
 	if (stream && stream->videoDimensionsChanged) {
 		stream->videoDimensionsChanged(stream, VIDEO_HORIZONTAL_PIXELS, VIDEO_VERTICAL_PIXELS);
@@ -334,9 +334,9 @@ static bool _GBACoreLoadROM(struct mCore* core, struct VFile* vf) {
 	}
 #endif
 	if (GBAIsMB(vf)) {
-		return GBALoadMB((struct GBA*) core->board, vf);
+		return GBALoadMB(core->board, vf);
 	}
-	return GBALoadROM((struct GBA*) core->board, vf);
+	return GBALoadROM(core->board, vf);
 }
 
 static bool _GBACoreLoadBIOS(struct mCore* core, struct VFile* vf, int type) {
@@ -344,16 +344,16 @@ static bool _GBACoreLoadBIOS(struct mCore* core, struct VFile* vf, int type) {
 	if (!GBAIsBIOS(vf)) {
 		return false;
 	}
-	GBALoadBIOS((struct GBA*) core->board, vf);
+	GBALoadBIOS(core->board, vf);
 	return true;
 }
 
 static bool _GBACoreLoadSave(struct mCore* core, struct VFile* vf) {
-	return GBALoadSave((struct GBA*) core->board, vf);
+	return GBALoadSave(core->board, vf);
 }
 
 static bool _GBACoreLoadTemporarySave(struct mCore* core, struct VFile* vf) {
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 	GBASavedataMask(&gba->memory.savedata, vf, false);
 	return true; // TODO: Return a real value
 }
@@ -366,20 +366,20 @@ static bool _GBACoreLoadPatch(struct mCore* core, struct VFile* vf) {
 	if (!loadPatch(vf, &patch)) {
 		return false;
 	}
-	GBAApplyPatch((struct GBA*) core->board, &patch);
+	GBAApplyPatch(core->board, &patch);
 	return true;
 }
 
 static void _GBACoreUnloadROM(struct mCore* core) {
 	struct GBACore* gbacore = (struct GBACore*) core;
-	struct ARMCore* cpu = (struct ARMCore*) core->cpu;
+	struct ARMCore* cpu = core->cpu;
 	if (gbacore->cheatDevice) {
 		ARMHotplugDetach(cpu, CPU_COMPONENT_CHEAT_DEVICE);
 		cpu->components[CPU_COMPONENT_CHEAT_DEVICE] = NULL;
 		mCheatDeviceDestroy(gbacore->cheatDevice);
 		gbacore->cheatDevice = NULL;
 	}
-	return GBAUnloadROM((struct GBA*) core->board);
+	return GBAUnloadROM(core->board);
 }
 
 static void _GBACoreChecksum(const struct mCore* core, void* data, enum mCoreChecksumType type) {
@@ -454,26 +454,26 @@ static void _GBACoreReset(struct mCore* core) {
 	}
 #endif
 
-	ARMReset((struct ARMCore*) core->cpu);
+	ARMReset(core->cpu);
 	if (core->opts.skipBios && gba->isPristine) {
-		GBASkipBIOS((struct GBA*) core->board);
+		GBASkipBIOS(core->board);
 	}
 }
 
 static void _GBACoreRunFrame(struct mCore* core) {
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 	int32_t frameCounter = gba->video.frameCounter;
 	while (gba->video.frameCounter == frameCounter) {
-		ARMRunLoop((struct ARMCore*) core->cpu);
+		ARMRunLoop(core->cpu);
 	}
 }
 
 static void _GBACoreRunLoop(struct mCore* core) {
-	ARMRunLoop((struct ARMCore*) core->cpu);
+	ARMRunLoop(core->cpu);
 }
 
 static void _GBACoreStep(struct mCore* core) {
-	ARMRun((struct ARMCore*) core->cpu);
+	ARMRun(core->cpu);
 }
 
 static size_t _GBACoreStateSize(struct mCore* core) {
@@ -482,24 +482,24 @@ static size_t _GBACoreStateSize(struct mCore* core) {
 }
 
 static bool _GBACoreLoadState(struct mCore* core, const void* state) {
-	return GBADeserialize((struct GBA*) core->board, (const struct GBASerializedState*) state);
+	return GBADeserialize(core->board, state);
 }
 
 static bool _GBACoreSaveState(struct mCore* core, void* state) {
-	GBASerialize((struct GBA*) core->board, (struct GBASerializedState*) state);
+	GBASerialize(core->board, state);
 	return true;
 }
 
 static void _GBACoreSetKeys(struct mCore* core, uint32_t keys) {
 	struct GBACore* gbacore = (struct GBACore*) core;
 	gbacore->keys = keys;
-	GBATestKeypadIRQ((struct GBA*) core->board);
+	GBATestKeypadIRQ(core->board);
 }
 
 static void _GBACoreAddKeys(struct mCore* core, uint32_t keys) {
 	struct GBACore* gbacore = (struct GBACore*) core;
 	gbacore->keys |= keys;
-	GBATestKeypadIRQ((struct GBA*) core->board);
+	GBATestKeypadIRQ(core->board);
 }
 
 static void _GBACoreClearKeys(struct mCore* core, uint32_t keys) {
@@ -508,7 +508,7 @@ static void _GBACoreClearKeys(struct mCore* core, uint32_t keys) {
 }
 
 static int32_t _GBACoreFrameCounter(const struct mCore* core) {
-	const struct GBA* gba = (struct GBA*) core->board;
+	const struct GBA* gba = core->board;
 	return gba->video.frameCounter;
 }
 
@@ -523,24 +523,24 @@ static int32_t _GBACoreFrequency(const struct mCore* core) {
 }
 
 static void _GBACoreGetGameTitle(const struct mCore* core, char* title) {
-	GBAGetGameTitle((struct GBA*) core->board, title);
+	GBAGetGameTitle(core->board, title);
 }
 
 static void _GBACoreGetGameCode(const struct mCore* core, char* title) {
-	GBAGetGameCode((struct GBA*) core->board, title);
+	GBAGetGameCode(core->board, title);
 }
 
 static void _GBACoreSetPeripheral(struct mCore* core, int type, void* periph) {
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 	switch (type) {
 	case mPERIPH_ROTATION:
-		gba->rotationSource = (struct mRotationSource*) periph;
+		gba->rotationSource = periph;
 		break;
 	case mPERIPH_RUMBLE:
-		gba->rumble = (struct mRumble*) periph;
+		gba->rumble = periph;
 		break;
 	case mPERIPH_GBA_LUMINANCE:
-		gba->luminanceSource = (struct GBALuminanceSource*) periph;
+		gba->luminanceSource = periph;
 		break;
 	default:
 		return;
@@ -548,74 +548,74 @@ static void _GBACoreSetPeripheral(struct mCore* core, int type, void* periph) {
 }
 
 static uint32_t _GBACoreBusRead8(struct mCore* core, uint32_t address) {
-	struct ARMCore* cpu = (struct ARMCore*) core->cpu;
+	struct ARMCore* cpu = core->cpu;
 	return cpu->memory.load8(cpu, address, 0);
 }
 
 static uint32_t _GBACoreBusRead16(struct mCore* core, uint32_t address) {
-	struct ARMCore* cpu = (struct ARMCore*) core->cpu;
+	struct ARMCore* cpu = core->cpu;
 	return cpu->memory.load16(cpu, address, 0);
 
 }
 
 static uint32_t _GBACoreBusRead32(struct mCore* core, uint32_t address) {
-	struct ARMCore* cpu = (struct ARMCore*) core->cpu;
+	struct ARMCore* cpu = core->cpu;
 	return cpu->memory.load32(cpu, address, 0);
 }
 
 static void _GBACoreBusWrite8(struct mCore* core, uint32_t address, uint8_t value) {
-	struct ARMCore* cpu = (struct ARMCore*) core->cpu;
+	struct ARMCore* cpu = core->cpu;
 	cpu->memory.store8(cpu, address, value, 0);
 }
 
 static void _GBACoreBusWrite16(struct mCore* core, uint32_t address, uint16_t value) {
-	struct ARMCore* cpu = (struct ARMCore*) core->cpu;
+	struct ARMCore* cpu = core->cpu;
 	cpu->memory.store16(cpu, address, value, 0);
 }
 
 static void _GBACoreBusWrite32(struct mCore* core, uint32_t address, uint32_t value) {
-	struct ARMCore* cpu = (struct ARMCore*) core->cpu;
+	struct ARMCore* cpu = core->cpu;
 	cpu->memory.store32(cpu, address, value, 0);
 }
 
 static uint32_t _GBACoreRawRead8(struct mCore* core, uint32_t address, int segment) {
 	UNUSED(segment);
-	struct ARMCore* cpu = (struct ARMCore*) core->cpu;
+	struct ARMCore* cpu = core->cpu;
 	return GBAView8(cpu, address);
 }
 
 static uint32_t _GBACoreRawRead16(struct mCore* core, uint32_t address, int segment) {
 	UNUSED(segment);
-	struct ARMCore* cpu = (struct ARMCore*) core->cpu;
+	struct ARMCore* cpu = core->cpu;
 	return GBAView16(cpu, address);
 }
 
 static uint32_t _GBACoreRawRead32(struct mCore* core, uint32_t address, int segment) {
 	UNUSED(segment);
-	struct ARMCore* cpu = (struct ARMCore*) core->cpu;
+	struct ARMCore* cpu = core->cpu;
 	return GBAView32(cpu, address);
 }
 
 static void _GBACoreRawWrite8(struct mCore* core, uint32_t address, int segment, uint8_t value) {
 	UNUSED(segment);
-	struct ARMCore* cpu = (struct ARMCore*) core->cpu;
+	struct ARMCore* cpu = core->cpu;
 	GBAPatch8(cpu, address, value, NULL);
 }
 
 static void _GBACoreRawWrite16(struct mCore* core, uint32_t address, int segment, uint16_t value) {
 	UNUSED(segment);
-	struct ARMCore* cpu = (struct ARMCore*) core->cpu;
+	struct ARMCore* cpu = core->cpu;
 	GBAPatch16(cpu, address, value, NULL);
 }
 
 static void _GBACoreRawWrite32(struct mCore* core, uint32_t address, int segment, uint32_t value) {
 	UNUSED(segment);
-	struct ARMCore* cpu = (struct ARMCore*) core->cpu;
+	struct ARMCore* cpu = core->cpu;
 	GBAPatch32(cpu, address, value, NULL);
 }
 
 size_t _GBAListMemoryBlocks(const struct mCore* core, const struct mCoreMemoryBlock** blocks) {
-	const struct GBA* gba = (struct GBA*) core->board;
+	const struct GBA* gba = core->board;
 	switch (gba->memory.savedata.type) {
 	case SAVEDATA_SRAM:
 		*blocks = _GBAMemoryBlocksSRAM;
@@ -636,7 +636,7 @@ size_t _GBAListMemoryBlocks(const struct mCore* core, const struct mCoreMemoryBl
 }
 
 void* _GBAGetMemoryBlock(struct mCore* core, size_t id, size_t* sizeOut) {
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 	switch (id) {
 	default:
 		return NULL;
@@ -704,14 +704,14 @@ static struct CLIDebuggerSystem* _GBACoreCliDebuggerSystem(struct mCore* core) {
 
 static void _GBACoreAttachDebugger(struct mCore* core, struct mDebugger* debugger) {
 	if (core->debugger) {
-		GBADetachDebugger((struct GBA*) core->board);
+		GBADetachDebugger(core->board);
 	}
-	GBAAttachDebugger((struct GBA*) core->board, debugger);
+	GBAAttachDebugger(core->board, debugger);
 	core->debugger = debugger;
 }
 
 static void _GBACoreDetachDebugger(struct mCore* core) {
-	GBADetachDebugger((struct GBA*) core->board);
+	GBADetachDebugger(core->board);
 	core->debugger = NULL;
 }
 
@@ -759,14 +759,14 @@ static struct mCheatDevice* _GBACoreCheatDevice(struct mCore* core) {
 	if (!gbacore->cheatDevice) {
 		gbacore->cheatDevice = GBACheatDeviceCreate();
 		((struct ARMCore*) core->cpu)->components[CPU_COMPONENT_CHEAT_DEVICE] = &gbacore->cheatDevice->d;
-		ARMHotplugAttach((struct ARMCore*) core->cpu, CPU_COMPONENT_CHEAT_DEVICE);
+		ARMHotplugAttach(core->cpu, CPU_COMPONENT_CHEAT_DEVICE);
 		gbacore->cheatDevice->p = core;
 	}
 	return gbacore->cheatDevice;
 }
 
 static size_t _GBACoreSavedataClone(struct mCore* core, void** sram) {
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 	size_t size = GBASavedataSize(&gba->memory.savedata);
 	if (!size) {
 		*sram = NULL;
@@ -794,7 +794,7 @@ static bool _GBACoreSavedataRestore(struct mCore* core, const void* sram, size_t
 	if (!vf) {
 		return false;
 	}
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 	bool success = true;
 	if (writeback) {
 		success = GBASavedataLoad(&gba->memory.savedata, vf);
@@ -818,7 +818,7 @@ static size_t _GBACoreListAudioChannels(const struct mCore* core, const struct m
 }
 
 static void _GBACoreEnableVideoLayer(struct mCore* core, size_t id, bool enable) {
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 #if !defined(MINIMAL_CORE) || MINIMAL_CORE < 3
 	switch (id) {
 	case 0:
@@ -837,7 +837,7 @@ static void _GBACoreEnableVideoLayer(struct mCore* core, size_t id, bool enable)
 }
 
 static void _GBACoreEnableAudioChannel(struct mCore* core, size_t id, bool enable) {
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 	switch (id) {
 	case 0:
 	case 1:
@@ -858,15 +858,15 @@ static void _GBACoreEnableAudioChannel(struct mCore* core, size_t id, bool enabl
 #ifndef MINIMAL_CORE
 static void _GBACoreStartVideoLog(struct mCore* core, struct mVideoLogContext* context) {
 	struct GBACore* gbacore = (struct GBACore*) core;
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 	gbacore->logContext = context;
 
-	struct GBASerializedState* state = (struct GBASerializedState*) mVideoLogContextInitialState(context, NULL);
+	struct GBASerializedState* state = mVideoLogContextInitialState(context, NULL);
 	state->id = 0;
 	state->cpu.gprs[ARM_PC] = BASE_WORKING_RAM;
 
 	int channelId = mVideoLoggerAddChannel(context);
-	gbacore->proxyRenderer.logger = (struct mVideoLogger*) malloc(sizeof(struct mVideoLogger));
+	gbacore->proxyRenderer.logger = malloc(sizeof(struct mVideoLogger));
 	mVideoLoggerRendererCreate(gbacore->proxyRenderer.logger, false);
 	mVideoLoggerAttachChannel(gbacore->proxyRenderer.logger, context, channelId);
 	gbacore->proxyRenderer.logger->block = false;
@@ -877,7 +877,7 @@ static void _GBACoreStartVideoLog(struct mCore* core, struct mVideoLogContext* c
 
 static void _GBACoreEndVideoLog(struct mCore* core) {
 	struct GBACore* gbacore = (struct GBACore*) core;
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 	GBAVideoProxyRendererUnshim(&gba->video, &gbacore->proxyRenderer);
 	free(gbacore->proxyRenderer.logger);
 	gbacore->proxyRenderer.logger = NULL;
@@ -886,7 +886,7 @@ static void _GBACoreEndVideoLog(struct mCore* core) {
 
 struct mCore* GBACoreCreate(void) {
 	
-	struct GBACore* gbacore = (struct GBACore*) malloc(sizeof(*gbacore));
+	struct GBACore* gbacore = malloc(sizeof(*gbacore));
 	struct mCore* core = &gbacore->d;
 	memset(&core->opts, 0, sizeof(core->opts));
 	core->cpu = NULL;
@@ -970,9 +970,9 @@ struct mCore* GBACoreCreate(void) {
 
 #ifndef MINIMAL_CORE
 static void _GBAVLPStartFrameCallback(void *context) {
-	struct mCore* core = (struct mCore*) context;
+	struct mCore* core = context;
 	struct GBACore* gbacore = (struct GBACore*) core;
-	struct GBA* gba = (struct GBA*) core->board;
+	struct GBA* gba = core->board;
 
 	if (!mVideoLoggerRendererRun(gbacore->proxyRenderer.logger, true)) {
 		GBAVideoProxyRendererUnshim(&gba->video, &gbacore->proxyRenderer);
@@ -986,7 +986,7 @@ static bool _GBAVLPInit(struct mCore* core) {
 	if (!_GBACoreInit(core)) {
 		return false;
 	}
-	gbacore->proxyRenderer.logger = (struct mVideoLogger*) malloc(sizeof(struct mVideoLogger));
+	gbacore->proxyRenderer.logger = malloc(sizeof(struct mVideoLogger));
 	mVideoLoggerRendererCreate(gbacore->proxyRenderer.logger, true);
 	GBAVideoProxyRendererCreate(&gbacore->proxyRenderer, NULL);
 	memset(&gbacore->logCallbacks, 0, sizeof(gbacore->logCallbacks));
@@ -1014,7 +1014,7 @@ static void _GBAVLPReset(struct mCore* core) {
 		GBAVideoAssociateRenderer(&gba->video, renderer);
 	}
 
-	ARMReset((struct ARMCore *) core->cpu);
+	ARMReset(core->cpu);
 	mVideoLogContextRewind(gbacore->logContext, core);
 	GBAVideoProxyRendererShim(&gba->video, &gbacore->proxyRenderer);
 
@@ -1047,8 +1047,8 @@ static bool _GBAVLPLoadState(struct mCore* core, const void* state) {
 	GBAHalt(gba);
 	gba->cpu->memory.store16(gba->cpu, BASE_IO | REG_IME, 0, NULL);
 	gba->cpu->memory.store16(gba->cpu, BASE_IO | REG_IE, 0, NULL);
-	GBAVideoDeserialize(&gba->video, (const struct GBASerializedState*) state);
-	GBAIODeserialize(gba, (const struct GBASerializedState*) state);
+	GBAVideoDeserialize(&gba->video, state);
+	GBAIODeserialize(gba, state);
 	GBAAudioReset(&gba->audio);
 
 	return true;
@@ -1071,7 +1071,6 @@ struct mCore* GBAVideoLogPlayerCreate(void) {
 }
 #else
 struct mCore* GBAVideoLogPlayerCreate(void) {
-	return (struct mCore*) false;
+	return false;
 }
 #endif
-}} // close 'CXX_GUARD_START' in video-software.h

@@ -47,7 +47,7 @@ static struct TableList* _resizeAsNeeded(struct Table* table, struct TableList* 
 	// TODO: Expand table if needed
 	if (list->nEntries + 1 == list->listSize) {
 		list->listSize *= 2;
-		list->list = (struct TableTuple*) realloc(list->list, list->listSize * sizeof(struct TableTuple));
+		list->list = realloc(list->list, list->listSize * sizeof(struct TableTuple));
 	}
 	return list;
 }
@@ -69,7 +69,7 @@ void TableInit(struct Table* table, size_t initialSize, void (deinitializer(void
 		initialSize = TABLE_INITIAL_SIZE;
 	}
 	table->tableSize = initialSize;
-	table->table = (struct TableList*) calloc(table->tableSize, sizeof(struct TableList));
+	table->table = calloc(table->tableSize, sizeof(struct TableList));
 	table->size = 0;
 	table->deinitializer = deinitializer;
 
@@ -77,7 +77,7 @@ void TableInit(struct Table* table, size_t initialSize, void (deinitializer(void
 	for (i = 0; i < table->tableSize; ++i) {
 		table->table[i].listSize = LIST_INITIAL_SIZE;
 		table->table[i].nEntries = 0;
-		table->table[i].list = (struct TableTuple*) calloc(LIST_INITIAL_SIZE, sizeof(struct TableTuple));
+		table->table[i].list = calloc(LIST_INITIAL_SIZE, sizeof(struct TableTuple));
 	}
 }
 
@@ -144,7 +144,7 @@ void TableClear(struct Table* table) {
 		free(list->list);
 		list->listSize = LIST_INITIAL_SIZE;
 		list->nEntries = 0;
-		list->list = (struct TableTuple*) calloc(LIST_INITIAL_SIZE, sizeof(struct TableTuple));
+		list->list = calloc(LIST_INITIAL_SIZE, sizeof(struct TableTuple));
 	}
 }
 
@@ -221,7 +221,7 @@ void HashTableClear(struct Table* table) {
 		free(list->list);
 		list->listSize = LIST_INITIAL_SIZE;
 		list->nEntries = 0;
-		list->list = (struct TableTuple*) calloc(LIST_INITIAL_SIZE, sizeof(struct TableTuple));
+		list->list = calloc(LIST_INITIAL_SIZE, sizeof(struct TableTuple));
 	}
 }
 

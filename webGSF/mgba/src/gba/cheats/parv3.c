@@ -70,7 +70,7 @@ static void _parElseBlock(struct GBACheatSet* cheats) {
 }
 
 static bool _addPAR3Cond(struct GBACheatSet* cheats, uint32_t op1, uint32_t op2) {
-	enum GBAActionReplay3Condition condition = (enum GBAActionReplay3Condition) (op1 & PAR3_COND);
+	enum GBAActionReplay3Condition condition = op1 & PAR3_COND;
 	int width = 1 << ((op1 & PAR3_WIDTH) >> PAR3_WIDTH_BASE);
 	if (width > 4) {
 		// TODO: Always false conditions
@@ -280,7 +280,7 @@ bool GBACheatAddProActionReplayRaw(struct GBACheatSet* cheats, uint32_t op1, uin
 		if (cheats->hook) {
 			return false;
 		}
-		cheats->hook = (struct GBACheatHook*) malloc(sizeof(*cheats->hook));
+		cheats->hook = malloc(sizeof(*cheats->hook));
 		cheats->hook->address = BASE_CART0 | (op1 & (SIZE_CART0 - 1));
 		cheats->hook->mode = MODE_THUMB;
 		cheats->hook->refs = 1;

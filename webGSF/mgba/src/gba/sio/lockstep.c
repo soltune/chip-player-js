@@ -329,7 +329,7 @@ static uint32_t _slaveUpdate(struct GBASIOLockstepNode* node) {
 }
 
 static void _GBASIOLockstepNodeProcessEvents(struct mTiming* timing, void* user, uint32_t cyclesLate) {
-	struct GBASIOLockstepNode* node = (struct GBASIOLockstepNode*) user;
+	struct GBASIOLockstepNode* node = user;
 	if (node->p->d.attached < 2) {
 		return;
 	}

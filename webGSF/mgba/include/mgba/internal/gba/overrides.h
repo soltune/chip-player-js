@@ -15,7 +15,7 @@ CXX_GUARD_START
 #define IDLE_LOOP_NONE 0xFFFFFFFF
 
 struct GBACartridgeOverride {
-	char id[5];
+	char id[4];
 	enum SavedataType savetype;
 	int hardware;
 	uint32_t idleLoop;

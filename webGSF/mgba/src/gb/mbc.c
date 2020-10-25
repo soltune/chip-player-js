@@ -683,10 +683,9 @@ static void _GBMBC7Write(struct GBMemory* memory, uint16_t address, uint8_t valu
 			break;
 		case GBMBC7_STATE_READ_COMMAND:
 			if (mbc7->srBits == 10) {
-				mbc7->state = (enum GBMBC7MachineState) (0x10 | (mbc7->sr >> 6));
+				mbc7->state = 0x10 | (mbc7->sr >> 6);
 				if (mbc7->state & 0xC) {
-					//mbc7->state &= (enum GBMBC7MachineState) ~0x3;
-					mbc7->state = (enum GBMBC7MachineState) ((int) mbc7->state & ~0x3);
+					mbc7->state &= ~0x3;
 				}
 				mbc7->srBits = 0;
 				mbc7->address = mbc7->sr & 0x7F;
@@ -1063,7 +1062,7 @@ void GBMBCRTCWrite(struct GB* gb) {
 	vf->seek(vf, gb->sramSize, SEEK_SET);
 	vf->write(vf, &rtcBuffer, sizeof(rtcBuffer));
 	if (!gb->memory.sram) {
-		gb->memory.sram = (uint8_t*) vf->map(vf, gb->sramSize, MAP_WRITE);
+		gb->memory.sram = vf->map(vf, gb->sramSize, MAP_WRITE);
 		GBMBCSwitchSramBank(gb, gb->memory.sramCurrentBank);
 	}
 }

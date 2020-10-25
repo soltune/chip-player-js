@@ -194,7 +194,7 @@ bool GBACheatAddCodeBreaker(struct GBACheatSet* cheats, uint32_t op1, uint16_t o
 		_cbDecrypt(cheats, &op1, &op2);
 	}
 
-	enum GBACodeBreakerType type = (enum GBACodeBreakerType) (op1 >> 28);
+	enum GBACodeBreakerType type = op1 >> 28;
 	struct mCheat* cheat = NULL;
 
 	if (cheats->incompleteCheat != COMPLETE) {
@@ -214,7 +214,7 @@ bool GBACheatAddCodeBreaker(struct GBACheatSet* cheats, uint32_t op1, uint16_t o
 		if (cheats->hook) {
 			return false;
 		}
-		cheats->hook = (struct GBACheatHook*) malloc(sizeof(*cheats->hook));
+		cheats->hook = malloc(sizeof(*cheats->hook));
 		cheats->hook->address = BASE_CART0 | (op1 & (SIZE_CART0 - 1));
 		cheats->hook->mode = MODE_THUMB;
 		cheats->hook->refs = 1;

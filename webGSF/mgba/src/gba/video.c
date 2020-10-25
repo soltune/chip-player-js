@@ -69,7 +69,7 @@ static struct GBAVideoRenderer dummyRenderer = {
 void GBAVideoInit(struct GBAVideo* video) {
 	video->renderer = &dummyRenderer;
 	video->renderer->cache = NULL;
-	video->vram = (uint16_t*) anonymousMemoryMap(SIZE_VRAM);
+	video->vram = anonymousMemoryMap(SIZE_VRAM);
 	video->frameskip = 0;
 	video->event.name = "GBA Video";
 	video->event.callback = NULL;
@@ -116,7 +116,7 @@ void GBAVideoAssociateRenderer(struct GBAVideo* video, struct GBAVideoRenderer* 
 }
 
 void _startHdraw(struct mTiming* timing, void* context, uint32_t cyclesLate) {
-	struct GBAVideo* video = (struct GBAVideo*) context;
+	struct GBAVideo* video = context;
 	GBARegisterDISPSTAT dispstat = video->p->memory.io[REG_DISPSTAT >> 1];
 	dispstat = GBARegisterDISPSTATClearInHblank(dispstat);
 	video->event.callback = _startHblank;
@@ -167,7 +167,7 @@ void _startHdraw(struct mTiming* timing, void* context, uint32_t cyclesLate) {
 }
 
 void _startHblank(struct mTiming* timing, void* context, uint32_t cyclesLate) {
-	struct GBAVideo* video = (struct GBAVideo*) context;
+	struct GBAVideo* video = context;
 	GBARegisterDISPSTAT dispstat = video->p->memory.io[REG_DISPSTAT >> 1];
 	dispstat = GBARegisterDISPSTATFillInHblank(dispstat);
 	video->event.callback = _startHdraw;

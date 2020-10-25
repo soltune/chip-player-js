@@ -31,7 +31,7 @@ struct PatchFast {
 
 void initPatchFast(struct PatchFast*);
 void deinitPatchFast(struct PatchFast*);
-bool diffPatchFast(struct PatchFast* patch, const void* /* restrict */ in, const void* /* restrict */ out, size_t size);
+bool diffPatchFast(struct PatchFast* patch, const void* restrict in, const void* restrict out, size_t size);
 
 CXX_GUARD_END
 

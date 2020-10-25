@@ -19,8 +19,7 @@ bool GBASavedataImportSharkPort(struct GBA* gba, struct VFile* vf, bool testChec
 	if (vf->read(vf, &buffer.i, 4) < 4) {
 		return false;
 	}
-	int32_t size, copySize = 0;
-	struct GBACartridge* cart;
+	int32_t size;
 	LOAD_32(size, 0, &buffer.i);
 	if (size != (int32_t) strlen(SHARKPORT_HEADER)) {
 		return false;
@@ -73,12 +72,12 @@ bool GBASavedataImportSharkPort(struct GBA* gba, struct VFile* vf, bool testChec
 	if (size < 0x1C || size > SIZE_CART_FLASH1M + 0x1C) {
 		return false;
 	}
-	char* payload = (char*) malloc(size);
+	char* payload = malloc(size);
 	if (vf->read(vf, payload, size) < size) {
 		goto cleanup;
 	}
 
-	cart = (struct GBACartridge*) gba->memory.rom;
+	struct GBACartridge* cart = (struct GBACartridge*) gba->memory.rom;
 	memcpy(buffer.c, &cart->title, 16);
 	buffer.c[0x10] = 0;
 	buffer.c[0x11] = 0;
@@ -114,7 +113,7 @@ bool GBASavedataImportSharkPort(struct GBA* gba, struct VFile* vf, bool testChec
 		}
 	}
 
-	copySize = size - 0x1C;
+	uint32_t copySize = size - 0x1C;
 	switch (gba->memory.savedata.type) {
 	case SAVEDATA_FLASH512:
 		if (copySize > SIZE_CART_FLASH512) {
