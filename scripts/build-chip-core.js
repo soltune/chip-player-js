@@ -712,17 +712,14 @@ const chipModules = [
       'built/utils.bc',
       'built/extra.bc',
       'built/arm.bc',
-      'built/LR35902.bc', // 後で削除できないか検討する
-      'built/gb.bc', // 後で削除できないか検討する
+      'built/LR35902.bc',
+      'built/gb.bc',
       'built/gba.bc',
-      'built/gbsio.bc', // 後で削除できないか検討する
-      'built/gbarender.bc',
       'built/core.bc',
       'gsfplug.cpp',
       'adapter.cpp',
     ].map(file => 'webGSF/emscripten/' + file),
     exportedFunctions: [
-      '_gba_setup',
       '_gba_init',
       '_gba_teardown',
       '_gba_get_current_position',
@@ -741,7 +738,7 @@ const chipModules = [
       '-DHAVE_CRC32 ',
       '-DMINIMAL_CORE=3',
       '-DDISABLE_THREADING',
-      '-DM_CORE_GB',
+      // '-DM_CORE_GB',
       '-DM_CORE_GBA',
       '-IwebGSF/mgba/include',
       '-Ipsflib',
