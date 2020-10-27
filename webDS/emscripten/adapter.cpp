@@ -88,7 +88,7 @@ struct StaticBlock {
     }
 };
 	
-void meta_clear() {
+static void meta_clear() {
 	snprintf(title_str, TEXT_MAX, "");
 	snprintf(artist_str, TEXT_MAX, "");
 	snprintf(game_str, TEXT_MAX, "");

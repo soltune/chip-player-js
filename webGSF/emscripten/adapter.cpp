@@ -96,7 +96,7 @@ struct StaticBlock {
     }
 };
 	
-void meta_clear() {
+static void meta_clear() {
 	snprintf(title_str, TEXT_MAX, "");
 	snprintf(artist_str, TEXT_MAX, "");
 	snprintf(game_str, TEXT_MAX, "");
@@ -109,24 +109,24 @@ void meta_clear() {
 
 static StaticBlock g_emscripen_info;
 
-extern "C" void emu_teardown (void)  __attribute__((noinline));
-extern "C" void EMSCRIPTEN_KEEPALIVE emu_teardown (void) {
+extern "C" void gba_teardown (void)  __attribute__((noinline));
+extern "C" void EMSCRIPTEN_KEEPALIVE gba_teardown (void) {
 }
 
-extern "C" int emu_setup(char *unused) __attribute__((noinline));
-extern "C" EMSCRIPTEN_KEEPALIVE int emu_setup(char *unused)
+extern "C" int gba_setup(char *unused) __attribute__((noinline));
+extern "C" EMSCRIPTEN_KEEPALIVE int gba_setup(char *unused)
 {
 	gsf_setup();	// basic init
 	
 	return 0;
 }
 
-extern "C" int emu_init(char *basedir, char *songmodule) __attribute__((noinline));
-extern "C" EMSCRIPTEN_KEEPALIVE int emu_init(char *basedir, char *songmodule)
+extern "C" int gba_init(char *basedir, char *songmodule) __attribute__((noinline));
+extern "C" EMSCRIPTEN_KEEPALIVE int gba_init(char *basedir, char *songmodule)
 {
 	gsf_setup();	// basic init
 
-	emu_teardown();
+	gba_teardown();
 
 	meta_clear();
 	
@@ -140,36 +140,36 @@ extern "C" EMSCRIPTEN_KEEPALIVE int emu_init(char *basedir, char *songmodule)
 	return 0;
 }
 
-extern "C" int emu_get_sample_rate() __attribute__((noinline));
-extern "C" EMSCRIPTEN_KEEPALIVE int emu_get_sample_rate()
+extern "C" int gba_get_sample_rate() __attribute__((noinline));
+extern "C" EMSCRIPTEN_KEEPALIVE int gba_get_sample_rate()
 {
 	return gsf_get_sample_rate();
 }
 
-extern "C" int emu_set_subsong(int subsong, unsigned char boost) __attribute__((noinline));
-extern "C" int EMSCRIPTEN_KEEPALIVE emu_set_subsong(int subsong, unsigned char boost) {
+extern "C" int gba_set_subsong(int subsong, unsigned char boost) __attribute__((noinline));
+extern "C" int EMSCRIPTEN_KEEPALIVE gba_set_subsong(int subsong, unsigned char boost) {
 // TODO: are there any subsongs
 	gsf_boost_volume(boost);
 	return 0;
 }
 
-extern "C" const char** emu_get_track_info() __attribute__((noinline));
-extern "C" const char** EMSCRIPTEN_KEEPALIVE emu_get_track_info() {
+extern "C" const char** gba_get_track_info() __attribute__((noinline));
+extern "C" const char** EMSCRIPTEN_KEEPALIVE gba_get_track_info() {
 	return info_texts;
 }
 
-extern "C" char* EMSCRIPTEN_KEEPALIVE emu_get_audio_buffer(void) __attribute__((noinline));
-extern "C" char* EMSCRIPTEN_KEEPALIVE emu_get_audio_buffer(void) {
+extern "C" char* EMSCRIPTEN_KEEPALIVE gba_get_audio_buffer(void) __attribute__((noinline));
+extern "C" char* EMSCRIPTEN_KEEPALIVE gba_get_audio_buffer(void) {
 	return (char*)sample_buffer;
 }
 
-extern "C" long EMSCRIPTEN_KEEPALIVE emu_get_audio_buffer_length(void) __attribute__((noinline));
-extern "C" long EMSCRIPTEN_KEEPALIVE emu_get_audio_buffer_length(void) {
+extern "C" long EMSCRIPTEN_KEEPALIVE gba_get_audio_buffer_length(void) __attribute__((noinline));
+extern "C" long EMSCRIPTEN_KEEPALIVE gba_get_audio_buffer_length(void) {
 	return samples_available;
 }
 
-extern "C" int emu_compute_audio_samples() __attribute__((noinline));
-extern "C" int EMSCRIPTEN_KEEPALIVE emu_compute_audio_samples() {
+extern "C" int gba_compute_audio_samples() __attribute__((noinline));
+extern "C" int EMSCRIPTEN_KEEPALIVE gba_compute_audio_samples() {
 
 	int ret=  gsf_read((short*)sample_buffer, SAMPLE_BUF_SIZE);
 
@@ -186,18 +186,18 @@ extern "C" int EMSCRIPTEN_KEEPALIVE emu_compute_audio_samples() {
 	}
 }
 
-extern "C" int emu_get_current_position() __attribute__((noinline));
-extern "C" int EMSCRIPTEN_KEEPALIVE emu_get_current_position() {
+extern "C" int gba_get_current_position() __attribute__((noinline));
+extern "C" int EMSCRIPTEN_KEEPALIVE gba_get_current_position() {
 	return gsf_current_play_position();
 }
 
-extern "C" void emu_seek_position(int pos) __attribute__((noinline));
-extern "C" void EMSCRIPTEN_KEEPALIVE emu_seek_position(int ms) {
+extern "C" void gba_seek_position(int pos) __attribute__((noinline));
+extern "C" void EMSCRIPTEN_KEEPALIVE gba_seek_position(int ms) {
 	gsf_seek_position(ms);
 }
 
-extern "C" int emu_get_max_position() __attribute__((noinline));
-extern "C" int EMSCRIPTEN_KEEPALIVE emu_get_max_position() {
+extern "C" int gba_get_max_position() __attribute__((noinline));
+extern "C" int EMSCRIPTEN_KEEPALIVE gba_get_max_position() {
 	return gsf_end_song_position();
 }
 

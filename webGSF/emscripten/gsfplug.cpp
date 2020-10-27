@@ -117,13 +117,13 @@ class exception_io_data: public std::runtime_error {
 public:
 	exception_io_data(const char *what= "exception_io_data") : std::runtime_error(what) {}
 };
-int stricmp_utf8(std::string const& s1, const char* s2) {	
+static int stricmp_utf8(std::string const& s1, const char* s2) {
     return strcasecmp(s1.c_str(), s2);
 }
-int stricmp_utf8(const char* s1, const char* s2) {	
+static int stricmp_utf8(const char* s1, const char* s2) {
     return strcasecmp(s1, s2);
 }
-int stricmp_utf8_partial(std::string const& s1,  const char* s2) {
+static int stricmp_utf8_partial(std::string const& s1,  const char* s2) {
 	std::string s1pref= s1.substr(0, strlen(s2));	
     return strcasecmp(s1pref.c_str(), s2);
 }
@@ -147,7 +147,7 @@ extern void gsf_meta_set(const char * name, const char * value);
 
 #define DB_FILE FILE
 	
-struct FileAccess_t {	
+struct Gsf_FileAccess_t {
 	void* (*fopen)( const char * uri );
 	size_t (*fread)( void * buffer, size_t size, size_t count, void * handle );
 	int (*fseek)( void * handle, int64_t offset, int whence );
@@ -157,9 +157,9 @@ struct FileAccess_t {
 
 	size_t (*fgetlength)( FILE * f);
 };
-static struct FileAccess_t *g_file= 0;
+static struct Gsf_FileAccess_t *g_file= 0;
 
-static void * psf_file_fopen( const char * uri ) {
+static void * psf_file_fopen( void *context, const char * uri ) {
     void *file= g_file->fopen( uri );
 	return file;
 }
@@ -181,6 +181,7 @@ static long psf_file_ftell( void * handle ) {
 }
 const psf_file_callbacks psf_file_system = {
     "\\/|:",
+    NULL,
     psf_file_fopen,
     psf_file_fread,
     psf_file_fseek,
@@ -291,7 +292,7 @@ static unsigned long parse_time_crap(const char *input)
 // hack: dummy impl to replace foobar2000 stuff
 const int MAX_INFO_LEN= 10;
 
-class file_info {
+class gsf_file_info {
 	double len;
 	
 	// no other keys implemented
@@ -301,11 +302,11 @@ class file_info {
 	std::vector<std::string> requiredLibs;
 	
 public:
-	file_info() {
+	gsf_file_info() {
 		sampleRate = (const char*)malloc(MAX_INFO_LEN);
 		channels = (const char*)malloc(MAX_INFO_LEN);
 	}
-	~file_info() {
+	~gsf_file_info() {
 		free((void*)channels);
 		free((void*)sampleRate);
 	}
@@ -361,7 +362,7 @@ public:
 };
 
 
-static void info_meta_ansi( file_info & info )
+static void info_meta_ansi( gsf_file_info & info )
 {
 /* FIXME eventually migrate original impl
  
@@ -383,9 +384,9 @@ static void info_meta_ansi( file_info & info )
 */
 }
 
-struct psf_info_meta_state
+struct gsf_psf_info_meta_state
 {
-	file_info * info;
+	gsf_file_info * info;
 
 	std::string name;
 
@@ -394,7 +395,7 @@ struct psf_info_meta_state
 	int tag_song_ms;
 	int tag_fade_ms;
 
-	psf_info_meta_state()
+	gsf_psf_info_meta_state()
 		: info( 0 ), utf8( false ), tag_song_ms( 0 ), tag_fade_ms( 0 ) {}
 };
 
@@ -404,7 +405,7 @@ static int psf_info_meta(void * context, const char * name, const char * value) 
 	
 	// FIXME: various "_"-settings are currently not used to configure the emulator
 	
-	psf_info_meta_state * state = ( psf_info_meta_state * ) context;
+	gsf_psf_info_meta_state * state = ( gsf_psf_info_meta_state * ) context;
 
 	std::string & tag = state->name;
 
@@ -590,7 +591,7 @@ class input_gsf
 	struct gsf_running_state m_output;
 	struct mCore * m_core;
 	std::string m_path;
-	file_info m_info;
+	gsf_file_info m_info;
 		
 	bool no_loop, eof;
 
@@ -657,13 +658,13 @@ public:
 		m_info.reset();
 		m_path = p_path;
 
-		psf_info_meta_state info_state;
+		gsf_psf_info_meta_state info_state;
 		info_state.info = &m_info;
 		
 		// INFO: info_state is what is later passed as "context" in the callbacks
 		//       psf_info_meta then is the "target"
 		
-		if ( psf_load( p_path, &psf_file_system, 0x22, 0, 0, psf_info_meta, &info_state, 0 ) <= 0 )
+		if ( psf_load( p_path, &psf_file_system, 0x22, 0, 0, psf_info_meta, &info_state, 0, 0, NULL ) <= 0 )
 			throw exception_io_data( "Not a GSF file" );
 
 		if ( !info_state.utf8 )
@@ -712,12 +713,11 @@ public:
 			delete m_state;
 		}
 		m_state= new gsf_loader_state();
-
-		if ( psf_load( m_path.c_str(), &psf_file_system, 0x22, gsf_loader, m_state, 0, 0, 0 ) < 0 )
+		if ( psf_load( m_path.c_str(), &psf_file_system, 0x22, gsf_loader, m_state, 0, 0, 0, 0, NULL ) < 0 )
 			throw exception_io_data( "Invalid GSF" );
 		if (m_state->data_size > UINT_MAX)
 			throw exception_io_data("Invalid GSF");
-			
+
 		struct VFile * rom = VFileFromConstMemory(m_state->data, m_state->data_size);
 		if (!rom)
 			throw std::bad_alloc();
@@ -987,7 +987,7 @@ private:
 		fade_len=MulDiv(tag_fade_ms,44100,1000);
 	}
 };
-static input_gsf g_input_usf;
+static input_gsf g_input_gsf;
 
 // ------------------------------------------------------------------------------------------------------- 
 
@@ -995,25 +995,23 @@ static input_gsf g_input_usf;
 void gsf_boost_volume(unsigned char b) { /*noop*/}
 
 int32_t gsf_get_sample_rate() {
-	return g_input_usf.getSamplesRate();
+	return g_input_gsf.getSamplesRate();
 }
 
 int32_t gsf_end_song_position() {
 	// base for seeking
-	return g_input_usf.getEndPlayPosition();	// in ms
+	return g_input_gsf.getEndPlayPosition();	// in ms
 }
 
 int32_t gsf_current_play_position() {
-	return g_input_usf.getCurrentPlayPosition();
+	return g_input_gsf.getCurrentPlayPosition();
 }
 
 int gsf_load_file(const char *uri) {
 	try {
-		int retVal= g_input_usf.open(uri);
+		int retVal= g_input_gsf.open(uri);
 		if (retVal < 0) return retVal;	// trigger retry later
-		
-		g_input_usf.decode_initialize();
-
+		g_input_gsf.decode_initialize();
 		return 0;
 	} catch(...) {
 		return -1;
@@ -1041,7 +1039,7 @@ int gsf_read(int16_t *output_buffer, uint16_t outSize) {
 				outSize-= availableBufferSize;
 			}
 		} else {
-			if(!g_input_usf.decode_run( &availableBuffer, &availableBufferSize)) {
+			if(!g_input_gsf.decode_run( &availableBuffer, &availableBufferSize)) {
 				return 0; 	// end song
 			}
 		}
@@ -1050,29 +1048,29 @@ int gsf_read(int16_t *output_buffer, uint16_t outSize) {
 }
 
 int gsf_seek_position (int ms) {
-	g_input_usf.decode_seek( ((double)ms)/1000);
+	g_input_gsf.decode_seek( ((double)ms)/1000);
     return 0;
 }
 
 // use "regular" file ops - which are provided by Emscripten (just make sure all files are previously loaded)
 
-void* em_fopen( const char * uri ) { 
+static void* em_fopen( const char * uri ) {
 	return (void*)fopen(uri, "r");
 }
-size_t em_fread( void * buffer, size_t size, size_t count, void * handle ) {
+static size_t em_fread( void * buffer, size_t size, size_t count, void * handle ) {
 	return fread(buffer, size, count, (FILE*)handle );
 }
-int em_fseek( void * handle, int64_t offset, int whence ) {
+static int em_fseek( void * handle, int64_t offset, int whence ) {
 	return fseek( (FILE*) handle, offset, whence );
 }
-long int em_ftell( void * handle ) {
+static long int em_ftell( void * handle ) {
 	return  ftell( (FILE*) handle );
 }
-int em_fclose( void * handle  ) {
+static int em_fclose( void * handle  ) {
 	return fclose( (FILE *) handle  );
 }
 
-size_t em_fgetlength( FILE * f) {
+static size_t em_fgetlength( FILE * f) {
 	int fd= fileno(f);
 	struct stat buf;
 	fstat(fd, &buf);
@@ -1081,7 +1079,7 @@ size_t em_fgetlength( FILE * f) {
 
 void gsf_setup (void) {
 	if (!g_file) {
-		g_file = (struct FileAccess_t*) malloc(sizeof( struct FileAccess_t ));
+		g_file = (struct Gsf_FileAccess_t*) malloc(sizeof( struct Gsf_FileAccess_t ));
 		
 		g_file->fopen= em_fopen;
 		g_file->fread= em_fread;

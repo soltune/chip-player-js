@@ -35,6 +35,7 @@ import Favorites from './Favorites';
 import Search from './Search';
 import Sequencer from './Sequencer';
 import Visualizer from './Visualizer';
+import GBAPlayer from "./players/GBAPlayer";
 
 const NUMERIC_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
@@ -179,6 +180,7 @@ class App extends React.Component {
             new VGMPlayer(audioCtx, playerNode, chipCore),
             new StreamPlayer(audioCtx, playerNode, chipCore),
             new N64Player(audioCtx, playerNode, chipCore),
+            new GBAPlayer(audioCtx, playerNode, chipCore),
           ]);
           this.setState({ loading: false });
 

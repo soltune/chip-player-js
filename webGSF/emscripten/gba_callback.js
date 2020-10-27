@@ -2,6 +2,6 @@
 mergeInto(LibraryManager.library, {
 	// returns 0 means file is ready; -1 if file is not yet available
 	gsf_request_file: function(name) {	
-		return window['fileRequestCallback'](name);
+		return window['gba_fileRequestCallback'](name);
 	},
 });
