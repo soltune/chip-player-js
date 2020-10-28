@@ -596,7 +596,7 @@ class input_gsf
 		
 	bool no_loop, eof;
 
-	circular_buffer<t_int16> silence_test_buffer;
+	webgsf::circular_buffer<t_int16> silence_test_buffer;
 	t_int16 sample_buffer[2048*2];
 
 	int err;

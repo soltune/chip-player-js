@@ -140,7 +140,7 @@ extern "C" EMSCRIPTEN_KEEPALIVE int gba_init(char *basedir, char *songmodule)
 	} else {
 		return -1;
 	}
-	gsf_seek_position(20); // TODO workaround to skip noise in the beginning of music
+	gsf_seek_position(25); // workaround; skip noise in the beginning of music
 	return 0;
 }
 
