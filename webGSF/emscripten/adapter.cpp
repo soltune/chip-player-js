@@ -48,16 +48,18 @@ char genre_str[TEXT_MAX];
 char copyright_str[TEXT_MAX];
 char psfby_str[TEXT_MAX];
 
+int32_t gsf_sample_rate = 44100;
 
 // interface to gsfplug.cpp
-extern	void gsf_setup (void);
+extern	void gsf_setup (int32_t sample_rate);
 extern	void gsf_boost_volume(unsigned char b);
 extern	int32_t gsf_end_song_position ();
 extern	int32_t gsf_current_play_position ();
-extern	int32_t gsf_get_sample_rate ();
+//extern	int32_t gsf_get_sample_rate ();
 extern	int gsf_load_file(const char *uri);
 extern	int gsf_read(int16_t *output_buffer, uint16_t outSize);
 extern	int gsf_seek_position (int ms);
+extern	void gsf_shutdown (void);
 
 void gsf_meta_set(const char * tag, const char * value) {
 	// propagate selected meta info for use in GUI
@@ -111,12 +113,14 @@ static StaticBlock g_emscripen_info;
 
 extern "C" void gba_teardown (void)  __attribute__((noinline));
 extern "C" void EMSCRIPTEN_KEEPALIVE gba_teardown (void) {
+    gsf_shutdown();
+    memset(sample_buffer, 0, sizeof(sample_buffer));
 }
 
 extern "C" int gba_setup(char *unused) __attribute__((noinline));
 extern "C" EMSCRIPTEN_KEEPALIVE int gba_setup(char *unused)
 {
-	gsf_setup();	// basic init
+	gsf_setup(gsf_sample_rate);	// basic init
 	
 	return 0;
 }
@@ -124,9 +128,8 @@ extern "C" EMSCRIPTEN_KEEPALIVE int gba_setup(char *unused)
 extern "C" int gba_init(char *basedir, char *songmodule) __attribute__((noinline));
 extern "C" EMSCRIPTEN_KEEPALIVE int gba_init(char *basedir, char *songmodule)
 {
-	gsf_setup();	// basic init
-
 	gba_teardown();
+	gsf_setup(gsf_sample_rate);	// basic init
 
 	meta_clear();
 	
@@ -137,13 +140,14 @@ extern "C" EMSCRIPTEN_KEEPALIVE int gba_init(char *basedir, char *songmodule)
 	} else {
 		return -1;
 	}
+	gsf_seek_position(20); // TODO workaround to skip noise in the beginning of music
 	return 0;
 }
 
 extern "C" int gba_get_sample_rate() __attribute__((noinline));
 extern "C" EMSCRIPTEN_KEEPALIVE int gba_get_sample_rate()
 {
-	return gsf_get_sample_rate();
+	return gsf_sample_rate;
 }
 
 extern "C" int gba_set_subsong(int subsong, unsigned char boost) __attribute__((noinline));

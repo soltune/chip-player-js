@@ -592,6 +592,7 @@ class input_gsf
 	struct mCore * m_core;
 	std::string m_path;
 	gsf_file_info m_info;
+	int32_t m_sample_rate;
 		
 	bool no_loop, eof;
 
@@ -609,17 +610,19 @@ class input_gsf
 	bool do_filter, do_suppressendsilence;
 
 public:
-	input_gsf() : silence_test_buffer( 0 ), m_core( 0 ), m_state(0) {
-		memset(&m_output, 0, sizeof(m_output));		
+	input_gsf(int32_t sample_rate) : silence_test_buffer( 0 ), m_core( 0 ), m_state(0) {
+		memset(&m_output, 0, sizeof(m_output));
+		memset(sample_buffer, 0, sizeof(sample_buffer));
+		m_sample_rate = sample_rate;
 	}
 
 	~input_gsf() {
 		shutdown();
 	}
 
-	int32_t getCurrentPlayPosition() { return data_written*1000/getSamplesRate() + pos_delta; }
+	int32_t getCurrentPlayPosition() { return data_written*1000/ m_sample_rate + pos_delta; }
 	int32_t getEndPlayPosition() { return tag_song_ms; }
-	int32_t getSamplesRate() { return 44100; }	// todo: replace those hardcoded usages
+//	int32_t getSamplesRate() { return 44100; }	// todo: replace those hardcoded usages
 	
 	std::vector<std::string> splitpath(const std::string& str, 
 								const std::set<char> &delimiters) {
@@ -680,7 +683,7 @@ public:
 		}
 
 		m_info.set_length( (double)( tag_song_ms + tag_fade_ms ) * .001 );
-		m_info.info_set_int( "samplerate", 44100 );
+		m_info.info_set_int( "samplerate", m_sample_rate );
 		m_info.info_set_int( "channels", 2 );
 
 		// song may depend on some lib-file(s) that first must be loaded! 
@@ -738,14 +741,14 @@ public:
 
 		core->setAudioBufferSize(core, 2048);
 
-		blip_set_rates(core->getAudioChannel(core, 0), core->frequency(core), 44100);
-		blip_set_rates(core->getAudioChannel(core, 1), core->frequency(core), 44100);
+		blip_set_rates(core->getAudioChannel(core, 0), core->frequency(core), m_sample_rate);
+		blip_set_rates(core->getAudioChannel(core, 1), core->frequency(core), m_sample_rate);
 
 		struct mCoreOptions opts = {};
 		opts.useBios = false;
 		opts.skipBios = true;
 		opts.volume = 0x100;
-		opts.sampleRate = 44100;
+		opts.sampleRate = m_sample_rate;
 
 		mCoreConfigLoadDefaults(&core->config, &opts);
 		core->loadROM(core, rom);		
@@ -815,7 +818,7 @@ public:
 
 		if ( ( eof || err < 0 ) && !silence_test_buffer.data_available() ) return false;
 
-		if ( no_loop && tag_song_ms && ( pos_delta + MulDiv( data_written, 1000, 44100 ) ) >= tag_song_ms + tag_fade_ms )
+		if ( no_loop && tag_song_ms && ( pos_delta + MulDiv( data_written, 1000, m_sample_rate ) ) >= tag_song_ms + tag_fade_ms )
 			return false;
 
 		unsigned int written = 0;
@@ -900,7 +903,7 @@ public:
 			ptr = m_output.samples;
 		}
 
-		gsfemu_pos += double( written ) / 44100.;
+		gsfemu_pos += double( written ) / m_sample_rate;
 
 		int d_start, d_end;
 		d_start = data_written;
@@ -940,7 +943,7 @@ public:
 	void decode_seek( double p_seconds ) {
 		eof = false;
 
-		double buffered_time = (double)(silence_test_buffer.data_available() / 2) / 44100.0;
+		double buffered_time = (double)(silence_test_buffer.data_available() / 2) / (double)m_sample_rate;
 
 		gsfemu_pos += buffered_time;
 
@@ -950,7 +953,7 @@ public:
 		{
 			decode_initialize( );
 		}
-		unsigned int howmany = ( int )( ( p_seconds - gsfemu_pos )*44100 );
+		unsigned int howmany = ( int )( ( p_seconds - gsfemu_pos )* m_sample_rate );
 
 		// more abortable, and emu doesn't like doing huge numbers of samples per call anyway
 		while ( howmany )
@@ -983,35 +986,37 @@ private:
 	}
 
 	void calcfade() {
-		song_len=MulDiv(tag_song_ms-pos_delta,44100,1000);
-		fade_len=MulDiv(tag_fade_ms,44100,1000);
+		song_len=MulDiv(tag_song_ms-pos_delta,m_sample_rate,1000);
+		fade_len=MulDiv(tag_fade_ms,m_sample_rate,1000);
 	}
 };
-static input_gsf g_input_gsf;
+static input_gsf *g_input_gsf = NULL;
 
 // ------------------------------------------------------------------------------------------------------- 
 
 
 void gsf_boost_volume(unsigned char b) { /*noop*/}
 
-int32_t gsf_get_sample_rate() {
-	return g_input_gsf.getSamplesRate();
-}
+//int32_t gsf_get_sample_rate() {
+//	return g_input_gsf->getSamplesRate();
+//}
 
 int32_t gsf_end_song_position() {
+    if (!g_input_gsf) return 0;
 	// base for seeking
-	return g_input_gsf.getEndPlayPosition();	// in ms
+	return g_input_gsf->getEndPlayPosition();	// in ms
 }
 
 int32_t gsf_current_play_position() {
-	return g_input_gsf.getCurrentPlayPosition();
+    if (!g_input_gsf) return 0;
+	return g_input_gsf->getCurrentPlayPosition();
 }
 
 int gsf_load_file(const char *uri) {
 	try {
-		int retVal= g_input_gsf.open(uri);
+		int retVal= g_input_gsf->open(uri);
 		if (retVal < 0) return retVal;	// trigger retry later
-		g_input_gsf.decode_initialize();
+		g_input_gsf->decode_initialize();
 		return 0;
 	} catch(...) {
 		return -1;
@@ -1039,7 +1044,7 @@ int gsf_read(int16_t *output_buffer, uint16_t outSize) {
 				outSize-= availableBufferSize;
 			}
 		} else {
-			if(!g_input_gsf.decode_run( &availableBuffer, &availableBufferSize)) {
+			if(!g_input_gsf->decode_run( &availableBuffer, &availableBufferSize)) {
 				return 0; 	// end song
 			}
 		}
@@ -1048,7 +1053,7 @@ int gsf_read(int16_t *output_buffer, uint16_t outSize) {
 }
 
 int gsf_seek_position (int ms) {
-	g_input_gsf.decode_seek( ((double)ms)/1000);
+	g_input_gsf->decode_seek( ((double)ms)/1000);
     return 0;
 }
 
@@ -1077,7 +1082,7 @@ static size_t em_fgetlength( FILE * f) {
 	return buf.st_size;	
 }	
 
-void gsf_setup (void) {
+void gsf_setup (int32_t sample_rate) {
 	if (!g_file) {
 		g_file = (struct Gsf_FileAccess_t*) malloc(sizeof( struct Gsf_FileAccess_t ));
 		
@@ -1088,6 +1093,18 @@ void gsf_setup (void) {
 		g_file->fclose= em_fclose;		
 		g_file->fgetlength= em_fgetlength;
 	}
+	if (!g_input_gsf) {
+	    g_input_gsf = new input_gsf(sample_rate);
+	}
+}
+
+void gsf_shutdown (void) {
+    if (g_input_gsf) {
+        delete g_input_gsf;
+        g_input_gsf = NULL;
+    }
+    availableBuffer = 0;
+    availableBufferSize = 0;
 }
 
 

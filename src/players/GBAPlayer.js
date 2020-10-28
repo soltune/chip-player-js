@@ -534,12 +534,13 @@ export default class GBAPlayer extends Player {
   stop() {
     this.suspend();
     this.lib.teardown();
+    this.resampleBuffer.fill(0);
 
     console.debug('GBAPlayer.stop()');
     this.onPlayerStateUpdate(true);
   }
 
-  // callback in psx_request_file(heplug.c) -> psx_request_file(gba_callback.js)
+  // callback in gsf_request_file(gsfplug.cpp) -> gba_fileRequestCallback(gba_callback.js)
   fileRequestCallback(p_filename) {
     const fullFilename = this.lib.getDelegate().UTF8ToString(p_filename);
     const [path, filename] = this.lib.getPathAndFilename(fullFilename);
