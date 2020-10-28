@@ -620,7 +620,10 @@ public:
 		shutdown();
 	}
 
-	int32_t getCurrentPlayPosition() { return data_written*1000/ m_sample_rate + pos_delta; }
+	int32_t getCurrentPlayPosition() {
+//		return data_written * 1000/ m_sample_rate + pos_delta;  // may overflow
+        return (double) data_written / (double) m_sample_rate * 1000 + pos_delta;
+	}
 	int32_t getEndPlayPosition() { return tag_song_ms; }
 //	int32_t getSamplesRate() { return 44100; }	// todo: replace those hardcoded usages
 	
