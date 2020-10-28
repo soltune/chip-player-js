@@ -5,7 +5,7 @@ const encoding = require('encoding-japanese');
 const fileExtensions = [
   'gsf', 'minigsf'
 ];
-const CHANNEL_NAME = ['Square 1', 'Square 2', 'Wave', 'Noise', 'PCM 1', 'PCM 2'];
+const CHANNEL_NAME = ['Square', 'Square', 'Wave', 'Noise', 'PCM', 'PCM'];
 const SAMPLES_PER_BUFFER = 16384; // allowed: buffer sizes: 256, 512, 1024, 2048, 4096, 8192, 16384
 
 class GBALibWrapper {
