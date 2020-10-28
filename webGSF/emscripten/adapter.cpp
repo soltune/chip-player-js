@@ -60,6 +60,7 @@ extern	int gsf_load_file(const char *uri);
 extern	int gsf_read(int16_t *output_buffer, uint16_t outSize);
 extern	int gsf_seek_position (int ms);
 extern	void gsf_shutdown (void);
+extern  void gsf_set_channel_mask (int mask);
 
 void gsf_meta_set(const char * tag, const char * value) {
 	// propagate selected meta info for use in GUI
@@ -203,5 +204,10 @@ extern "C" void EMSCRIPTEN_KEEPALIVE gba_seek_position(int ms) {
 extern "C" int gba_get_max_position() __attribute__((noinline));
 extern "C" int EMSCRIPTEN_KEEPALIVE gba_get_max_position() {
 	return gsf_end_song_position();
+}
+
+extern "C" void gba_set_mask(int mask) __attribute__((noinline));
+extern "C" void EMSCRIPTEN_KEEPALIVE gba_set_mask(int mask) {
+	gsf_set_channel_mask(mask);
 }
 

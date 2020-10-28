@@ -5,7 +5,7 @@ const encoding = require('encoding-japanese');
 const fileExtensions = [
   'gsf', 'minigsf'
 ];
-
+const CHANNEL_NAME = ['Square 1', 'Square 2', 'Wave', 'Noise', 'PCM 1', 'PCM 2'];
 const SAMPLES_PER_BUFFER = 16384; // allowed: buffer sizes: 256, 512, 1024, 2048, 4096, 8192, 16384
 
 class GBALibWrapper {
@@ -120,7 +120,7 @@ class GBALibWrapper {
   }
 
   setVoices(voices) {
-    //this.gbalib.ccall('gba_set_mask', null, ['number'], [voices]);
+    this.gbalib.ccall('gba_set_mask', null, ['number'], [voices]);
   }
 
   setTempo(tempo) {
@@ -510,11 +510,11 @@ export default class GBAPlayer extends Player {
   }
 
   getVoiceName(index) {
-    return "Ch " + (index + 1);
+    return CHANNEL_NAME[index];
   }
 
   getNumVoices() {
-    return 16;
+    return CHANNEL_NAME.length;
   }
 
   setVoices(voices) {

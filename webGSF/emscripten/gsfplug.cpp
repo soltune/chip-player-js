@@ -983,6 +983,14 @@ public:
 		calcfade();
 
 	}
+
+	void set_mask (int32_t mask) {
+		if (!m_core) return;
+		for (int i = 0; i < 6; i++) {
+		    int ch_mask = (mask >> i) & 1;
+			m_core->enableAudioChannel(m_core, i, !ch_mask);
+		}
+	}
 private:
 	double MulDiv(int ms, int sampleRate, int d) {
 		return ((double)ms)*sampleRate/d;
@@ -1110,4 +1118,6 @@ void gsf_shutdown (void) {
     availableBufferSize = 0;
 }
 
-
+void gsf_set_channel_mask (int32_t mask) {
+    if (g_input_gsf) g_input_gsf->set_mask(mask);
+}
