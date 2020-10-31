@@ -66,7 +66,8 @@
 //#define trace(fmt,...)
 
 // implemented on JavaScript side (also see callback.js) for "on-demand" file load:
-extern "C" int psx_request_file(const char *filename);
+//extern "C" int psx_request_file(const char *filename);
+extern "C" int psx_request_file(const char **filenames, int count);
 
 size_t em_fgetlength( FILE * f) {
 	int fd= fileno(f);
@@ -229,12 +230,21 @@ struct psf_load_state
 };
 
 #define MAX_LIB_NAME 128
-char requiredLib[MAX_LIB_NAME];
+#define HES_MAX_LIB_COUNT 5  // _lib2 ... _lib5
+
+char *requiredLib[HES_MAX_LIB_COUNT];
+int requiredLib_count = 0;
+
 static int psf_lib_meta(void * context, const char * name, const char * value)
 {
-	if ( !strcasecmp( name, "_lib" ) )
+	if ( strcasestr( name, "_lib" ) )
     {
-		snprintf(requiredLib, MAX_LIB_NAME, "%s", value);
+        int length = strlen(value);
+        length = (length > MAX_LIB_NAME)? MAX_LIB_NAME : length;
+        requiredLib[requiredLib_count] = (char *) malloc(sizeof(char) * (length + 1));
+		strcpy(requiredLib[requiredLib_count], value);
+
+		requiredLib_count++;
     }
 	return 0;
 }
@@ -636,26 +646,39 @@ int he_init (DB_fileinfo_t *_info, const char * uri) {
 	
     he_info_t *info = (he_info_t *)_info;
 	info->path = strdup( uri );
+	requiredLib_count = 0;
 	
  //   int psf_version = psf_load( uri, &psf_file_system, 0, 0, 0, 0, 0, 0 );
-	requiredLib[0]= 0;
+	//requiredLib[0]= 0;
     int psf_version = psf_load( uri, &psf_file_system, 0, 0, 0, psf_lib_meta, 0, 0, 0, NULL );
     if (psf_version < 0) {
         trace ("he: failed to open %s\n", uri);
         return -1;
     }
 	
-	if (strlen(requiredLib)) {
+	if (requiredLib_count > 0) {
 		// lib must be loaded here or else the psf loading will fail..
 		// (enter "retry-mode" if something is missing)
 		// make sure the file will be available in the FS when the song asks for it later..
-		char tmpFileName[PATH_MAX];
-		char *p= (char*) strrchr(uri, '/');
-		int pathlen= p?(p-uri+1):0;
-		memcpy(tmpFileName, uri, pathlen);
-		snprintf(tmpFileName+pathlen, PATH_MAX-pathlen, "%s", requiredLib);
+		char *fullLibNames[requiredLib_count];
+		char buf[PATH_MAX];
 
-		int r= psx_request_file(tmpFileName);	// trigger load & check if ready
+		char *p = (char*) strrchr(uri, '/');
+		int pathlen = p ? (p - uri + 1) : 0;
+		memcpy(buf, uri, pathlen); // /aaa/bbb/ccc -> /aaa/bbb/
+
+		for (int i = 0; i < requiredLib_count; i++) {
+			snprintf(buf + pathlen, PATH_MAX - pathlen, "%s", requiredLib[i]);
+			fullLibNames[i] = (char *) malloc(sizeof(char) * (strlen(buf + 1)));
+			strcpy(fullLibNames[i], buf);
+		}
+
+		int r = psx_request_file((const char**) fullLibNames, requiredLib_count);  // trigger load & check if ready
+
+		for (int i = 0; i < requiredLib_count; i++) {
+		    free(fullLibNames[i]);
+		}
+
 		if (r <0) {
 			return -1; // file not ready
 		}
@@ -743,7 +766,12 @@ void he_free (DB_fileinfo_t *_info) {
             info->path = NULL;
         }
         free (info);
+        info = NULL;
     }
+    for(int i = 0; i < requiredLib_count; i++ ) {
+        free(requiredLib[i]);
+    }
+    requiredLib_count = 0;
 }
 
 int he_read (DB_fileinfo_t *_info, char *bytes, int size) {

@@ -534,7 +534,6 @@ export default class GBAPlayer extends Player {
   stop() {
     this.suspend();
     this.lib.teardown();
-    this.resampleBuffer.fill(0);
 
     console.debug('GBAPlayer.stop()');
     this.onPlayerStateUpdate(true);

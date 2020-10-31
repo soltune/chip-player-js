@@ -69,6 +69,7 @@ static char psfby_str[TEXT_MAX];
  	int he_get_samples_played (DB_fileinfo_t *_info);
 	int he_seek_sample (DB_fileinfo_t *_info, int sample);
 	int he_get_sample_rate (DB_fileinfo_t *_info);
+	void he_free(DB_fileinfo_t *_info);
 	
 	int psf_info_meta2(void * context, const char * name, const char * value) {
 		if ( !strcasecmp( name, "title" ) ) {
@@ -127,6 +128,8 @@ uint8 * bios_buffer= 0;
 
 extern "C" void psf_teardown (void)  __attribute__((noinline));
 extern "C" void EMSCRIPTEN_KEEPALIVE psf_teardown (void) {
+    he_free(song_info);
+    song_info = 0;
 }
 
 extern "C" int psf_setup(char *bios_path) __attribute__((noinline));

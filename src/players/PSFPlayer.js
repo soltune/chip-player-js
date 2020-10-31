@@ -561,34 +561,45 @@ export default class PSFPlayer extends Player {
   }
 
   // callback in psx_request_file(heplug.c) -> psx_request_file(psf_callback.js)
-  fileRequestCallback(p_filename) {
-    const fullFilename = this.lib.getDelegate().UTF8ToString(p_filename);
-    const [path, filename] = this.lib.getPathAndFilename(fullFilename);
+  fileRequestCallback(p_filenames, count) {
+    const psflib = this.lib.getDelegate();
+    const pathStrings = psflib.HEAP32.subarray(p_filenames >> 2, (p_filenames >> 2) + count);
+    let basePath = null;
 
-    if (this.lib.existsFileData(path, filename)) {
-      return 0;
+    const fetchTasks = [];  // there may be multiple psflibs in the tag
+    for (let i = 0; i < count; i++) {
+      const fullFilename = psflib.UTF8ToString(pathStrings[i]);
+      let [path, filename] = this.lib.getPathAndFilename(fullFilename);
+      if (!basePath) basePath = path;
+      if (this.lib.existsFileData(path, filename)) {
+        return 0;
+      }
+
+      const remotePath = this.lib.getAbsolutePath([CATALOG_PREFIX, fullFilename]);
+      fetchTasks[i] = new Promise((resolve, reject) => {
+        fetch(remotePath, {method: 'GET',})
+            .then(response => {
+              if (!response.ok) { // 404, 500.. missing pcm can be ignored for playing
+                reject(response.statusText);
+              }
+              return response.arrayBuffer();
+            })
+            .then(buffer => {
+              this.lib.registerFileData(path, filename, buffer);
+              resolve(filename);
+            })
+            .catch(e => { reject(e); });
+      });
     }
+    Promise.all(fetchTasks).then(() => {
+      if (this.lib.loadMusicData(this.sampleRate, basePath, this.lastLoadedFilename) === 0) {
+        this.init();
+        this.connect();
+        this.resume();
 
-    const remotePath = this.lib.getAbsolutePath([CATALOG_PREFIX, fullFilename]);
-    fetch(remotePath, {method: 'GET',})
-      .then(response => {
-        if (!response.ok) { // 404, 500.. missing pcm can be ignored for playing
-          throw Error(response.statusText);
-        }
-        return response.arrayBuffer();
-      })
-      .then(buffer => {
-        this.lib.registerFileData(path, filename, buffer);
-        if (this.lib.loadMusicData(this.sampleRate, path, this.lastLoadedFilename) === 0) {
-          this.init();
-          this.connect();
-          this.resume();
-
-          this.onPlayerStateUpdate(!this.isPlaying());
-        }
-      })
-      .catch(e => {});
-
+        this.onPlayerStateUpdate(!this.isPlaying());
+      }
+    });
     return -1;
   }
 }
