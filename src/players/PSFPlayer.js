@@ -572,11 +572,11 @@ export default class PSFPlayer extends Player {
       let [path, filename] = this.lib.getPathAndFilename(fullFilename);
       if (!basePath) basePath = path;
       if (this.lib.existsFileData(path, filename)) {
-        return 0;
+        continue;
       }
 
       const remotePath = this.lib.getAbsolutePath([CATALOG_PREFIX, fullFilename]);
-      fetchTasks[i] = new Promise((resolve, reject) => {
+      fetchTasks.push(new Promise((resolve, reject) => {
         fetch(remotePath, {method: 'GET',})
             .then(response => {
               if (!response.ok) { // 404, 500.. missing pcm can be ignored for playing
@@ -589,7 +589,10 @@ export default class PSFPlayer extends Player {
               resolve(filename);
             })
             .catch(e => { reject(e); });
-      });
+      }));
+    }
+    if (fetchTasks.length === 0) {
+      return 0;
     }
     Promise.all(fetchTasks).then(() => {
       if (this.lib.loadMusicData(this.sampleRate, basePath, this.lastLoadedFilename) === 0) {

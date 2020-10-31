@@ -230,7 +230,7 @@ struct psf_load_state
 };
 
 #define MAX_LIB_NAME 128
-#define HES_MAX_LIB_COUNT 5  // _lib2 ... _lib5
+#define HES_MAX_LIB_COUNT 16  // _lib2 ...
 
 char *requiredLib[HES_MAX_LIB_COUNT];
 int requiredLib_count = 0;
@@ -669,7 +669,7 @@ int he_init (DB_fileinfo_t *_info, const char * uri) {
 
 		for (int i = 0; i < requiredLib_count; i++) {
 			snprintf(buf + pathlen, PATH_MAX - pathlen, "%s", requiredLib[i]);
-			fullLibNames[i] = (char *) malloc(sizeof(char) * (strlen(buf + 1)));
+			fullLibNames[i] = (char *) malloc(sizeof(char) * (strlen(buf) + 1));
 			strcpy(fullLibNames[i], buf);
 		}
 
