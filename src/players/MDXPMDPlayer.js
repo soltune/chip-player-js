@@ -6,8 +6,7 @@ const fileExtensions = [
 ];
 
 const rhythmPath = '/rhythm';
-const internalPCMPath = '/mdxpcm';  // on the remote, pcm files should be located where mdx/pmd files are
-const remotePCMPath = '';         // if you collect pcm files at in one place, set the path.
+const internalPCMPath = '/mdxpcm';
 
 const SAMPLES_PER_BUFFER = 16384; // allowed: buffer sizes: 256, 512, 1024, 2048, 4096, 8192, 16384
 const CHANNELS = {
@@ -143,28 +142,7 @@ class MDXPMDLibWrapper {
             if (e === undefined) {
               return;
             }
-            if (!remotePCMPath) {
-              onMusicLoadFinished(result);
-              return;
-            }
-            remotePcmAbsolutePath = this.getAbsolutePath([CATALOG_PREFIX, remotePCMPath, pcmFileName]);
-            fetch(remotePcmAbsolutePath, {method: 'GET',})
-              .then(response => {
-                if (!response.ok) { // 404, 500.. missing pcm can be ignored for playing
-                  throw Error(response.statusText);
-                }
-                return response.arrayBuffer();
-              })
-              .then(buffer => {
-                this.registerFileData(internalPCMPath, pcmFileName, buffer);
-                this.mdxpmdlib.ccall('mdx_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
-                onMusicLoadFinished(result);
-
-              })
-              .catch(e => {
-                // console.log(e);
-                onMusicLoadFinished(result); // giving up
-              });
+            onMusicLoadFinished(result);
           });
       } else {
         // file already exists
@@ -186,14 +164,6 @@ class MDXPMDLibWrapper {
 
   getSampleRate() {
     return this.mdxpmdlib.ccall('mdx_get_sample_rate', 'number');
-  }
-
-  setChannelMask(deviceIndex, mask) {
-    // if (this.getDeviceName(deviceIndex) === 'OPN') {
-    //   // seem to require a padding only for OPN, according to opna.cpp
-    //   mask = (mask & 0b0111) + ((mask >> 3) << 6);
-    // }
-    // this.s98Lib.ccall('s98_set_channel_mask', null, ['number', 'number'], [deviceIndex, mask]);
   }
 
   getPathAndFilename(filename) {
