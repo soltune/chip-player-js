@@ -2,7 +2,11 @@
 
 
 ## About this fork
-Chip Player JS is web-based chip tune player written by Matt Montag.  
+Chip Player JS is web-based chip tune player written by Matt Montag.
+
+This fork can play Sega Daytona USA correctly.
+![Screen Shot](https://user-images.githubusercontent.com/38772866/99869968-9d002d00-2c12-11eb-9cb6-c5a4d247c239.png)
+  
 This fork is to share my fixes like;  
 - Small bugfixes and improvements
     - [GME] fixed incorrect text encoding handling in the tags
@@ -43,6 +47,7 @@ This fork is to share my fixes like;
         - `ym2608_adpcm_rom.bin` must be located at `chip-player-js/public/rhythm` before building (the filename is case sensitive)
     - **psf, minipsf** ([webPSX](https://github.com/wothke/webpsx))
     - **2sf, mini2sf** ([webDS](https://github.com/wothke/webDS))
+    - **gsf** ([webGSF](https://github.com/wothke/webGSF))
 - additional soundfonts
     - added two high quality piano soundfonts. if you'd like to listen piano solo this is good choice :)
         - place the following .sf2 at public/sondfonts folder to enable them
@@ -50,6 +55,26 @@ This fork is to share my fixes like;
         - [Warren S. Trachtman - Steinway Model-C Soundfont](https://archive.org/details/WST25FStein_00Sep22.sf2)
 
 **This player assumes each pcm files(.pzi, .pvi, .pdx ...) are in the same directory where the music files are.**
+
+## Building Notes
+Some static libraries must be built before launching `yarn run build-chip-core`.
+
+```sh
+$ source ~/src/emsdk/emsdk_env.sh
+
+$ cd ./psflib
+$ emmake make -f Emscripten.Makefile    # building libpsflib.a
+
+$ cd ../lazyusf2
+$ emmake make -f Emscripten.Makefile    # building liblazyusf.a
+
+$ cd ../webGSF/emscripten
+$ emmake make -f Emscripten.Makefile    # building libwebgsf.a
+
+$ cd ../../
+$ yarn run build-chip-core              # and finally build chip-core (chip-core.wasm)
+
+```
 
 ---
 
