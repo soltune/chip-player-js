@@ -1,11 +1,13 @@
 import React from 'react';
-import dice from './images/dice.png';
+import diceImage from './images/dice.png';
+import repeatImage from './images/repeat.png';
 import TimeSlider from './TimeSlider';
 import { VolumeSlider } from './VolumeSlider';
 import FavoriteButton from './FavoriteButton';
 import PlayerParams from './PlayerParams';
 import GlobalParams from './GlobalParams';
 import { pathToLinks } from './util';
+import { REPEAT_LABELS } from './Sequencer';
 
 export default class AppFooter extends React.PureComponent {
   render() {
@@ -23,6 +25,7 @@ export default class AppFooter extends React.PureComponent {
       order,
       paused,
       playerError,
+      repeat,
       showPlayerSettings,
       songUrl,
       subtitle,
@@ -35,6 +38,7 @@ export default class AppFooter extends React.PureComponent {
       // this.
       getCurrentSongLink,
       handleOrderClick,
+      handleCycleRepeat,
       handlePlayerError,
       handlePlayRandom,
       handleSetVoices,
@@ -93,8 +97,13 @@ export default class AppFooter extends React.PureComponent {
               </button>
             </span>}
             <span style={{ float: 'right' }}>
-              <button className="box-button" onClick={handlePlayRandom}>
-                <img alt="Roll the dice" src={dice} style={{ verticalAlign: 'bottom' }}/>
+              <button title="Cycle Repeat (repeat off, repeat all songs in the context, or repeat one song)" className="box-button" onClick={handleCycleRepeat}>
+                <img alt="Repeat" src={repeatImage} style={{ verticalAlign: 'bottom' }}/>
+                {REPEAT_LABELS[repeat]}
+              </button>
+              {' '}
+              <button title="Jump to a random song in the entire collection" className="box-button" onClick={handlePlayRandom}>
+                <img alt="Roll the dice" src={diceImage} style={{ verticalAlign: 'bottom' }}/>
                 Random
               </button>
               {' '}
