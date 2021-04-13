@@ -107,7 +107,7 @@ class App extends React.Component {
     });
 
     // Initialize audio graph
-    const audioCtx = this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const audioCtx = this.audioCtx = new (window.AudioContext || window.webkitAudioContext)({latencyHint: 'playback'});
     const compressor = audioCtx.createDynamicsCompressor();
     compressor.connect(audioCtx.destination);
     compressor.ratio.value = this.getCompressorRatio(1.0);
