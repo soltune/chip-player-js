@@ -4,17 +4,18 @@ import { CATALOG_PREFIX } from '../config';
 import path from 'path';
 
 const fileExtensions = [
-  'miniusf',
+  'mdx',
 ];
-const MOUNTPOINT = '/n64';
+const MOUNTPOINT = '/mdx';
 const INT16_MAX = Math.pow(2, 16) - 1;
 
-export default class N64Player extends Player {
-  constructor(audioCtx, destNode, chipCore, onPlayerStateUpdate = function() {}) {
+export default class MDXPlayer extends Player {
+  constructor(audioCtx, destNode, chipCore, onPlayerStateUpdate = function () {
+  }) {
     super(audioCtx, destNode, chipCore, onPlayerStateUpdate);
     this.loadData = this.loadData.bind(this);
 
-    // Initialize N64 filesystem
+    // Initialize MDX filesystem
     chipCore.FS.mkdirTree(MOUNTPOINT);
     chipCore.FS.mount(chipCore.FS.filesystems.IDBFS, {}, MOUNTPOINT);
     chipCore.FS.syncfs(true, (err) => {
@@ -24,46 +25,50 @@ export default class N64Player extends Player {
     });
 
     this.lib = chipCore;
+    this.mdxCtx = chipCore._mdx_create_context();
+    chipCore._mdx_set_rate(audioCtx.sampleRate);
+    chipCore._mdx_set_dir(this.mdxCtx, MOUNTPOINT);
     this.fileExtensions = fileExtensions;
     this.buffer = chipCore._malloc(this.bufferSize * 4); // 2 ch, 16-bit
-    this.setAudioProcess(this.n64AudioProcess);
+    this.setAudioProcess(this.mdxAudioProcess);
   }
 
   loadData(data, filename) {
     let err;
     this.filepathMeta = Player.metadataFromFilepath(filename);
-
-    const miniusfStr = String.fromCharCode.apply(null, data);
-    const usflibs = miniusfStr.match(/_lib=([^\s]+)/).slice(1);
-    if (usflibs.length === 0) {
-      throw new Error(`No .usflib references found in ${filename}`);
-    }
-
     const dir = path.dirname(filename);
-    const fsFilename = path.join(MOUNTPOINT, filename);
-    const promises = [
-      ensureEmscFileWithData(this.lib, fsFilename, data),
-      ...usflibs.map(usflib => {
-        const fsFilename = path.join(MOUNTPOINT, dir, usflib);
-        const url = CATALOG_PREFIX + path.join(dir, usflib);
-        return ensureEmscFileWithUrl(this.lib, fsFilename, url);
-      }),
-    ];
-
-    Promise.all(promises)
-      .then(([fsFilename]) => {
+    const mdxFilename = path.join(MOUNTPOINT, filename);
+    // Preload PDX sample files into Emscripten filesystem.
+    ensureEmscFileWithData(this.lib, mdxFilename, data)
+      .then(() => {
+        const pdx = this.lib.ccall(
+          'mdx_get_pdx_filename', 'string',
+          ['number', 'string'],
+          [this.mdxCtx, mdxFilename],
+        );
+        if (pdx) {
+          const pdxFilename = path.join(MOUNTPOINT, dir, pdx);
+          // Force upper case in the URL, as the entire MDX archive is upper case.
+          // MDX files were authored on old case-insensitive filesystems, but
+          // the music server filesystem (and URLs in general) are case-sensitive.
+          const pdxUrl = CATALOG_PREFIX + path.join(dir, pdx.toUpperCase());
+          return ensureEmscFileWithUrl(this.lib, pdxFilename, pdxUrl);
+        }
+      })
+      .then(() => {
         this.muteAudioDuringCall(this.audioNode, () => {
           err = this.lib.ccall(
-            'n64_load_file', 'number',
-            ['string', 'number', 'number', 'number'],
-            [fsFilename, this.buffer, this.bufferSize, this.audioCtx.sampleRate],
+            'mdx_open', 'number',
+            ['number', 'string', 'string'],
+            [this.mdxCtx, mdxFilename, null],
           );
 
           if (err !== 0) {
-            console.error("n64_load_file failed. error code: %d", err);
+            console.error("mdx_load_file failed. error code: %d", err);
             throw Error('Unable to load this file!');
           }
 
+          // TODO: MDX metadata
           this.metadata = { title: filename };
 
           this.connect();
@@ -73,7 +78,7 @@ export default class N64Player extends Player {
       });
   }
 
-  n64AudioProcess(e) {
+  mdxAudioProcess(e) {
     let i, channel;
     const channels = [];
     for (channel = 0; channel < e.outputBuffer.numberOfChannels; channel++) {
@@ -87,8 +92,9 @@ export default class N64Player extends Player {
       return;
     }
 
-    const samplesWritten = this.lib._n64_render_audio(this.buffer, this.bufferSize);
-    if (samplesWritten <= 0) {
+    const next = this.lib._mdx_calc_sample(
+      this.mdxCtx, this.buffer, this.bufferSize);
+    if (next === 0) {
       this.stop();
     }
 
@@ -104,17 +110,16 @@ export default class N64Player extends Player {
     }
   }
 
-  // setTempo(val) {
-  //   return this.lib._v2m_set_speed(val);
-  //   // console.error('Unable to set speed for this file format.');
-  // }
+  setTempo(val) {
+    return this.lib._mdx_set_speed(this.mdxCtx, val);
+  }
 
   getPositionMs() {
-    return this.lib._n64_get_position_ms();
+    return this.lib._mdx_get_position_ms(this.mdxCtx);
   }
 
   getDurationMs() {
-    return this.lib._n64_get_duration_ms();
+    return this.lib._mdx_get_length(this.mdxCtx) * 1000;
   }
 
   getMetadata() {
@@ -125,16 +130,34 @@ export default class N64Player extends Player {
     return !this.isPaused();
   }
 
+  getVoiceName(index) {
+    if (this.mdxCtx) return this.lib.UTF8ToString(this.lib._mdx_get_track_name(this.mdxCtx, index));
+  }
+
+  getNumVoices() {
+    if (this.mdxCtx) return this.lib._mdx_get_tracks(this.mdxCtx);
+  }
+
+  setVoices(voices) {
+    let mask = 0;
+    voices.forEach((isEnabled, i) => {
+      if (!isEnabled) {
+        mask += 1 << i;
+      }
+    });
+    if (this.mdxCtx) this.lib._mdx_set_track_mask(this.mdxCtx, mask);
+  }
+
   seekMs(seekMs) {
     this.muteAudioDuringCall(this.audioNode, () =>
-      this.lib._n64_seek_ms(seekMs)
+      this.lib._mdx_set_position_ms(this.mdxCtx, seekMs)
     );
   }
 
   stop() {
     this.suspend();
-    this.lib._n64_shutdown();
-    console.debug('N64Player.stop()');
+    this.lib._mdx_close(this.mdxCtx);
+    console.debug('MDXPlayer.stop()');
     this.onPlayerStateUpdate(true);
   }
 }

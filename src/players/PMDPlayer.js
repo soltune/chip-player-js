@@ -2,15 +2,14 @@ import Player from "./Player.js";
 import {CATALOG_PREFIX} from "../config";
 
 const fileExtensions = [
-  'mdx', 'm', 'm2', 'mz'   // MDX, PMD
+  'm', 'm2', 'mz'   // PMD
 ];
 
 const rhythmPath = '/rhythm';
-const internalPCMPath = '/mdxpcm';
+const internalPCMPath = '/pmdpcm';
 
 const SAMPLES_PER_BUFFER = 16384; // allowed: buffer sizes: 256, 512, 1024, 2048, 4096, 8192, 16384
-const CHANNELS = {
-  'PMD': [
+const CHANNELS = [
     'FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6',
     'SSG 1', 'SSG 2', 'SSG 3',
     'ADPCM',
@@ -19,68 +18,54 @@ const CHANNELS = {
     'FM Rhythm',
     'Eff',
     'PPZ8 1', 'PPZ8 2', 'PPZ8 3', 'PPZ8 4', 'PPZ8 5', 'PPZ8 6', 'PPZ8 7', 'PPZ8 8'
-  ],
-  'MDX': {
-    9: [
-      'FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6', 'FM 7', 'FM 8', 'ADPCM'
-    ],
-    16: [
-      'FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6', 'FM 7', 'FM 8',
-      'PCM8 1', 'PCM8 2', 'PCM8 3', 'PCM8 4', 'PCM8 5', 'PCM8 6', 'PCM8 7', 'PCM8 8'
-    ],
-  }
-};
+  ];
 
-class MDXPMDLibWrapper {
+class PMDLibWrapper {
   constructor(chipCore) {
-    this.mdxpmdlib = chipCore;
-    this.fs = this.mdxpmdlib.FS;
+    this.pmdlib = chipCore;
+    this.fs = this.pmdlib.FS;
     this.currentFile = null;
   }
 
   getAudioBuffer() {
-    var ptr = this.mdxpmdlib.ccall('mdx_get_audio_buffer', 'number');
+    var ptr = this.pmdlib.ccall('pmd_get_audio_buffer', 'number');
     // make it a this.Module.HEAP16 pointer
     return ptr >> 1;	// 2 x 16 bit samples
   }
 
   getAudioBufferLength() {
-    return this.mdxpmdlib.ccall('mdx_get_audio_buffer_length', 'number');
+    return this.pmdlib.ccall('pmd_get_audio_buffer_length', 'number');
   }
 
   computeAudioSamples() {
-    return this.mdxpmdlib.ccall('mdx_compute_audio_samples', 'number');
+    return this.pmdlib.ccall('pmd_compute_audio_samples', 'number');
   }
 
   getMaxPlaybackPosition() {
-    return this.mdxpmdlib.ccall('mdx_get_max_position', 'number');
+    return this.pmdlib.ccall('pmd_get_max_position', 'number');
   }
 
   getPlaybackPosition() {
-    return this.mdxpmdlib.ccall('mdx_get_current_position', 'number');
+    return this.pmdlib.ccall('pmd_get_current_position', 'number');
   }
 
   seekPlaybackPosition(pos) {
-    this.mdxpmdlib.ccall('mdx_seek_position', 'number', ['number'], [pos]);
-  }
-
-  isMdxMode() {
-    return this.mdxpmdlib.ccall('mdx_get_mdx_mode', 'number') === 1;
+    this.pmdlib.ccall('pmd_seek_position', 'number', ['number'], [pos]);
   }
 
   getPcmFilename() {
-    return this.mdxpmdlib.ccall('mdx_get_pcm_filename', 'string');
+    return this.pmdlib.ccall('pmd_get_pcm_filename', 'string');
   }
 
   getMetaData() {
     const metaData = [];
-    //const module = this.mdxpmdlib.getDelegate();
+    //const module = this.pmdlib.getDelegate();
     const numOfInfo = 2;
-    const trackInfo = this.mdxpmdlib.ccall('mdx_get_track_info', 'number');
+    const trackInfo = this.pmdlib.ccall('pmd_get_track_info', 'number');
 
-    const info = this.mdxpmdlib.HEAP32.subarray(trackInfo >> 2, (trackInfo >> 2) + numOfInfo);
+    const info = this.pmdlib.HEAP32.subarray(trackInfo >> 2, (trackInfo >> 2) + numOfInfo);
     for (let i = 0; i < numOfInfo; i++) {
-      metaData.push(this.mdxpmdlib.UTF8ToString(info[i]));
+      metaData.push(this.pmdlib.UTF8ToString(info[i]));
     }
     return metaData;
   }
@@ -108,11 +93,11 @@ class MDXPMDLibWrapper {
   }
 
   loadMusicData(sampleRate, path, filename, data, onMusicLoadFinished) {
-    let buf = this.mdxpmdlib._malloc(data.length);
-    this.mdxpmdlib.HEAPU8.set(data, buf);
-    const result = this.mdxpmdlib.ccall('mdx_load_file', 'number',
+    let buf = this.pmdlib._malloc(data.length);
+    this.pmdlib.HEAPU8.set(data, buf);
+    const result = this.pmdlib.ccall('pmd_load_file', 'number',
       ['string', 'number', 'number'], [filename, buf, data.length]);
-    this.mdxpmdlib._free(buf);
+    this.pmdlib._free(buf);
     if (result === 0) { // result -> 0: success, 1: error
       this.currentFile = filename;
     }
@@ -130,7 +115,7 @@ class MDXPMDLibWrapper {
           })
           .then(buffer => {
             this.registerFileData(internalPCMPath, pcmFileName, buffer);
-            this.mdxpmdlib.ccall('mdx_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
+            this.pmdlib.ccall('pmd_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
             onMusicLoadFinished(result);
           })
           .catch(e => {
@@ -146,7 +131,7 @@ class MDXPMDLibWrapper {
           });
       } else {
         // file already exists
-        this.mdxpmdlib.ccall('mdx_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
+        this.pmdlib.ccall('pmd_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
         onMusicLoadFinished(result);
       }
     } else {
@@ -159,11 +144,11 @@ class MDXPMDLibWrapper {
 
   teardown() {
     this.currentFile = null;
-    this.mdxpmdlib.ccall('mdx_teardown', 'number');	// just in case
+    this.pmdlib.ccall('pmd_teardown', 'number');	// just in case
   }
 
   getSampleRate() {
-    return this.mdxpmdlib.ccall('mdx_get_sample_rate', 'number');
+    return this.pmdlib.ccall('pmd_get_sample_rate', 'number');
   }
 
   getPathAndFilename(filename) {
@@ -180,28 +165,28 @@ class MDXPMDLibWrapper {
   }
 
   hasLoop() {
-    return this.mdxpmdlib.ccall('mdx_has_loop', 'number') === 1;
+    return this.pmdlib.ccall('pmd_has_loop', 'number') === 1;
   }
 
   setRhythmWithSSG(value) {
     value = value? 1 : 0;
-    this.mdxpmdlib.ccall('mdx_set_rhythm_with_ssg', null, ['number'], [value]);
+    this.pmdlib.ccall('pmd_set_rws', null, ['number'], [value]);
   }
 
   getVoiceCount() {
-    return this.mdxpmdlib.ccall('mdx_get_voices', 'number');
+    return this.pmdlib.ccall('pmd_get_voices', 'number');
   }
 
   setVoices(voices) {
-    return this.mdxpmdlib.ccall('mdx_set_voices', null, ['number'], [voices]);
+    return this.pmdlib.ccall('pmd_set_voices', null, ['number'], [voices]);
   }
 
   setTempo(tempo) {
-    //this.mdxpmdlib.ccall('mdx_set_tempo', null, ['number'], [tempo]);
+    //this.pmdlib.ccall('pmd_set_tempo', null, ['number'], [tempo]);
   }
 
   getDelegate() {
-    return this.mdxpmdlib;
+    return this.pmdlib;
   }
 
   existsFileData(path, filename) {
@@ -233,14 +218,14 @@ class MDXPMDLibWrapper {
   }
 }
 
-export default class MDXPMDPlayer extends Player {
+export default class PMDPlayer extends Player {
   constructor(audioCtx, destNode, chipCore, onPlayerStateUpdate) {
     super(audioCtx, destNode, chipCore, onPlayerStateUpdate);
     this.setParameter = this.setParameter.bind(this);
     this.getParameter = this.getParameter.bind(this);
     this.getParamDefs = this.getParamDefs.bind(this);
 
-    this.lib = new MDXPMDLibWrapper(chipCore);
+    this.lib = new PMDLibWrapper(chipCore);
     this.fs = this.lib.fs;
     this.sampleRate = audioCtx.sampleRate;
     this.inputSampleRate = this.lib.getSampleRate();
@@ -288,18 +273,14 @@ export default class MDXPMDPlayer extends Player {
           let finished = false;
           this.currentPlaytime = this.getPositionMs();
           this.lib.computeAudioSamples();
-          if (this.lib.isMdxMode()) { // mdx
-            finished = (this.getDurationMs() <= this.currentPlaytime);
-          } else {  // pmd
-            if (this.lib.hasLoop()) {
-              if (!this.isFadingOut && this.getDurationMs() <= this.currentPlaytime) {
-                this.setFadeout(this.currentPlaytime);
-              } else if (this.getDurationMs() + fadeoutTimeMs <= this.currentPlaytime) {
-                finished = true;
-              }
-            } else {
-              finished = (this.getDurationMs() <= this.currentPlaytime);
+          if (this.lib.hasLoop()) {
+            if (!this.isFadingOut && this.getDurationMs() <= this.currentPlaytime) {
+              this.setFadeout(this.currentPlaytime);
+            } else if (this.getDurationMs() + fadeoutTimeMs <= this.currentPlaytime) {
+              finished = true;
             }
+          } else {
+            finished = (this.getDurationMs() <= this.currentPlaytime);
           }
 
           if (finished) {
@@ -584,15 +565,13 @@ export default class MDXPMDPlayer extends Player {
   getParamDefs() {
     let params = {};
     if (!this.lib.isClosed()) {
-      if (!this.lib.isMdxMode()) {
-        params = {
-          id: 'rhythmwssg',
-          label: 'Enable FM Rhythm with SSG Drums',
-          hint: 'Play FM(OPNA) rhythm samples with SSG drums',
-          type: 'toggle',
-          defaultValue: true,
-        };
-      }
+      params = {
+        id: 'rhythmwssg',
+        label: 'Enable FM Rhythm with SSG Drums',
+        hint: 'Play FM(OPNA) rhythm samples with SSG drums',
+        type: 'toggle',
+        defaultValue: true,
+      };
     }
     return [
       params,
@@ -624,11 +603,7 @@ export default class MDXPMDPlayer extends Player {
   }
 
   getVoiceName(index) {
-    if (this.lib.isMdxMode()) {
-      return CHANNELS['MDX'][this.getNumVoices()][index];
-    } else {
-      return CHANNELS['PMD'][index];
-    }
+    return CHANNELS[index];
   }
 
   getNumVoices() {
@@ -653,7 +628,7 @@ export default class MDXPMDPlayer extends Player {
     this.suspend();
     this.lib.teardown();
 
-    console.debug('MDXPMDPlayer.stop()');
+    console.debug('PMDPlayer.stop()');
     this.onPlayerStateUpdate(true);
   }
 }

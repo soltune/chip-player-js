@@ -18,7 +18,7 @@ import GMEPlayer from './players/GMEPlayer';
 import MIDIPlayer from './players/MIDIPlayer';
 import V2MPlayer from './players/V2MPlayer';
 import S98Player from "./players/S98Player";
-import MDXPMDPlayer from "./players/MDXPMDPlayer";
+import PMDPlayer from "./players/PMDPlayer";
 import FMPPlayer from "./players/FMPPlayer";
 import PSFPlayer from "./players/PSFPlayer";
 import NDSPlayer from "./players/NDSPlayer";
@@ -26,6 +26,7 @@ import StreamPlayer from "./players/StreamPlayer";
 import VGMPlayer from "./players/VGMPlayer";
 import XMPPlayer from './players/XMPPlayer';
 import N64Player from './players/N64Player';
+import MDXPlayer from './players/MDXPlayer';
 
 import AppFooter from './AppFooter';
 import AppHeader from './AppHeader';
@@ -174,7 +175,7 @@ class App extends React.Component {
             new MIDIPlayer(audioCtx, playerNode, chipCore),
             new V2MPlayer(audioCtx, playerNode, chipCore),
             new S98Player(audioCtx, playerNode, chipCore),
-            new MDXPMDPlayer(audioCtx, playerNode, chipCore),
+            new PMDPlayer(audioCtx, playerNode, chipCore),
             new FMPPlayer(audioCtx, playerNode, chipCore),
             new PSFPlayer(audioCtx, playerNode, chipCore),
             new NDSPlayer(audioCtx, playerNode, chipCore),
@@ -182,6 +183,7 @@ class App extends React.Component {
             new StreamPlayer(audioCtx, playerNode, chipCore),
             new N64Player(audioCtx, playerNode, chipCore),
             new GBAPlayer(audioCtx, playerNode, chipCore),
+            new MDXPlayer(audioCtx, playerNode, chipCore),
           ]);
           this.setState({ loading: false });
 

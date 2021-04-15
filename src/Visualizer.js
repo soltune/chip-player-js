@@ -136,9 +136,9 @@ export default class Visualizer extends PureComponent {
             </div>
           }
         </div>
-        <canvas style={enabledStyle} className='Visualizer-analyzer' width={448} height={60}
+        <canvas style={enabledStyle} className='Visualizer-analyzer' width={VIS_WIDTH} height={60}
                 ref={this.freqCanvasRef}/>
-        <canvas style={enabledStyle} className='Visualizer-spectrogram' width={448} height={400}
+        <canvas style={enabledStyle} className='Visualizer-spectrogram' width={VIS_WIDTH} height={400}
                 ref={this.specCanvasRef}/>
         <img src={pianoKeys}
              className='Visualizer-overlay'
