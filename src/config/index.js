@@ -2,6 +2,13 @@ const API_BASE = process.env.REACT_APP_API_BASE;
 const CATALOG_PREFIX = process.env.REACT_APP_CATALOG_PREFIX;
 const SOUNDFONT_URL_PATH = process.env.REACT_APP_SOUNDFONT_URL_PATH;
 
+// const API_BASE = 'https://gifx.co/chip';
+// const CATALOG_PREFIX = 'https://gifx.co/music/';
+// const SOUNDFONT_URL_PATH = 'https://gifx.co/soundfonts/';
+// const API_BASE = 'http://localhost:8080';                       // npm run server - Node.js server on port 8080
+// const CATALOG_PREFIX = 'http://localhost:8000/catalog/';        // python scripts/httpserver.py - Python file server
+// const SOUNDFONT_URL_PATH = 'http://localhost:3000/soundfonts/'; // Webpack dev server
+
 const MAX_VOICES = 64;
 const REPLACE_STATE_ON_SEEK = false;
 const FORMATS =  [

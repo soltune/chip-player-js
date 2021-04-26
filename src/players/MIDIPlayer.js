@@ -2,9 +2,10 @@ import MIDIFile from 'midifile';
 import MIDIFilePlayer from './MIDIFilePlayer';
 
 import Player from './Player';
-import GENERAL_MIDI_PATCH_MAP from '../gm-patch-map';
 import { SOUNDFONT_URL_PATH } from '../config';
 import { ensureEmscFileWithUrl } from '../util';
+import { GM_DRUM_KITS, GM_INSTRUMENTS } from '../gm-patch-map';
+import debounce from 'lodash/debounce';
 
 let lib = null;
 const MOUNTPOINT = '/soundfonts';
@@ -166,6 +167,7 @@ export default class MIDIPlayer extends Player {
     this.getParameter = this.getParameter.bind(this);
     this.getParamDefs = this.getParamDefs.bind(this);
     this.switchSynthBasedOnFilename = this.switchSynthBasedOnFilename.bind(this);
+    this.ensureWebMidiInitialized = this.ensureWebMidiInitialized.bind(this);
 
     lib = chipCore;
     lib._tp_init(audioCtx.sampleRate);
@@ -185,6 +187,8 @@ export default class MIDIPlayer extends Player {
     this.buffer = lib.allocate(this.bufferSize * 8, 'i32', lib.ALLOC_NORMAL);
     this.filepathMeta = {};
     this.midiFilePlayer = new MIDIFilePlayer({
+      // onPlayerStateUpdate must be debounced/throttled
+      programChangeCb: () => this.onPlayerStateUpdate(false),
       output: dummyMidiOutput,
       skipSilence: true,
       sampleRate: this.sampleRate,
@@ -214,29 +218,7 @@ export default class MIDIPlayer extends Player {
     this.paramDefs.find(def => def.id === 'opl3bank').options =
       [{ label: 'OPL3 Bank', items: oplBanks }];
 
-    // Initialize MIDI output devices
-    if (typeof navigator.requestMIDIAccess === 'function') {
-      navigator.requestMIDIAccess({ sysex: true }).then((access) => {
-        if (access.outputs.length === 0) {
-          console.warn('No MIDI output devices found.');
-        } else {
-          [...access.outputs.values()].forEach(midiOutput => {
-            console.log('MIDI Output:', midiOutput);
-            midiDevices.push(midiOutput);
-            this.paramDefs.find(def => def.id === 'mididevice').options[0].items.push({
-              label: midiOutput.name,
-              value: midiDevices.length - 1,
-            });
-          });
-
-          // TODO: remove if removing Dummy Device
-          this.setParameter('mididevice', 1);
-        }
-      });
-    } else {
-      console.warn('Web MIDI API not supported. Try Chrome if you want to use external MIDI output devices.');
-    }
-
+    this.webMidiIsInitialized = false;
     // this.midiFilePlayer = new MIDIFilePlayer({ output: dummyMidiOutput });
 
     // Initialize parameters
@@ -244,6 +226,10 @@ export default class MIDIPlayer extends Player {
     this.paramDefs.forEach(param => this.setParameter(param.id, param.defaultValue));
 
     this.setAudioProcess(this.midiAudioProcess);
+  }
+
+  setOnPlayerStateUpdate(fn) {
+    this.onPlayerStateUpdate = debounce(fn, 200);
   }
 
   midiAudioProcess(e) {
@@ -308,7 +294,36 @@ export default class MIDIPlayer extends Player {
     return meta;
   }
 
+  ensureWebMidiInitialized() {
+    if (this.webMidiIsInitialized === true) return;
+    this.webMidiIsInitialized = true;
+
+    // Initialize MIDI output devices
+    if (typeof navigator.requestMIDIAccess === 'function') {
+      navigator.requestMIDIAccess({ sysex: true }).then((access) => {
+        if (access.outputs.length === 0) {
+          console.warn('No MIDI output devices found.');
+        } else {
+          [...access.outputs.values()].forEach(midiOutput => {
+            console.log('MIDI Output:', midiOutput);
+            midiDevices.push(midiOutput);
+            this.paramDefs.find(def => def.id === 'mididevice').options[0].items.push({
+              label: midiOutput.name,
+              value: midiDevices.length - 1,
+            });
+          });
+
+          // TODO: remove if removing Dummy Device
+          this.setParameter('mididevice', 1);
+        }
+      });
+    } else {
+      console.warn('Web MIDI API not supported. Try Chrome if you want to use external MIDI output devices.');
+    }
+  }
+
   loadData(data, filepath) {
+    this.ensureWebMidiInitialized();
     this.filepathMeta = this.metadataFromFilepath(filepath);
 
     if (this.getParameter('autoengine')) {
@@ -409,12 +424,9 @@ export default class MIDIPlayer extends Player {
   }
 
   getVoiceName(index) {
-    const channel = this.activeChannels[index];
-    if (channel === 9) {
-      return 'Drums';
-    } else {
-      return GENERAL_MIDI_PATCH_MAP[this.midiFilePlayer.getChannelProgramNum(channel)];
-    }
+    const ch = this.activeChannels[index];
+    const pgm = this.midiFilePlayer.channelProgramNums[ch];
+    return ch === 9 ? (GM_DRUM_KITS[pgm] || GM_DRUM_KITS[0]) : GM_INSTRUMENTS[pgm]
   }
 
   setVoices(voices) {
