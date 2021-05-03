@@ -25,6 +25,7 @@ export default class AppFooter extends React.PureComponent {
       order,
       paused,
       playerError,
+      reverb,
       repeat,
       showPlayerSettings,
       songUrl,
@@ -41,6 +42,7 @@ export default class AppFooter extends React.PureComponent {
       handleCycleRepeat,
       handlePlayerError,
       handlePlayRandom,
+      handleReverbClick,
       handleSetVoices,
       handleTempoChange,
       handleTimeSliderChange,
@@ -187,6 +189,8 @@ export default class AppFooter extends React.PureComponent {
             <GlobalParams
                 boost={boost}
                 order={order}
+                reverb={reverb}
+                handleReverbClick={handleReverbClick}
                 handleVolumeBoostChange={handleVolumeBoostChange}
                 handleOrderClick={handleOrderClick} />
         </div>}

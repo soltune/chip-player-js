@@ -7,6 +7,7 @@ import 'firebase/auth';
 import 'firebase/firestore';
 import { BrowserRouter as Router, NavLink, Route, Switch } from 'react-router-dom';
 import Dropzone from 'react-dropzone';
+import {Filter, AdvancedReverb} from "./effects/Reverb";
 
 import ChipCore from './chip-core';
 import firebaseConfig from './config/firebaseConfig';
@@ -70,6 +71,7 @@ class App extends React.Component {
     this.setSpeedRelative = this.setSpeedRelative.bind(this);
     this.handleVolumeBoostChange = this.handleVolumeBoostChange.bind(this);
     this.handleOrderClick = this.handleOrderClick.bind(this);
+    this.handleReverbClick = this.handleReverbClick.bind(this);
     this.getCurrentSongLink = this.getCurrentSongLink.bind(this);
 
     this.attachMediaKeyHandlers();
@@ -117,6 +119,22 @@ class App extends React.Component {
     gainNode.gain.value = 1;
 
     gainNode.connect(compressor);
+
+    this.reverbFilter = new Filter(audioCtx, "lowpass", 50000, 0.8);
+    this.reverbFilter.setup();
+
+    this.reverb = new AdvancedReverb(audioCtx);
+    this.reverb.setup(0.3,0.01);
+    this.reverb.renderTail();
+    this.reverb.wet.gain.value = 1.1;
+
+    // SOURCE -> gain -> Lowpass Filter -> Reverb -> Compressor -> OUTPUT
+    this.reverbGain = this.audioCtx.createGain();
+    gainNode.connect(this.reverbGain);
+    // this.reverbGain.connect(this.reverbFilter.input);
+    this.reverbFilter.connect(this.reverb.input);
+    this.reverb.connect(compressor);
+
     const playerNode = this.playerNode = gainNode;
     if (audioCtx.state === 'suspended') {
       this.prepareMediaSessionAudio();
@@ -156,6 +174,7 @@ class App extends React.Component {
       repeat: REPEAT_OFF,
       boost: 1.0,
       order: 'orderByTitle',
+      reverb: 0,
       directories: {},
     };
 
@@ -634,235 +653,252 @@ class App extends React.Component {
     // should we clear also context in Sequencer?
   }
 
-  fetchDirectory(path) {
-    fetch(`${API_BASE}/browse?path=%2F${encodeURIComponent(path)}`,{cache: "no-cache"})
-      .then(response => response.json())
-      .then(json => {
-        const items = App[this.state.order](json)
-          .sort((a, b) => {
-            if (a.type < b.type) return -1;
-            if (a.type > b.type) return 1;
-            return 0;
-          })
-          .map((item, i) => {
-            item.idx = i;
-            return item;
-          });
-        const directories = {
-          ...this.state.directories,
-          [path]: items,
-        };
-        this.setState({ directories });
+  handleReverbClick(event) {
+    const value = parseFloat(event.target.value);
+    if (value === 0) {
+      if (this.state.reverb > 0) {
+        this.reverbGain.disconnect(); // disconnect to avoid unnecessary load
+      }
+    } else {
+      this.reverb.decayTime = value;
+      if (this.state.reverb === 0) {
+        this.reverbGain.connect(this.reverbFilter.input);
+      }
+    }
+    this.setState({reverb: value});
+}
+
+fetchDirectory(path) {
+fetch(`${API_BASE}/browse?path=%2F${encodeURIComponent(path)}`,{cache: "no-cache"})
+  .then(response => response.json())
+  .then(json => {
+    const items = App[this.state.order](json)
+      .sort((a, b) => {
+        if (a.type < b.type) return -1;
+        if (a.type > b.type) return 1;
+        return 0;
+      })
+      .map((item, i) => {
+        item.idx = i;
+        return item;
       });
-  }
-
-  static titlesFromMetadata(metadata) {
-    if (metadata.formatted) {
-      return metadata.formatted;
-    }
-
-    const title = App.allOrNone(metadata.artist, ' - ') + metadata.title;
-    const subtitle = [metadata.game, metadata.system].filter(x => x).join(' - ') +
-      App.allOrNone(' (', metadata.copyright, ')');
-    return {title, subtitle};
-   }
-
-  static allOrNone(...args) {
-    let str = '';
-    for (let i = 0; i < args.length; i++) {
-      if (!args[i]) return '';
-      str += args[i];
-    }
-    return str;
-  }
-
-  static orderByTitle(json) {
-    const arabicMap = {};
-    const needsRomanNumeralSort = json.some(item => {
-      // Only convert Roman numerals if the list sort could benefit from it.
-      // Roman numerals less than 9 would be sorted incidentally.
-      // This assumes that
-      // - Roman numerals are formatted with a period.
-      // - Roman numeral ranges don't have gaps.
-      return item.path.toLowerCase().indexOf('ix') > -1;
-    });
-    if (needsRomanNumeralSort) {
-      console.log("Roman numeral sort is active for this directory");
-      json.forEach(item => arabicMap[item.path] = replaceRomanWithArabic(item.path));
-    }
-    return json.sort((a, b) => {
-      const [strA, strB] = needsRomanNumeralSort ?
-        [arabicMap[a.path], arabicMap[b.path]] :
-        [a.path, b.path];
-      return NUMERIC_COLLATOR.compare(strA, strB);
-    })
-  }
-
-  static orderBySize(json) {
-    return json.sort((a, b) => {
-      return a.size - b.size;
-    })
-  }
-
-  static orderByDate(json) {
-    return json.sort((a, b) => {
-      return a.mtimeMs - b.mtimeMs;
-    })
-  }
-
-  getCurrentSongLink() {
-    const url = this.sequencer.getCurrUrl();
-    return url ? process.env.PUBLIC_URL + '/?play=' + encodeURIComponent(url.replace(CATALOG_PREFIX, '')) : '#';
-  }
-
-  onDrop = (droppedFiles) => {
-    const reader = new FileReader();
-    const file = droppedFiles[0];
-    reader.onload = () => {
-      const songData = reader.result;
-      this.sequencer.playSongFile(file.name, songData);
+    const directories = {
+      ...this.state.directories,
+      [path]: items,
     };
-    reader.readAsArrayBuffer(file);
-  };
+    this.setState({ directories });
+  });
+}
 
-  render() {
-    const {title, subtitle} = titlesFromMetadata(this.state.currentSongMetadata);
-    const currContext = this.sequencer.getCurrContext();
-    const currIdx = this.sequencer.getCurrIdx();
-    const search = { search: window.location.search };
-    return (
-      <Router basename={process.env.PUBLIC_URL}>
-        <Dropzone
-          disableClick
-          style={{}}
-          onDrop={this.onDrop}>{dropzoneProps => (
-          <div className="App">
-            <DropMessage dropzoneProps={dropzoneProps}/>
-            <div hidden={!this.state.showInfo} className="message-box-outer">
-              <div hidden={!this.state.showInfo} className="message-box">
-                <div className="message-box-inner">
-              <pre style={{ maxHeight: '100%', margin: 0 }}>
-                {this.state.infoTexts[0]}
-              </pre>
-                </div>
-                <div className="message-box-footer">
-                  <button className="box-button message-box-button" onClick={this.toggleInfo}>Close</button>
-                </div>
-              </div>
+static titlesFromMetadata(metadata) {
+if (metadata.formatted) {
+  return metadata.formatted;
+}
+
+const title = App.allOrNone(metadata.artist, ' - ') + metadata.title;
+const subtitle = [metadata.game, metadata.system].filter(x => x).join(' - ') +
+  App.allOrNone(' (', metadata.copyright, ')');
+return {title, subtitle};
+}
+
+static allOrNone(...args) {
+let str = '';
+for (let i = 0; i < args.length; i++) {
+  if (!args[i]) return '';
+  str += args[i];
+}
+return str;
+}
+
+static orderByTitle(json) {
+const arabicMap = {};
+const needsRomanNumeralSort = json.some(item => {
+  // Only convert Roman numerals if the list sort could benefit from it.
+  // Roman numerals less than 9 would be sorted incidentally.
+  // This assumes that
+  // - Roman numerals are formatted with a period.
+  // - Roman numeral ranges don't have gaps.
+  return item.path.toLowerCase().indexOf('ix') > -1;
+});
+if (needsRomanNumeralSort) {
+  console.log("Roman numeral sort is active for this directory");
+  json.forEach(item => arabicMap[item.path] = replaceRomanWithArabic(item.path));
+}
+return json.sort((a, b) => {
+  const [strA, strB] = needsRomanNumeralSort ?
+    [arabicMap[a.path], arabicMap[b.path]] :
+    [a.path, b.path];
+  return NUMERIC_COLLATOR.compare(strA, strB);
+})
+}
+
+static orderBySize(json) {
+return json.sort((a, b) => {
+  return a.size - b.size;
+})
+}
+
+static orderByDate(json) {
+return json.sort((a, b) => {
+  return a.mtimeMs - b.mtimeMs;
+})
+}
+
+getCurrentSongLink() {
+const url = this.sequencer.getCurrUrl();
+return url ? process.env.PUBLIC_URL + '/?play=' + encodeURIComponent(url.replace(CATALOG_PREFIX, '')) : '#';
+}
+
+onDrop = (droppedFiles) => {
+const reader = new FileReader();
+const file = droppedFiles[0];
+reader.onload = () => {
+  const songData = reader.result;
+  this.sequencer.playSongFile(file.name, songData);
+};
+reader.readAsArrayBuffer(file);
+};
+
+render() {
+const {title, subtitle} = titlesFromMetadata(this.state.currentSongMetadata);
+const currContext = this.sequencer.getCurrContext();
+const currIdx = this.sequencer.getCurrIdx();
+const search = { search: window.location.search };
+return (
+  <Router basename={process.env.PUBLIC_URL}>
+    <Dropzone
+      disableClick
+      style={{}}
+      onDrop={this.onDrop}>{dropzoneProps => (
+      <div className="App">
+        <DropMessage dropzoneProps={dropzoneProps}/>
+        <div hidden={!this.state.showInfo} className="message-box-outer">
+          <div hidden={!this.state.showInfo} className="message-box">
+            <div className="message-box-inner">
+          <pre style={{ maxHeight: '100%', margin: 0 }}>
+            {this.state.infoTexts[0]}
+          </pre>
             </div>
-            <AppHeader user={this.state.user}
-                       handleLogout={this.handleLogout}
-                       handleLogin={this.handleLogin}
-                       isPhone={isMobile.phone}/>
-            <div className="App-main">
-              <div className="App-main-inner">
-                <div className="tab-container">
-                  <NavLink className="tab" activeClassName="tab-selected" to={{ pathname: "/", ...search }}
-                           exact>Search</NavLink>
-                  <NavLink className="tab" activeClassName="tab-selected"
-                           to={{ pathname: "/browse", ...search }}>Browse</NavLink>
-                  <NavLink className="tab" activeClassName="tab-selected"
-                           to={{ pathname: "/favorites", ...search }}>Favorites</NavLink>
-                </div>
-                <div className="App-main-content-area" ref={this.contentAreaRef}>
-                  <Switch>
-                    <Route path="/" exact render={() => (
-                      <Search
-                        currContext={currContext}
-                        currIdx={currIdx}
-                        toggleFavorite={this.handleToggleFavorite}
-                        favorites={this.state.faves}
-                        onSongClick={this.handleSongClick}>
-                        {this.state.loading && <p>Loading player engine...</p>}
-                      </Search>
-                    )}/>
-                    <Route path="/favorites" render={() => (
-                      <Favorites
-                        user={this.state.user}
-                        loadingUser={this.state.loadingUser}
-                        handleLogin={this.handleLogin}
-                        onSongClick={this.handleSongClick}
-                        currContext={currContext}
-                        currIdx={currIdx}
-                        toggleFavorite={this.handleToggleFavorite}
-                        favorites={this.state.faves}/>
-                    )}/>
-                    <Route path="/browse/:browsePath*" render={({ history, match, location }) => {
-                      // Undo the react-router-dom double-encoded % workaround - see DirectoryLink.js
-                      if (match.params.browsePath)
-                        match.params.browsePath = match.params.browsePath.replace('%25', '%');
-                      return (
-                        this.contentAreaRef.current &&
-                        <Browse currContext={currContext}
-                                currIdx={currIdx}
-                                historyAction={history.action}
-                                locationKey={location.key}
-                                browsePath={match.params.browsePath || ''}
-                                directories={this.state.directories}
-                                fetchDirectory={this.fetchDirectory}
-                                handleSongClick={this.handleSongClick}
-                                handleShufflePlay={this.handleShufflePlay}
-                                scrollContainerRef={this.contentAreaRef}
-                                favorites={this.state.faves}
-                                toggleFavorite={this.handleToggleFavorite}/>
-                      );
-                    }}/>
-                  </Switch>
-                </div>
-              </div>
-              {!isMobile.phone && !this.state.loading &&
-              <Visualizer audioCtx={this.audioCtx}
-                          sourceNode={this.playerNode}
-                          chipCore={this.chipCore}
-                          paused={this.state.ejected || this.state.paused}/>}
+            <div className="message-box-footer">
+              <button className="box-button message-box-button" onClick={this.toggleInfo}>Close</button>
             </div>
-            <AppFooter
-              boost={this.state.boost}
-              currentSongDurationMs={this.state.currentSongDurationMs}
-              currentSongNumSubtunes={this.state.currentSongNumSubtunes}
-              currentSongNumVoices={this.state.currentSongNumVoices}
-              currentSongSubtune={this.state.currentSongSubtune}
-              ejected={this.state.ejected}
-              faves={this.state.faves}
-              getCurrentSongLink={this.getCurrentSongLink}
-              handleOrderClick={this.handleOrderClick}
-              handleCycleRepeat={this.handleCycleRepeat}
-              handlePlayerError={this.handlePlayerError}
-              handlePlayRandom={this.handlePlayRandom}
-              handleSetVoices={this.handleSetVoices}
-              handleTempoChange={this.handleTempoChange}
-              handleTimeSliderChange={this.handleTimeSliderChange}
-              handleToggleFavorite={this.handleToggleFavorite}
-              handleVolumeBoostChange={this.handleVolumeBoostChange}
-              handleVolumeChange={this.handleVolumeChange}
-              imageUrl={this.state.imageUrl}
-              infoTexts={this.state.infoTexts}
-              nextSong={this.nextSong}
-              nextSubtune={this.nextSubtune}
-              order={this.state.order}
-              paused={this.state.paused}
-              playerError={this.state.playerError}
-              prevSong={this.prevSong}
-              prevSubtune={this.prevSubtune}
-              repeat={this.state.repeat}
-              sequencer={this.sequencer}
-              showPlayerSettings={this.state.showPlayerSettings}
-              songUrl={this.state.songUrl}
-              subtitle={subtitle}
-              tempo={this.state.tempo}
-              title={title}
-              toggleInfo={this.toggleInfo}
-              togglePause={this.togglePause}
-              toggleSettings={this.toggleSettings}
-              voiceNames={this.state.voiceNames}
-              voices={this.state.voices}
-              volume={this.state.volume}
-            />
           </div>
-        )}</Dropzone>
-      </Router>
-    );
-  }
+        </div>
+        <AppHeader user={this.state.user}
+                   handleLogout={this.handleLogout}
+                   handleLogin={this.handleLogin}
+                   isPhone={isMobile.phone}/>
+        <div className="App-main">
+          <div className="App-main-inner">
+            <div className="tab-container">
+              <NavLink className="tab" activeClassName="tab-selected" to={{ pathname: "/", ...search }}
+                       exact>Search</NavLink>
+              <NavLink className="tab" activeClassName="tab-selected"
+                       to={{ pathname: "/browse", ...search }}>Browse</NavLink>
+              <NavLink className="tab" activeClassName="tab-selected"
+                       to={{ pathname: "/favorites", ...search }}>Favorites</NavLink>
+            </div>
+            <div className="App-main-content-area" ref={this.contentAreaRef}>
+              <Switch>
+                <Route path="/" exact render={() => (
+                  <Search
+                    currContext={currContext}
+                    currIdx={currIdx}
+                    toggleFavorite={this.handleToggleFavorite}
+                    favorites={this.state.faves}
+                    onSongClick={this.handleSongClick}>
+                    {this.state.loading && <p>Loading player engine...</p>}
+                  </Search>
+                )}/>
+                <Route path="/favorites" render={() => (
+                  <Favorites
+                    user={this.state.user}
+                    loadingUser={this.state.loadingUser}
+                    handleLogin={this.handleLogin}
+                    onSongClick={this.handleSongClick}
+                    currContext={currContext}
+                    currIdx={currIdx}
+                    toggleFavorite={this.handleToggleFavorite}
+                    favorites={this.state.faves}/>
+                )}/>
+                <Route path="/browse/:browsePath*" render={({ history, match, location }) => {
+                  // Undo the react-router-dom double-encoded % workaround - see DirectoryLink.js
+                  if (match.params.browsePath)
+                    match.params.browsePath = match.params.browsePath.replace('%25', '%');
+                  return (
+                    this.contentAreaRef.current &&
+                    <Browse currContext={currContext}
+                            currIdx={currIdx}
+                            historyAction={history.action}
+                            locationKey={location.key}
+                            browsePath={match.params.browsePath || ''}
+                            directories={this.state.directories}
+                            fetchDirectory={this.fetchDirectory}
+                            handleSongClick={this.handleSongClick}
+                            handleShufflePlay={this.handleShufflePlay}
+                            scrollContainerRef={this.contentAreaRef}
+                            favorites={this.state.faves}
+                            toggleFavorite={this.handleToggleFavorite}/>
+                  );
+                }}/>
+              </Switch>
+            </div>
+          </div>
+          {!isMobile.phone && !this.state.loading &&
+          <Visualizer audioCtx={this.audioCtx}
+                      sourceNode={this.playerNode}
+                      chipCore={this.chipCore}
+                      paused={this.state.ejected || this.state.paused}/>}
+        </div>
+        <AppFooter
+          boost={this.state.boost}
+          reverb={this.state.reverb}
+          currentSongDurationMs={this.state.currentSongDurationMs}
+          currentSongNumSubtunes={this.state.currentSongNumSubtunes}
+          currentSongNumVoices={this.state.currentSongNumVoices}
+          currentSongSubtune={this.state.currentSongSubtune}
+          ejected={this.state.ejected}
+          faves={this.state.faves}
+          getCurrentSongLink={this.getCurrentSongLink}
+          handleOrderClick={this.handleOrderClick}
+          handleReverbClick={this.handleReverbClick}
+          handleCycleRepeat={this.handleCycleRepeat}
+          handlePlayerError={this.handlePlayerError}
+          handlePlayRandom={this.handlePlayRandom}
+          handleSetVoices={this.handleSetVoices}
+          handleTempoChange={this.handleTempoChange}
+          handleTimeSliderChange={this.handleTimeSliderChange}
+          handleToggleFavorite={this.handleToggleFavorite}
+          handleVolumeBoostChange={this.handleVolumeBoostChange}
+          handleVolumeChange={this.handleVolumeChange}
+          imageUrl={this.state.imageUrl}
+          infoTexts={this.state.infoTexts}
+          nextSong={this.nextSong}
+          nextSubtune={this.nextSubtune}
+          order={this.state.order}
+          paused={this.state.paused}
+          playerError={this.state.playerError}
+          prevSong={this.prevSong}
+          prevSubtune={this.prevSubtune}
+          repeat={this.state.repeat}
+          sequencer={this.sequencer}
+          showPlayerSettings={this.state.showPlayerSettings}
+          songUrl={this.state.songUrl}
+          subtitle={subtitle}
+          tempo={this.state.tempo}
+          title={title}
+          toggleInfo={this.toggleInfo}
+          togglePause={this.togglePause}
+          toggleSettings={this.toggleSettings}
+          voiceNames={this.state.voiceNames}
+          voices={this.state.voices}
+          volume={this.state.volume}
+        />
+      </div>
+    )}</Dropzone>
+  </Router>
+);
+}
 }
 
 export default App;

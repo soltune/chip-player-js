@@ -53,6 +53,8 @@ This fork is to share my fixes like;
         - place the following .sf2 at public/sondfonts folder to enable them
         - [Equinox Grand Pianos](http://www.mediafire.com/?12enyjv0ewj)
         - [Warren S. Trachtman - Steinway Model-C Soundfont](https://archive.org/details/WST25FStein_00Sep22.sf2)
+- Reverb effect
+    - may be useful when playing a system(like nes, gameboy, msx ...) that does not have its own reverb.
 
 **This player assumes each pcm files(.pzi, .pvi, .pdx ...) are in the same directory where the music files are.**
 
