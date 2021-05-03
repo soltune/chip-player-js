@@ -55,6 +55,38 @@ This fork is to share my fixes like;
         - [Warren S. Trachtman - Steinway Model-C Soundfont](https://archive.org/details/WST25FStein_00Sep22.sf2)
 - Reverb effect
     - may be useful when playing a system(like nes, gameboy, msx ...) that does not have its own reverb.
+    - all impulse response files are from [Open AIR](https://www.openair.hosted.york.ac.uk/).
+        - [Koli National Park - Summer](https://www.openair.hosted.york.ac.uk/?page_id=577) ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))
+            - www.openairlib.net
+            - Andrew Chadwick
+            - Simon Shelley
+        - [Maes Howe](https://www.openair.hosted.york.ac.uk/?page_id=602) ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))
+            - www.openairlib.net
+            - Audiolab, University of York
+            - Dr. Damian T. Murphy
+        - [St Lawrence Church Molenbeek](https://www.openair.hosted.york.ac.uk/?page_id=638) ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))
+            - Audiolab, University of York
+            - Simon Shelley
+        - [Stairway, University of York](https://www.openair.hosted.york.ac.uk/?page_id=678) ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))
+            - Audiolab, University of York
+            - Simon Shelley
+        - [St Andrew’s Church](https://www.openair.hosted.york.ac.uk/?page_id=683) ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))
+            - www.openairlib.net
+            - Audiolab, University of York
+            - Dr. Damian T. Murphy
+        - [Lady Chapel, St Albans Cathedral](https://www.openair.hosted.york.ac.uk/?page_id=595) ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))
+            - www.openairlib.net
+            - Audiolab, University of York
+            - Marcin Gorzel
+            - Gavin Kearney
+            - Aglaia Foteinou
+            - Sorrel Hoare
+            - Simon Shelley
+        - [Tyndall Bruce Monument](https://www.openair.hosted.york.ac.uk/?page_id=764)  ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))   
+            - www.openairlib.net
+            - Audiolab, University of York
+            - Dr. Damian T. Murphy
+    
 
 **This player assumes each pcm files(.pzi, .pvi, .pdx ...) are in the same directory where the music files are.**
 

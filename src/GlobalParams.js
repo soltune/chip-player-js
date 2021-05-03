@@ -15,10 +15,14 @@ export default class GlobalParams extends PureComponent {
         <br />
         <label title="select impulse model for reverb" >
         Reverb:{' '}
-            <select onChange={this.props.handleReverbClick}>
-            {this.props.reverbImpulseModels.map(option => {
-                return (<option key={option.value} value={option.value}>{option.label}</option>);
-            })}
+            <select onChange={this.props.handleReverbClick} defaultValue={''}>
+                {this.props.reverbImpulseModels.map(group => {
+                    return (<optgroup key={group.label} label={group.label}>
+                        {group.items.map(option => {
+                            return (<option key={option.value} value={option.value} >{option.label}</option>);
+                        })}
+                    </optgroup>);
+                })}
             </select>
         </label>
         <br />

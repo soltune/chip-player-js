@@ -16,7 +16,7 @@ export class ImpulseResponseReverb {
     loadModel(irUrl) {
         fetch(irUrl, {method: 'GET',})
             .then(response => {
-                if (!response.ok) { // 404, 500.. missing pcm can be ignored for playing
+                if (!response.ok) {
                     throw Error(response.statusText);
                 }
                 return response.arrayBuffer();
@@ -52,10 +52,32 @@ export class ImpulseResponseReverb {
 }
 
 export const IMPULSE_MODELS = [
-    {label: 'Disabled', value: ''},
-    {label: 'KinoullAisle', value: 'KinoullAisle.m4a'},
-    {label: 'Maes-Howe', value: 'MaesHowe.m4a'},
-    {label: 'Basement', value: 'Basement.m4a'},
-    {label: 'StairwayUniversityOfYork.m4a', value: 'StairwayUniversityOfYork.m4a'}
+    {
+        label: '-',
+        items: [ {label: 'Disabled', value: ''}, ],
+    },
+    {
+        label: 'Small Reflection',
+        items: [
+            {label: 'Basement', value: 'Basement.m4a'},
+            {label: 'Koli National Park - Summer', value: 'koli_summer_site2.m4a'},
+            {label: 'Maes Howe', value: 'MaesHowe.m4a'},
+        ],
+    },
+    {
+        label: 'Middle Reflection',
+        items: [
+            {label: 'St Lawrence Church Molenbeek', value: 'SaintLawrenceChurchMolenbeekWersbeekBelgium.m4a'},
+            {label: 'Stairway, University of York', value: 'StairwayUniversityOfYork.m4a'},
+        ],
+    },
+    {
+        label: 'Large Reflection',
+        items: [
+            {label: 'St Andrew’s Church', value: 'StAndrewsChurch.m4a'},
+            {label: 'Lady Chapel, St Albans Cathedral', value: 'LadyChapelStAlbansCathedral.m4a'},
+            {label: 'Tyndall Bruce Monument', value: 'TyndallBruceMonument.m4a'},
 
+        ],
+    },
 ];
