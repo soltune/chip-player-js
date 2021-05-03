@@ -7,7 +7,7 @@ import 'firebase/auth';
 import 'firebase/firestore';
 import { BrowserRouter as Router, NavLink, Route, Switch } from 'react-router-dom';
 import Dropzone from 'react-dropzone';
-import {Filter, AdvancedReverb} from "./effects/Reverb";
+import { ImpulseResponseReverb } from "./effects/Reverb";
 
 import ChipCore from './chip-core';
 import firebaseConfig from './config/firebaseConfig';
@@ -120,20 +120,8 @@ class App extends React.Component {
 
     gainNode.connect(compressor);
 
-    this.reverbFilter = new Filter(audioCtx, "lowpass", 50000, 0.8);
-    this.reverbFilter.setup();
-
-    this.reverb = new AdvancedReverb(audioCtx);
-    this.reverb.setup(0.3,0.01);
-    this.reverb.renderTail();
-    this.reverb.wet.gain.value = 1.1;
-
-    // SOURCE -> gain -> Lowpass Filter -> Reverb -> Compressor -> OUTPUT
-    this.reverbGain = this.audioCtx.createGain();
-    gainNode.connect(this.reverbGain);
-    // this.reverbGain.connect(this.reverbFilter.input);
-    this.reverbFilter.connect(this.reverb.input);
-    this.reverb.connect(compressor);
+    this.reverb = new ImpulseResponseReverb(audioCtx, gainNode, compressor);
+    this.reverb.gain = 0.8;
 
     const playerNode = this.playerNode = gainNode;
     if (audioCtx.state === 'suspended') {
@@ -174,7 +162,6 @@ class App extends React.Component {
       repeat: REPEAT_OFF,
       boost: 1.0,
       order: 'orderByTitle',
-      reverb: 0,
       directories: {},
     };
 
@@ -654,18 +641,12 @@ class App extends React.Component {
   }
 
   handleReverbClick(event) {
-    const value = parseFloat(event.target.value);
-    if (value === 0) {
-      if (this.state.reverb > 0) {
-        this.reverbGain.disconnect(); // disconnect to avoid unnecessary load
-      }
+    const fileName = event.target.value;
+    if (!fileName) {
+      this.reverb.dispose();
     } else {
-      this.reverb.decayTime = value;
-      if (this.state.reverb === 0) {
-        this.reverbGain.connect(this.reverbFilter.input);
-      }
+      this.reverb.loadModel('http://reverbjs.org/Library/' + fileName);
     }
-    this.setState({reverb: value});
 }
 
 fetchDirectory(path) {
@@ -852,7 +833,6 @@ return (
         </div>
         <AppFooter
           boost={this.state.boost}
-          reverb={this.state.reverb}
           currentSongDurationMs={this.state.currentSongDurationMs}
           currentSongNumSubtunes={this.state.currentSongNumSubtunes}
           currentSongNumVoices={this.state.currentSongNumVoices}

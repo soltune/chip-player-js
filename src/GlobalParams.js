@@ -13,13 +13,14 @@ export default class GlobalParams extends PureComponent {
           onChange={this.props.handleVolumeBoostChange} />{' '}
         {this.props.boost === 1.0 ? 'Off\u00A0' : 'x' + this.props.boost.toFixed(1)}
         <br />
+        <label title="select impulse model for reverb" >
         Reverb:{' '}
-        <input
-          type='range' value={this.props.reverb}
-          min='0.0' max='2.0' step='0.1'
-          onInput={this.props.handleReverbClick}
-          onChange={this.props.handleReverbClick} />{' '}
-        {this.props.reverb === 0 ? 'Off' : this.props.reverb.toFixed(1)}
+            <select onChange={this.props.handleReverbClick}>
+            {this.props.reverbImpulseModels.map(option => {
+                return (<option key={option.value} value={option.value}>{option.label}</option>);
+            })}
+            </select>
+        </label>
         <br />
         List Order:{' '}
         <label className='inline'><input onClick={this.props.handleOrderClick}

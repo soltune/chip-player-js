@@ -8,6 +8,7 @@ import PlayerParams from './PlayerParams';
 import GlobalParams from './GlobalParams';
 import { pathToLinks } from './util';
 import { REPEAT_LABELS } from './Sequencer';
+import { IMPULSE_MODELS } from "./effects/Reverb";
 
 export default class AppFooter extends React.PureComponent {
   render() {
@@ -25,7 +26,6 @@ export default class AppFooter extends React.PureComponent {
       order,
       paused,
       playerError,
-      reverb,
       repeat,
       showPlayerSettings,
       songUrl,
@@ -189,7 +189,7 @@ export default class AppFooter extends React.PureComponent {
             <GlobalParams
                 boost={boost}
                 order={order}
-                reverb={reverb}
+                reverbImpulseModels={IMPULSE_MODELS}
                 handleReverbClick={handleReverbClick}
                 handleVolumeBoostChange={handleVolumeBoostChange}
                 handleOrderClick={handleOrderClick} />
