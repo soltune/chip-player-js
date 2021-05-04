@@ -161,6 +161,7 @@ class App extends React.Component {
       volume: 100,
       repeat: REPEAT_OFF,
       boost: 1.0,
+      reverb: '',
       order: 'orderByTitle',
       directories: {},
     };
@@ -647,6 +648,7 @@ class App extends React.Component {
     } else {
       this.reverb.loadModel('/reverb/' + fileName);
     }
+    this.setState({reverb: fileName});
   }
 
   fetchDirectory(path) {
@@ -833,6 +835,7 @@ class App extends React.Component {
             </div>
             <AppFooter
               boost={this.state.boost}
+              reverb={this.state.reverb}
               currentSongDurationMs={this.state.currentSongDurationMs}
               currentSongNumSubtunes={this.state.currentSongNumSubtunes}
               currentSongNumVoices={this.state.currentSongNumVoices}

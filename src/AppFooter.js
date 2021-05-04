@@ -15,6 +15,7 @@ export default class AppFooter extends React.PureComponent {
     const {
       // this.state.
       boost,
+      reverb,
       currentSongDurationMs,
       currentSongNumSubtunes,
       currentSongNumVoices,
@@ -189,6 +190,7 @@ export default class AppFooter extends React.PureComponent {
             <GlobalParams
                 boost={boost}
                 order={order}
+                reverb={reverb}
                 reverbImpulseModels={IMPULSE_MODELS}
                 handleReverbClick={handleReverbClick}
                 handleVolumeBoostChange={handleVolumeBoostChange}

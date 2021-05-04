@@ -5,6 +5,7 @@ export default class GlobalParams extends PureComponent {
   render() {
     return (
       <div className='GlobalParams'>
+        <label title="boost whole volume, this is useful for the songs with low level" >
         Volume Level Boost:{' '}
         <input
           type='range' value={this.props.boost}
@@ -12,10 +13,11 @@ export default class GlobalParams extends PureComponent {
           onInput={this.props.handleVolumeBoostChange}
           onChange={this.props.handleVolumeBoostChange} />{' '}
         {this.props.boost === 1.0 ? 'Off\u00A0' : 'x' + this.props.boost.toFixed(1)}
+        </label>
         <br />
         <label title="select impulse model for reverb" >
         Reverb:{' '}
-            <select onChange={this.props.handleReverbClick} defaultValue={''}>
+            <select onChange={this.props.handleReverbClick} defaultValue={this.props.reverb}>
                 {this.props.reverbImpulseModels.map(group => {
                     return (<optgroup key={group.label} label={group.label}>
                         {group.items.map(option => {
@@ -26,6 +28,7 @@ export default class GlobalParams extends PureComponent {
             </select>
         </label>
         <br />
+        <label title="change file list order to 'Title', 'File size', and 'Modified date'" >
         List Order:{' '}
         <label className='inline'><input onClick={this.props.handleOrderClick}
                                          type='radio'
@@ -42,6 +45,7 @@ export default class GlobalParams extends PureComponent {
                                          value='orderByDate'
                                          defaultChecked={this.props.order === 'orderByDate'}
                                          name='order'/>Date</label>
+        </label>
       </div>
     );
   }
