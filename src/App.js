@@ -13,7 +13,7 @@ import ChipCore from './chip-core';
 import firebaseConfig from './config/firebaseConfig';
 import promisify from './promisifyXhr';
 import { API_BASE, CATALOG_PREFIX, MAX_VOICES, REPLACE_STATE_ON_SEEK } from './config';
-import { replaceRomanWithArabic, titlesFromMetadata, unlockAudioContext, updateQueryString } from './util';
+import { replaceRomanWithArabic, titlesFromMetadata, unlockAudioContext } from './util';
 
 import GMEPlayer from './players/GMEPlayer';
 import MIDIPlayer from './players/MIDIPlayer';
@@ -296,7 +296,7 @@ class App extends React.Component {
 
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
-      if (e.ctrlKey || e.metaKey) return;
+      if (e.ctrlKey || e.metaKey) return; // avoid browser keyboard shortcuts
 
       switch (e.key) {
         case 'Escape':
