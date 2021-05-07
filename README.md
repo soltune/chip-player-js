@@ -39,8 +39,6 @@ This fork is to share my fixes like;
             - 2608_SD.WAV
             - 2608_TOM.WAV
             - 2608_TOP.WAV
-    - **mdx** ([webMDX](https://github.com/wothke/webMDX), based on [mdxmini](https://github.com/mistydemeo/mdxmini))
-        - supports ADPCM/PCM (.pdx)
     - **fmp** ([fmplayer](https://github.com/takamichih/fmplayer/))
         - supports rhythm rom for OPNA
         - supports ADPCM/PCM (.pvi, .pzi(for PPZ8))
@@ -70,6 +68,10 @@ This fork is to share my fixes like;
         - [Stairway, University of York](https://www.openair.hosted.york.ac.uk/?page_id=678) ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))
             - Audiolab, University of York
             - Simon Shelley
+        - [The Dixon Studio Theatre, University of York](https://www.openair.hosted.york.ac.uk/?page_id=452) ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))
+            - Ben Lavin
+            - Darren Robinson
+            - Ya-Hsin Chou
         - [St Andrew’s Church](https://www.openair.hosted.york.ac.uk/?page_id=683) ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))
             - www.openairlib.net
             - Audiolab, University of York
@@ -91,7 +93,8 @@ This fork is to share my fixes like;
 **This player assumes each pcm files(.pzi, .pvi, .pdx ...) are in the same directory where the music files are.**
 
 ## Building Notes
-Some static libraries must be built before launching `yarn run build-chip-core`.
+Some static libraries must be present before launching `yarn run build-chip-core`.
+Build each ones like this.
 
 ```sh
 $ source ~/src/emsdk/emsdk_env.sh
@@ -108,6 +111,16 @@ $ emmake make -f Emscripten.Makefile    # building libwebgsf.a
 $ cd ../../
 $ yarn run build-chip-core              # and finally build chip-core (chip-core.wasm)
 
+```
+
+You can also enable sf3 support of FluidLite by building with `ENABLE_SF3` option like the following. 
+Loading sf3 files is quite slow, furthermore, doing the above will increase the .wasm file by around 200kb.　 
+So please consider if you need it carefully.
+
+```sh
+$ cd fluidlite/build/
+$ emcmake cmake -DENABLE_SF3=YES ..
+$ emmake make clean && emmake make fluidlite-static
 ```
 
 ---

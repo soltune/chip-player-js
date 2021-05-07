@@ -60,7 +60,7 @@ export const IMPULSE_MODELS = [
         label: 'Small Reflection',
         items: [
             {label: 'Basement', value: 'Basement.m4a'},
-            {label: 'Koli National Park - Summer', value: 'koli_summer_site2.m4a'},
+            {label: 'Koli National Park - Summer', value: 'ColiNatinalParkSummer2.m4a'},
             {label: 'Maes Howe', value: 'MaesHowe.m4a'},
         ],
     },
@@ -69,6 +69,7 @@ export const IMPULSE_MODELS = [
         items: [
             {label: 'St Lawrence Church Molenbeek', value: 'SaintLawrenceChurchMolenbeekWersbeekBelgium.m4a'},
             {label: 'Stairway, University of York', value: 'StairwayUniversityOfYork.m4a'},
+            {label: 'The Dixon Studio Theatre, University of York', value: 'DixonStudioTheatre4.m4a'}
         ],
     },
     {
