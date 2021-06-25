@@ -110,7 +110,11 @@ class App extends React.Component {
     });
 
     // Initialize audio graph
-    const audioCtx = this.audioCtx = new (window.AudioContext || window.webkitAudioContext)({latencyHint: 'playback'});
+    const audioCtx = this.audioCtx = window.audioCtx = new (window.AudioContext || window.webkitAudioContext)({
+      latencyHint: 'playback'
+    });
+    const bufferSize = Math.max( // Make sure script node bufferSize is at least baseLatency
+      Math.pow(2, Math.ceil(Math.log2((audioCtx.baseLatency || 0.001) * audioCtx.sampleRate))), 2048);
     const compressor = audioCtx.createDynamicsCompressor();
     compressor.connect(audioCtx.destination);
     compressor.ratio.value = this.getCompressorRatio(1.0);
@@ -131,7 +135,8 @@ class App extends React.Component {
     }
 
     unlockAudioContext(audioCtx, this.mediaSessionAudio);
-    console.log('Sample rate: %d hz', audioCtx.sampleRate);
+    console.log('Sample rate: %d hz. Base latency: %d. Buffer size: %d.',
+      audioCtx.sampleRate, audioCtx.baseLatency * audioCtx.sampleRate, bufferSize);
 
     // Initialize sequencer with empty players array
     this.sequencer = new Sequencer([], this.handleSequencerStateUpdate, this.handlePlayerError);
@@ -177,20 +182,20 @@ class App extends React.Component {
         },
         onRuntimeInitialized: () => {
           this.sequencer.setPlayers([
-            new GMEPlayer(audioCtx, playerNode, chipCore),
-            new XMPPlayer(audioCtx, playerNode, chipCore),
-            new MIDIPlayer(audioCtx, playerNode, chipCore),
-            new V2MPlayer(audioCtx, playerNode, chipCore),
-            new S98Player(audioCtx, playerNode, chipCore),
-            new PMDPlayer(audioCtx, playerNode, chipCore),
-            new FMPPlayer(audioCtx, playerNode, chipCore),
-            new PSFPlayer(audioCtx, playerNode, chipCore),
-            new NDSPlayer(audioCtx, playerNode, chipCore),
-            new VGMPlayer(audioCtx, playerNode, chipCore),
-            new StreamPlayer(audioCtx, playerNode, chipCore),
-            new N64Player(audioCtx, playerNode, chipCore),
-            new GBAPlayer(audioCtx, playerNode, chipCore),
-            new MDXPlayer(audioCtx, playerNode, chipCore),
+            new GMEPlayer(audioCtx, playerNode, chipCore, bufferSize),
+            new XMPPlayer(audioCtx, playerNode, chipCore, bufferSize),
+            new MIDIPlayer(audioCtx, playerNode, chipCore, bufferSize),
+            new V2MPlayer(audioCtx, playerNode, chipCore, bufferSize),
+            new S98Player(audioCtx, playerNode, chipCore, bufferSize),
+            new PMDPlayer(audioCtx, playerNode, chipCore, bufferSize),
+            new FMPPlayer(audioCtx, playerNode, chipCore, bufferSize),
+            new PSFPlayer(audioCtx, playerNode, chipCore, bufferSize),
+            new NDSPlayer(audioCtx, playerNode, chipCore, bufferSize),
+            new VGMPlayer(audioCtx, playerNode, chipCore, bufferSize),
+            new StreamPlayer(audioCtx, playerNode, chipCore, bufferSize),
+            new N64Player(audioCtx, playerNode, chipCore, bufferSize),
+            new GBAPlayer(audioCtx, playerNode, chipCore, bufferSize),
+            new MDXPlayer(audioCtx, playerNode, chipCore, bufferSize),
           ]);
           this.setState({ loading: false });
 
