@@ -99,6 +99,7 @@ export default class GMEPlayer extends Player {
     this.fadingOut = false;
     this.subtune = subtune;
     this.metadata = this._parseMetadata(subtune);
+    this.setVoices(Array(this.getNumVoices()).fill(true));  // reset channel mask
     console.debug('GMEPlayer.playSubtune(subtune=%s)', subtune);
     this.onPlayerStateUpdate(false);
     return libgme._gme_start_track(emu, subtune);
