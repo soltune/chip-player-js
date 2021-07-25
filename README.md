@@ -92,18 +92,11 @@ This fork is to share my fixes like;
 
 **This player assumes each pcm files(.pzi, .pvi, .pdx ...) are in the same directory where the music files are.**
 
-## Building Notes
-Some static libraries must be present before launching `yarn run build-chip-core`.
-Build each ones like this.
+## Building Additional library
+On this fork, an additional library must be present before launching `yarn run build-chip-core`.
 
 ```sh
 $ source ~/src/emsdk/emsdk_env.sh
-
-$ cd ./psflib
-$ emmake make -f Emscripten.Makefile    # building libpsflib.a
-
-$ cd ../lazyusf2
-$ emmake make -f Emscripten.Makefile    # building liblazyusf.a
 
 $ cd ../webGSF/emscripten
 $ emmake make -f Emscripten.Makefile    # building libwebgsf.a
