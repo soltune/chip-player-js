@@ -364,3 +364,8 @@ extern "C" void EMSCRIPTEN_KEEPALIVE fmp_set_mask(uint32_t mask) {
     opna_set_mask(&opna, mask & 0xffff);
     ppz8_set_mask(&ppz8, mask >> 16);
 }
+
+extern "C" unsigned int fmp_get_mask() __attribute__((noinline));
+extern "C" unsigned int EMSCRIPTEN_KEEPALIVE fmp_get_mask() {
+    return opna_get_mask(&opna) + (ppz8_get_mask(&ppz8) << 16);
+}

@@ -10,9 +10,8 @@ const MOUNTPOINT = '/mdx';
 const INT16_MAX = Math.pow(2, 16) - 1;
 
 export default class MDXPlayer extends Player {
-  constructor(audioCtx, destNode, chipCore, onPlayerStateUpdate = function () {
-  }) {
-    super(audioCtx, destNode, chipCore, onPlayerStateUpdate);
+  constructor(audioCtx, destNode, chipCore, bufferSize) {
+    super(audioCtx, destNode, chipCore, bufferSize);
     this.loadData = this.loadData.bind(this);
 
     // Initialize MDX filesystem
@@ -24,6 +23,7 @@ export default class MDXPlayer extends Player {
       }
     });
 
+    this.speed = 1;
     this.lib = chipCore;
     this.mdxCtx = chipCore._mdx_create_context();
     chipCore._mdx_set_rate(audioCtx.sampleRate);
@@ -39,7 +39,7 @@ export default class MDXPlayer extends Player {
     const dir = path.dirname(filename);
     const mdxFilename = path.join(MOUNTPOINT, filename);
     // Preload PDX sample files into Emscripten filesystem.
-    ensureEmscFileWithData(this.lib, mdxFilename, data)
+    return ensureEmscFileWithData(this.lib, mdxFilename, data)
       .then(() => {
         const pdx = this.lib.ccall(
           'mdx_get_pdx_filename', 'string',
@@ -65,15 +65,21 @@ export default class MDXPlayer extends Player {
 
           if (err !== 0) {
             console.error("mdx_load_file failed. error code: %d", err);
-            throw Error('Unable to load this file!');
+            throw Error('mdx_load_file failed');
           }
+          this.lib._mdx_set_speed(this.mdxCtx, this.speed);
 
-          // TODO: MDX metadata
-          this.metadata = { title: filename };
+          // Metadata
+          const ptr = this.lib._malloc(256);
+          this.lib._mdx_get_title(this.mdxCtx, ptr);
+          const buf = this.lib.HEAPU8.subarray(ptr, ptr + 256);
+          const len = buf.indexOf(0);
+          const title = new TextDecoder("shift-jis").decode(buf.subarray(0, len));
+          this.metadata = { title: title || path.basename(filename) };
 
           this.connect();
           this.resume();
-          this.onPlayerStateUpdate(false);
+          this.emit('playerStateUpdate', false);
         });
       });
   }
@@ -110,7 +116,12 @@ export default class MDXPlayer extends Player {
     }
   }
 
+  getTempo() {
+    return this.speed;
+  }
+
   setTempo(val) {
+    this.speed = val;
     return this.lib._mdx_set_speed(this.mdxCtx, val);
   }
 
@@ -138,9 +149,18 @@ export default class MDXPlayer extends Player {
     if (this.mdxCtx) return this.lib._mdx_get_tracks(this.mdxCtx);
   }
 
-  setVoices(voices) {
+  getVoiceMask() {
+    const voiceMask = [];
+    const mask = this.lib._mdx_get_track_mask(this.mdxCtx);
+    for (let i = 0; i < this.lib._mdx_get_tracks(this.mdxCtx); i++) {
+      voiceMask.push(((mask >> i) & 1) === 0);
+    }
+    return voiceMask;
+  }
+
+  setVoiceMask(voiceMask) {
     let mask = 0;
-    voices.forEach((isEnabled, i) => {
+    voiceMask.forEach((isEnabled, i) => {
       if (!isEnabled) {
         mask += 1 << i;
       }
@@ -158,6 +178,6 @@ export default class MDXPlayer extends Player {
     this.suspend();
     this.lib._mdx_close(this.mdxCtx);
     console.debug('MDXPlayer.stop()');
-    this.onPlayerStateUpdate(true);
+    this.emit('playerStateUpdate', true);
   }
 }

@@ -6,8 +6,8 @@ const fileExtensions = [
 ];
 
 export default class StreamPlayer extends Player {
-  constructor(audioCtx, destNode, chipCore, onPlayerStateUpdate) {
-    super(audioCtx, destNode, chipCore, onPlayerStateUpdate);
+  constructor(audioCtx, destNode, chipCore, bufferSize) {
+    super(audioCtx, destNode, chipCore, bufferSize);
     this.setParameter = this.setParameter.bind(this);
     this.getParameter = this.getParameter.bind(this);
     this.getParamDefs = this.getParamDefs.bind(this);
@@ -66,7 +66,7 @@ export default class StreamPlayer extends Player {
       this.buffer = buffer;
       this.connect();
       this.resume();
-      this.onPlayerStateUpdate(!this.isPlaying());
+      this.emit('playerStateUpdate', !this.isPlaying());
     });
   }
 
@@ -164,7 +164,11 @@ export default class StreamPlayer extends Player {
     return 0;
   }
 
-  setVoices(voices) {}
+  setVoiceMask(voices) {}
+
+  getVoiceMask() {
+    return [];
+  }
 
   seekMs(positionMs) {
     this.processedFrame = Math.floor(positionMs * this.sampleRate / 1000);
@@ -174,6 +178,6 @@ export default class StreamPlayer extends Player {
     this.suspend();
     this.init();
 
-    this.onPlayerStateUpdate(true);
+    this.emit('playerStateUpdate', true);
   }
 }

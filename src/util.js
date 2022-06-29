@@ -3,7 +3,7 @@ import React from 'react';
 import { toArabic } from 'roman-numerals';
 import path from 'path';
 
-import DirectoryLink from './DirectoryLink';
+import DirectoryLink from './components/DirectoryLink';
 
 const ROMAN_NUMERAL_REGEX = /\b([IVXLC]+|[ivxlc]+)[-.,)]/; // All upper case or all lower case
 const CATALOG_PREFIX_REGEX = /^https?:\/\/[a-z0-9\-.:]+(\/static)?\/(music|catalog)\//;
@@ -84,6 +84,11 @@ export function ensureEmscFileWithUrl(emscRuntime, filename, url) {
   } else {
     console.log(`Downloading ${filename}...`);
     return fetch(url)
+      .then(response => {
+        // Because fetch doesn't reject on 404
+        if(!response.ok) throw Error(`HTTP ${response.status} while fetching ${filename}`);
+        return response;
+      })
       .then(response => response.arrayBuffer())
       .then(buffer => {
         const arr = new Uint8Array(buffer);

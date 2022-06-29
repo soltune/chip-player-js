@@ -1,3 +1,4 @@
+import EventEmitter from 'events';
 //
 // Player can be viewed as a state machine with
 // 3 states (playing, paused, stopped) and 5 transitions
@@ -18,8 +19,10 @@
 // In the "stop" transition, it is disconnected.
 // "stopped" is synonymous with closed/empty.
 //
-export default class Player {
-  constructor(audioCtx, destNode, chipCore, bufferSize, onPlayerStateUpdate) {
+export default class Player extends EventEmitter {
+  constructor(audioCtx, destNode, chipCore, bufferSize) {
+    super();
+
     this._outerAudioProcess = this._outerAudioProcess.bind(this);
 
     this.paused = true;
@@ -27,7 +30,6 @@ export default class Player {
     this.metadata = {};
     this.audioCtx = audioCtx;
     this.destinationNode = destNode;
-    this.onPlayerStateUpdate = onPlayerStateUpdate;
     this.bufferSize = bufferSize;
     this._innerAudioProcess = null;
     this.audioNode = this.audioCtx.createScriptProcessor(this.bufferSize, 2, 2);
@@ -67,12 +69,13 @@ export default class Player {
     throw Error('Player.isPlaying() must be implemented.');
   }
 
-  setTempo() {
-    console.warn('Player.setTempo() not implemented for this player.');
+  getTempo() { // TODO: rename all tempo to speed
+    console.warn('Player.getTempo() not implemented for this player.');
+    return 1;
   }
 
-  setVoices() {
-    console.warn('Player.setVoices() not implemented for this player.');
+  setTempo() {
+    console.warn('Player.setTempo() not implemented for this player.');
   }
 
   setFadeout(startMs) {
@@ -95,6 +98,15 @@ export default class Player {
 
   getVoiceName(index) {
     console.warn('Player.getVoiceName() not implemented for this player.');
+  }
+
+  getVoiceMask() {
+    console.warn('Player.getVoiceMask() not implemented for this player.');
+    return [];
+  }
+
+  setVoiceMask() {
+    console.warn('Player.setVoiceMask() not implemented for this player.');
   }
 
   getNumVoices() {
@@ -130,10 +142,6 @@ export default class Player {
   suspend() {
     this.stopped = true;
     this.paused = true;
-  }
-
-  setOnPlayerStateUpdate(fn) {
-    this.onPlayerStateUpdate = fn;
   }
 
   setAudioProcess(fn) {

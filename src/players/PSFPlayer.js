@@ -173,8 +173,8 @@ class PSFLibWrapper {
 }
 
 export default class PSFPlayer extends Player {
-  constructor(audioCtx, destNode, chipCore, onPlayerStateUpdate) {
-    super(audioCtx, destNode, chipCore, onPlayerStateUpdate);
+  constructor(audioCtx, destNode, chipCore, bufferSize) {
+    super(audioCtx, destNode, chipCore, bufferSize);
     this.setParameter = this.setParameter.bind(this);
     this.getParameter = this.getParameter.bind(this);
     this.getParamDefs = this.getParamDefs.bind(this);
@@ -203,6 +203,7 @@ export default class PSFPlayer extends Player {
     this.sourceBufferLen = 0;
 
     this.params = {};
+    this.voiceMask = [];
 
     this.setAudioProcess((e) => {
       for (let i = 0; i < e.outputBuffer.numberOfChannels; i++) {
@@ -443,11 +444,12 @@ export default class PSFPlayer extends Player {
     this.lastLoadedFilename = filename;
 
     if (this.lib.loadMusicData(this.sampleRate, path, filename) === 0) {
+      this.voiceMask = Array(this.getNumVoices()).fill(true);
       this.init();
       this.connect();
       this.resume();
 
-      this.onPlayerStateUpdate(!this.isPlaying());
+      this.emit('playerStateUpdate', !this.isPlaying());
     }
   }
 
@@ -535,7 +537,7 @@ export default class PSFPlayer extends Player {
     return channels[this.lib.getPsfVersion()];
   }
 
-  setVoices(voices) {
+  setVoiceMask(voices) {
     let masks = [0, 0];
     const channelCount = 24;
     voices.forEach((enabled, i) => {
@@ -545,6 +547,11 @@ export default class PSFPlayer extends Player {
       }
     });
     this.lib.setVoices(masks[0], masks[1]);
+    this.voiceMask = voices;
+  }
+
+  getVoiceMask() {
+    return this.voiceMask;
   }
 
   seekMs(positionMs) {
@@ -557,7 +564,7 @@ export default class PSFPlayer extends Player {
     this.lib.teardown();
 
     console.debug('PSFPlayer.stop()');
-    this.onPlayerStateUpdate(true);
+    this.emit('playerStateUpdate', true);
   }
 
   // callback in psx_request_file(heplug.c) -> psx_request_file(psf_callback.js)
@@ -600,7 +607,7 @@ export default class PSFPlayer extends Player {
         this.connect();
         this.resume();
 
-        this.onPlayerStateUpdate(!this.isPlaying());
+        this.this.emit('playerStateUpdate', !this.isPlaying());
       }
     });
     return -1;

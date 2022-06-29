@@ -1151,6 +1151,10 @@ public:
 	void set_channel_mute (uint32_t mask) {
 	    m_emu->dwChannelMute = (unsigned long) mask;
 	}
+
+	uint32_t get_channel_mute () {
+	    return (uint32_t) m_emu->dwChannelMute;
+	}
 private:
 	double MulDiv(int ms, int sampleRate, int d) {
 		return ((double)ms)*sampleRate/d;
@@ -1274,4 +1278,8 @@ void ds_destory(void) {
 
 void ds_set_channel_mute( uint32_t mask ) {
     g_input_2sf->set_channel_mute( mask );
+}
+
+uint32_t ds_get_channel_mute(void) {
+    return g_input_2sf->get_channel_mute();
 }

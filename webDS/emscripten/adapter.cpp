@@ -50,6 +50,7 @@ extern	int ds_read(int16_t *output_buffer, uint16_t outSize);
 extern	int ds_seek_position (int ms);
 extern  void ds_destory(void);
 extern  void ds_set_channel_mute(uint32_t mask);
+extern  int ds_get_channel_mute(void);
 
 void ds_meta_set(const char * tag, const char * value) {
 	// propagate selected meta info for use in GUI
@@ -199,4 +200,9 @@ extern "C" int EMSCRIPTEN_KEEPALIVE nds_get_max_position() {
 extern "C" void nds_set_mask(int32_t mask) __attribute__((noinline));
 extern "C" void EMSCRIPTEN_KEEPALIVE nds_set_mask(int32_t mask) {
 	ds_set_channel_mute(mask);
+}
+
+extern "C" int nds_get_mask() __attribute__((noinline));
+extern "C" int EMSCRIPTEN_KEEPALIVE nds_get_mask() {
+	return ds_get_channel_mute();
 }

@@ -280,8 +280,8 @@ class VGMLibWrapper {
 }
 
 export default class VGMPlayer extends Player {
-  constructor(audioCtx, destNode, chipCore, onPlayerStateUpdate) {
-    super(audioCtx, destNode, chipCore, onPlayerStateUpdate);
+  constructor(audioCtx, destNode, chipCore, bufferSize) {
+    super(audioCtx, destNode, chipCore, bufferSize);
     this.setParameter = this.setParameter.bind(this);
     this.getParameter = this.getParameter.bind(this);
     this.getParamDefs = this.getParamDefs.bind(this);
@@ -309,6 +309,7 @@ export default class VGMPlayer extends Player {
     this.surround = false;
 
     this.params = {};
+    this.voiceMask = [];
 
     // register OPL4 ROM data
     this.registerVGMInstruments();
@@ -592,10 +593,11 @@ export default class VGMPlayer extends Player {
     const status = this.vgmlib.loadMusicData(this.sampleRate, filepath, data);
     if (status === 0) {
       this.init(filepath, data);
+      this.voiceMask = Array(this.getNumVoices()).fill(true);
       this.connect();
       this.resume();
 
-      this.onPlayerStateUpdate(!this.isPlaying());
+      this.emit('playerStateUpdate', !this.isPlaying());
     }
   }
 
@@ -722,7 +724,7 @@ export default class VGMPlayer extends Player {
     return total;
   }
 
-  setVoices(voices) {
+  setVoiceMask(voices) {
     const toInt = booleans => {
       if (!booleans) return null;
 
@@ -737,6 +739,11 @@ export default class VGMPlayer extends Player {
     this.getChannelMaskParams(voices).forEach(param => {
       this.vgmlib.setChannelMask(param.chipType, param.chipID, toInt(param.mask1), toInt(param.mask2));
     });
+    this.voiceMask = voices;
+  }
+
+  getVoiceMask() {
+    return this.voiceMask;
   }
 
   seekMs(positionMs) {
@@ -748,7 +755,7 @@ export default class VGMPlayer extends Player {
     this.vgmlib.close();
 
     console.debug('VGMPlayer.stop()');
-    this.onPlayerStateUpdate(true);
+    this.emit('playerStateUpdate', true);
   }
 
   getChannelMaskParams(voices) {

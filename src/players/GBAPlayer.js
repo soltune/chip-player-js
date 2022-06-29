@@ -160,8 +160,8 @@ class GBALibWrapper {
 }
 
 export default class GBAPlayer extends Player {
-  constructor(audioCtx, destNode, chipCore, onPlayerStateUpdate) {
-    super(audioCtx, destNode, chipCore, onPlayerStateUpdate);
+  constructor(audioCtx, destNode, chipCore, bufferSize) {
+    super(audioCtx, destNode, chipCore, bufferSize);
     this.setParameter = this.setParameter.bind(this);
     this.getParameter = this.getParameter.bind(this);
     this.getParamDefs = this.getParamDefs.bind(this);
@@ -190,6 +190,7 @@ export default class GBAPlayer extends Player {
     this.sourceBufferLen = 0;
 
     this.params = {};
+    this.voiceMask = [];
 
     this.setAudioProcess((e) => {
       for (let i = 0; i < e.outputBuffer.numberOfChannels; i++) {
@@ -430,11 +431,12 @@ export default class GBAPlayer extends Player {
     this.lastLoadedFilename = filename;
 
     if (this.lib.loadMusicData(this.sampleRate, path, filename) === 0) {
+      this.voiceMask = Array(this.getNumVoices()).fill(true);
       this.init();
       this.connect();
       this.resume();
 
-      this.onPlayerStateUpdate(!this.isPlaying());
+      this.emit('playerStateUpdate', !this.isPlaying());
     }
   }
 
@@ -517,7 +519,7 @@ export default class GBAPlayer extends Player {
     return CHANNEL_NAME.length;
   }
 
-  setVoices(voices) {
+  setVoiceMask(voices) {
     let mask = 0;
     voices.forEach((enabled, i) => {
       if (!enabled) {
@@ -525,6 +527,11 @@ export default class GBAPlayer extends Player {
       }
     });
     this.lib.setVoices(mask);
+    this.voiceMask = voices;
+  }
+
+  getVoiceMask() {
+    return this.voiceMask;
   }
 
   seekMs(positionMs) {
@@ -536,7 +543,7 @@ export default class GBAPlayer extends Player {
     this.lib.teardown();
 
     console.debug('GBAPlayer.stop()');
-    this.onPlayerStateUpdate(true);
+    this.emit('playerStateUpdate', true);
   }
 
   // callback in gsf_request_file(gsfplug.cpp) -> gba_fileRequestCallback(gba_callback.js)
@@ -563,7 +570,7 @@ export default class GBAPlayer extends Player {
           this.connect();
           this.resume();
 
-          this.onPlayerStateUpdate(!this.isPlaying());
+          this.emit('playerStateUpdate', !this.isPlaying());
         }
       })
       .catch(e => {});

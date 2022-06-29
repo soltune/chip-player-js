@@ -118,14 +118,15 @@ class S98LibWrapper {
 
     if (result === 0) { // result -> 0: success, 1: error
       this.currentFile = filename;
+
     }
     return result;
   }
 }
 
 export default class S98Player extends Player {
-  constructor(audioCtx, destNode, chipCore, onPlayerStateUpdate) {
-    super(audioCtx, destNode, chipCore, onPlayerStateUpdate);
+  constructor(audioCtx, destNode, chipCore, bufferSize) {
+    super(audioCtx, destNode, chipCore, bufferSize);
     this.setParameter = this.setParameter.bind(this);
     this.getParameter = this.getParameter.bind(this);
     this.getParamDefs = this.getParamDefs.bind(this);
@@ -153,6 +154,7 @@ export default class S98Player extends Player {
     this.isPC98System = false;
 
     this.params = {};
+    this.voiceMask = [];
 
     // register rhythm data for OPNA
     this.registerRhythmData();
@@ -477,11 +479,12 @@ export default class S98Player extends Player {
 
     const status = this.s98lib.loadMusicData(this.sampleRate, filepath, data);
     if (status === 0) {
+      this.voiceMask = Array(this.getNumVoices()).fill(true);
       this.init(filepath, data);
       this.connect();
       this.resume();
 
-      this.onPlayerStateUpdate(!this.isPlaying());
+      this.emit('playerStateUpdate', !this.isPlaying());
     }
   }
 
@@ -589,7 +592,7 @@ export default class S98Player extends Player {
     return this.getAvailableChannels().length;
   }
 
-  setVoices(voices) {
+  setVoiceMask(voices) {
     let shift = 0;
     for (let deviceIndex = 0; deviceIndex < this.s98lib.getDeviceCount(); deviceIndex++) {
       const availableChannels = this.getAvailableChannelsOf(deviceIndex).length;
@@ -603,6 +606,11 @@ export default class S98Player extends Player {
       this.s98lib.setChannelMask(deviceIndex, mask);
       shift += availableChannels;
     }
+    this.voiceMask = voices;
+  }
+
+  getVoiceMask() {
+    return this.voiceMask;
   }
 
   seekMs(positionMs) {
@@ -614,6 +622,6 @@ export default class S98Player extends Player {
     this.s98lib.close();
 
     console.debug('S98Player.stop()');
-    this.onPlayerStateUpdate(true);
+    this.emit('playerStateUpdate', true);
   }
 }

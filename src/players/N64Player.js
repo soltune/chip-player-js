@@ -10,8 +10,8 @@ const MOUNTPOINT = '/n64';
 const INT16_MAX = Math.pow(2, 16) - 1;
 
 export default class N64Player extends Player {
-  constructor(audioCtx, destNode, chipCore, onPlayerStateUpdate = function() {}) {
-    super(audioCtx, destNode, chipCore, onPlayerStateUpdate);
+  constructor(audioCtx, destNode, chipCore, bufferSize) {
+    super(audioCtx, destNode, chipCore, bufferSize);
     this.loadData = this.loadData.bind(this);
 
     // Initialize N64 filesystem
@@ -34,9 +34,9 @@ export default class N64Player extends Player {
     this.filepathMeta = Player.metadataFromFilepath(filename);
 
     const miniusfStr = String.fromCharCode.apply(null, data);
-    const usflibs = miniusfStr.match(/_lib=([^\s]+)/).slice(1);
+    const usflibs = miniusfStr.match(/_lib=([^\n]+)/).slice(1);
     if (usflibs.length === 0) {
-      throw new Error(`No .usflib references found in ${filename}`);
+      throw new Error(`No .usflib references found`);
     }
 
     const dir = path.dirname(filename);
@@ -50,7 +50,7 @@ export default class N64Player extends Player {
       }),
     ];
 
-    Promise.all(promises)
+    return Promise.all(promises)
       .then(([fsFilename]) => {
         this.muteAudioDuringCall(this.audioNode, () => {
           err = this.lib.ccall(
@@ -61,14 +61,14 @@ export default class N64Player extends Player {
 
           if (err !== 0) {
             console.error("n64_load_file failed. error code: %d", err);
-            throw Error('Unable to load this file!');
+            throw Error('n64_load_file failed');
           }
 
           this.metadata = { title: filename };
 
           this.connect();
           this.resume();
-          this.onPlayerStateUpdate(false);
+          this.emit('playerStateUpdate', false);
         });
       });
   }
@@ -135,6 +135,6 @@ export default class N64Player extends Player {
     this.suspend();
     this.lib._n64_shutdown();
     console.debug('N64Player.stop()');
-    this.onPlayerStateUpdate(true);
+    this.emit('playerStateUpdate', true);
   }
 }

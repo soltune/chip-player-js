@@ -12,7 +12,7 @@ const chipModules = [
     name: 'visualizer',
     enabled: true,
     sourceFiles: [
-      'tinysoundfont/showcqtbar.c',
+      'src/showcqtbar.c',
     ],
     exportedFunctions: [
       // ---- Visualizer functions: ----
@@ -24,26 +24,29 @@ const chipModules = [
     flags: [],
   },
   {
-    // TODO: decouple from libADLMIDI and fluidlite
+    // TODO: decouple from libADLMIDI and fluidlite,
+    //       see also ../src/players/MIDIPlayer.js:207.
     name: 'player',
     enabled: true,
     sourceFiles: [
-      'tinysoundfont/tinyplayer.c',
+      'src/tinyplayer.c',
     ],
     exportedFunctions: [
       // ---- Tiny player functions: ----
-      '_tp_write_audio',
-      '_tp_open',
+      // '_tp_write_audio',
+      // '_tp_open',
       '_tp_init',
       '_tp_unload_soundfont',
       '_tp_load_soundfont',
       '_tp_add_soundfont',
-      '_tp_stop',
-      '_tp_seek',
-      '_tp_set_speed',
-      '_tp_get_duration_ms',
-      '_tp_get_position_ms',
+      // '_tp_stop',
+      // '_tp_seek',
+      // '_tp_set_speed',
+      // '_tp_get_duration_ms',
+      // '_tp_get_position_ms',
       '_tp_set_reverb',
+      '_tp_get_polyphony',
+      '_tp_set_polyphony',
       '_tp_get_channel_in_use',
       '_tp_get_channel_program',
       '_tp_set_channel_mute',
@@ -103,12 +106,12 @@ const chipModules = [
       'Hes_Core.cpp',
       'Hes_Cpu.cpp',
       'Hes_Emu.cpp',
-      'higan/dsp/dsp.cpp',
-      'higan/dsp/SPC_DSP.cpp',
-      'higan/processor/spc700/spc700.cpp',
-      'higan/smp/memory.cpp',
-      'higan/smp/smp.cpp',
-      'higan/smp/timing.cpp',
+      // 'higan/dsp/dsp.cpp',
+      // 'higan/dsp/SPC_DSP.cpp',
+      // 'higan/processor/spc700/spc700.cpp',
+      // 'higan/smp/memory.cpp',
+      // 'higan/smp/smp.cpp',
+      // 'higan/smp/timing.cpp',
       // 'k051649.c',
       // 'K051649_Emu.cpp',
       // 'k053260.c',
@@ -162,9 +165,12 @@ const chipModules = [
       // 'Sgc_Impl.cpp',
       'Sms_Apu.cpp',
       // 'Sms_Fm_Apu.cpp',
+      'Snes_Spc.cpp',
+      'Spc_Cpu.cpp',
+      'Spc_Dsp.cpp',
       'Spc_Emu.cpp',
       'Spc_Filter.cpp',
-      'Spc_Sfm.cpp',
+      // 'Spc_Sfm.cpp',
       'Track_Filter.cpp',
       'Upsampler.cpp',
       // 'Vgm_Core.cpp',
@@ -238,6 +244,23 @@ const chipModules = [
     flags: [],
   },
   {
+    /*
+    TODO: implement libvgm.
+    Wait for libvgm player to get a C interface.
+    https://github.com/ValleyBell/libvgm/blob/master/player/playera.hpp
+    Or, use WebIDL Binder or Embind to interact with libvgm C++ player class.
+    https://emscripten.org/docs/porting/connecting_cpp_and_javascript/WebIDL-Binder.html#a-quick-example
+    https://emscripten.org/docs/porting/connecting_cpp_and_javascript/WebIDL-Binder.html#webidl-binder-type-name
+    */
+    name: 'libvgm',
+    enabled: false,
+    sourceFiles: [
+      '../libvgm/build2/bin/libvgm-emu.a',
+    ],
+    exportedFunctions: [],
+    flags: [],
+  },
+  {
     name: 'fluidlite',
     enabled: true,
     sourceFiles: [
@@ -256,6 +279,8 @@ const chipModules = [
       '_fluid_synth_all_sounds_off',
       '_fluid_synth_write_float',
       '_fluid_synth_set_reverb',
+      '_fluid_synth_get_polyphony',
+      '_fluid_synth_set_polyphony',
     ],
     flags: [],
   },
@@ -266,7 +291,7 @@ const chipModules = [
       'chips/dosbox_opl3.cpp',
       'chips/dosbox/dbopl.cpp',
       'wopl/wopl_file.c',
-      'adldata.cpp',
+      'inst_db.cpp',
       'adlmidi.cpp',
       'adlmidi_load.cpp',
       'adlmidi_midiplay.cpp',
@@ -493,6 +518,7 @@ const chipModules = [
       '_fmp_load_ppz',
       '_fmp_get_track_info',
       '_fmp_set_mask',
+      '_fmp_get_mask',
     ],
     flags: [
       '-Ifmplayer/fmplayer',
@@ -584,6 +610,7 @@ const chipModules = [
       '_nds_get_audio_buffer_length',
       '_nds_compute_audio_samples',
       '_nds_set_mask',
+      '_nds_get_mask',
     ],
     flags: [
       '-DEMSCRIPTEN',
@@ -773,6 +800,7 @@ const chipModules = [
       '_mdx_create_context',
       '_mdx_get_pdx_filename',
       '_mdx_get_track_name',
+      '_mdx_get_track_mask',
       '_mdx_set_track_mask',
     ],
     flags: [],
@@ -848,6 +876,7 @@ const flags = [
 
 console.log('Compiling to %s...', jsOutFile);
 console.log(`Invocation:\n${compiler} ${chalk.blue(flags.join(' '))} ${chalk.gray(sourceFiles.join(' '))}\n`);
+const preJs = `/*eslint-disable*/`;
 const args = [].concat(flags, sourceFiles);
 const build_proc = spawn(compiler, args, {stdio: 'inherit'});
 build_proc.on('exit', function (code) {
@@ -861,15 +890,7 @@ build_proc.on('exit', function (code) {
     }
 
     // Don't use --pre-js because it can get stripped out by closure.
-    const eslint_disable = '/*eslint-disable*/\n';
-    console.log('Prepending %s with %s.', jsOutFile, eslint_disable.trim());
-    const data = fs.readFileSync(jsOutFile);
-    const fd = fs.openSync(jsOutFile, 'w+');
-    const insert = new Buffer(eslint_disable);
-    fs.writeSync(fd, insert, 0, insert.length, 0);
-    fs.writeSync(fd, data, 0, data.length, insert.length);
-    fs.close(fd, (err) => {
-      if (err) throw err;
-    });
+    console.log('Prepending %s: \n%s\n', jsOutFile, preJs.trim());
+    execSync(`cat <<EOF > ${jsOutFile}\n${preJs}\n$(cat ${jsOutFile})\nEOF`);
   }
 });

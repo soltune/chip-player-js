@@ -196,6 +196,10 @@ class FMPLibWrapper {
     this.fmplib.ccall('fmp_set_mask', null, ['number'], [voices]);
   }
 
+  getVoices() {
+    return this.fmplib.ccall('fmp_get_mask');
+  }
+
   setTempo(tempo) {
     //this.mdxpmdlib.ccall('mdx_set_tempo', null, ['number'], [tempo]);
   }
@@ -234,8 +238,8 @@ class FMPLibWrapper {
 }
 
 export default class FMPPlayer extends Player {
-  constructor(audioCtx, destNode, chipCore, onPlayerStateUpdate) {
-    super(audioCtx, destNode, chipCore, onPlayerStateUpdate);
+  constructor(audioCtx, destNode, chipCore, bufferSize) {
+    super(audioCtx, destNode, chipCore, bufferSize);
     this.setParameter = this.setParameter.bind(this);
     this.getParameter = this.getParameter.bind(this);
     this.getParamDefs = this.getParamDefs.bind(this);
@@ -526,7 +530,7 @@ export default class FMPPlayer extends Player {
         this.init(filepath, data);
         this.connect();
         this.resume();
-        this.onPlayerStateUpdate(!this.isPlaying());
+        this.emit('playerStateUpdate', !this.isPlaying());
       });
   }
 
@@ -610,7 +614,7 @@ export default class FMPPlayer extends Player {
     return this.getChannels().length;
   }
 
-  setVoices(voices) {
+  setVoiceMask(voices) {
     let mask = 0;
     voices.forEach((enabled, i) => {
       if (!enabled) {
@@ -618,6 +622,16 @@ export default class FMPPlayer extends Player {
       }
     });
    this.lib.setVoices(mask);
+  }
+
+  getVoiceMask() {
+    const mask = this.lib.getVoices();
+
+    let voiceMask = [];
+    for (let i = 0; i < this.getNumVoices(); i++) {
+      voiceMask[i] = ((mask << i) & 1) === 0;
+    }
+    return voiceMask;
   }
 
   seekMs(positionMs) {
@@ -628,6 +642,6 @@ export default class FMPPlayer extends Player {
     this.suspend();
     this.lib.teardown();
 
-    this.onPlayerStateUpdate(true);
+    this.emit('playerStateUpdate', true);
   }
 }
