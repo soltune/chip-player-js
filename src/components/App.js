@@ -607,7 +607,7 @@ class App extends React.Component {
   }
 
   handlePlayRandom() {
-    fetch(`${API_BASE}/random?limit=100`)
+    fetch(`${API_BASE}/random?limit=100`, {cache: 'no-store'})
       .then(response => response.json())
       .then(json => this.sequencer.playContext(json.items.map(item => item.file), 10));
   }
@@ -618,7 +618,7 @@ class App extends React.Component {
     if (path === 'favorites') {
       this.sequencer.playContext(shuffle(this.state.faves));
     } else {
-      fetch(`${API_BASE}/shuffle?path=${encodeURI(path)}&limit=100`)
+      fetch(`${API_BASE}/shuffle?path=${encodeURI(path)}&limit=100`, {cache: 'no-store'})
         .then(response => response.json())
         .then(json => this.sequencer.playContext(json.items));
     }
@@ -684,7 +684,7 @@ class App extends React.Component {
   }
 
   fetchDirectory(path) {
-    return fetch(`${API_BASE}/browse?path=%2F${encodeURIComponent(path)}`)
+    return fetch(`${API_BASE}/browse?path=%2F${encodeURIComponent(path)}`, {cache: 'no-store'})
       .then(response => response.json())
       .then(json => {
         const items = App[this.state.order](json)
