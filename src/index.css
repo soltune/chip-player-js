@@ -23,7 +23,8 @@
 
 @font-face {
     font-family: VGA_SquarePx;
-    src: url(fonts/pxplus_vga_squarepx.ttf) format('truetype');
+    /*src: url(fonts/pxplus_vga_squarepx.ttf) format('truetype');*/
+    src: url(fonts/pxplus_chipplayer.ttf) format('truetype');
     font-weight: 400;
     font-style: normal
 }
@@ -110,7 +111,7 @@ button          { background: var(--button); padding: 0; margin: 0; }
 button:focus    { background: var(--focus); }
 button:active   { background: var(--active); }
 button:disabled { background: var(--neutral1); color: var(--neutral3); }
-.box-button        { padding: 0 var(--charW2); box-shadow: var(--charW1) var(--charW1) var(--shadow); }
+.box-button        { padding: 0 var(--charW2); box-shadow: var(--charW1) var(--charW1) var(--shadow); white-space: pre; }
 .box-button:active { box-shadow: none; }
 
 input[type=text] {
