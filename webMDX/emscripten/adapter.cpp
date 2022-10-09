@@ -72,7 +72,7 @@ double play_len= 0;
 int initialized= 0;
 int pmd_loop_count = 2;
 int pmd_loop_length = 0;
-char pmd_pcm_filename[256];
+char* pmd_pcm_filenames[4];
 
 char* internalRhythmPath = "/rhythm";
 
@@ -140,6 +140,11 @@ static int pmd_compute_samples() {
 static void do_teardown() {
 	if (initialized) {
 		pmd_stop();
+		pmd_deinit();
+
+		for (int i = 0; i < 4; i ++) {
+		    free(pmd_pcm_filenames[i]);
+		}
 		initialized= 0;
 	}
 }
@@ -186,12 +191,9 @@ extern "C"  int EMSCRIPTEN_KEEPALIVE pmd_load_file(char *filename, void * inBuff
         unsigned char* copiedBuff = (unsigned char*) malloc(inBufSize);
         memcpy(copiedBuff, inBuffer, inBufSize);
 
-        pmd_get_memo(pmd_pcm_filename, copiedBuff, inBufSize, 0); // p86 or ppc
-        if (*pmd_pcm_filename == 0) {
-            pmd_get_memo(pmd_pcm_filename, copiedBuff, inBufSize, -1); // pps
-        }
-        if (*pmd_pcm_filename == 0) {
-            pmd_get_memo(pmd_pcm_filename, copiedBuff, inBufSize, -2); // ppz
+        for (int i = 0; i < 4; i++) {
+            pmd_pcm_filenames[i] = (char*) malloc(TEXT_MAX);
+            pmd_get_memo(pmd_pcm_filenames[i], copiedBuff, inBufSize, i * -1);
         }
 
         free(copiedBuff);
@@ -255,9 +257,14 @@ extern "C" void EMSCRIPTEN_KEEPALIVE pmd_set_rws(int value) {
     do_set_rhythm_with_ssg(value);
 }
 
-extern "C" char* pmd_get_pcm_filename() __attribute__((noinline));
-extern "C" char* EMSCRIPTEN_KEEPALIVE pmd_get_pcm_filename() {
-    return (char*) pmd_pcm_filename;
+extern "C" void pmd_set_usepps(int value) __attribute__((noinline));
+extern "C" void EMSCRIPTEN_KEEPALIVE pmd_set_usepps(int value) {
+    pmd_set_pps_use(value);
+}
+
+extern "C" const char** pmd_get_pcm_filenames() __attribute__((noinline));
+extern "C" const char** EMSCRIPTEN_KEEPALIVE pmd_get_pcm_filenames() {
+    return (const char**) pmd_pcm_filenames;
 }
 
 extern "C" int pmd_reload_pcm(char* pcmFilename) __attribute__((noinline));

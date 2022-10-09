@@ -350,6 +350,7 @@ extern "C" {
 __declspec(dllimport) int WINAPI getversion(void);
 __declspec(dllimport) int WINAPI getinterfaceversion(void);
 __declspec(dllimport) bool WINAPI pmdwininit(char *path);
+__declspec(dllexport) void WINAPI pmdwindeinit(void);
 __declspec(dllimport) bool WINAPI loadrhythmsample(char *path);
 __declspec(dllimport) bool WINAPI setpcmdir(char **path);
 __declspec(dllimport) void WINAPI setpcmrate(int rate);

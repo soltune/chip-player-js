@@ -53,8 +53,19 @@ class PMDLibWrapper {
     this.pmdlib.ccall('pmd_seek_position', 'number', ['number'], [pos]);
   }
 
-  getPcmFilename() {
-    return this.pmdlib.ccall('pmd_get_pcm_filename', 'string');
+  getPcmFilenames() {
+    const pcmFiles = [];
+    const numOfList = 4;
+    const p = this.pmdlib.ccall('pmd_get_pcm_filenames', 'number');
+    const rawList = this.pmdlib.HEAP32.subarray((p >> 2), (p >> 2) + numOfList);
+    for (let i = 0; i < numOfList; i++) {
+      const pcmfile = this.pmdlib.UTF8ToString(rawList[i]);
+      if (pcmfile) {
+        pcmFiles.push(pcmfile);
+      }
+    }
+
+    return pcmFiles;
   }
 
   getMetaData() {
@@ -102,42 +113,42 @@ class PMDLibWrapper {
       this.currentFile = filename;
     }
 
-    const pcmFileName = this.getPcmFilename();
-    if (pcmFileName) {
-      let remotePcmAbsolutePath = this.getAbsolutePath([CATALOG_PREFIX, path, pcmFileName]);
-      if (!this.existsFileData(internalPCMPath, pcmFileName)) {
-        fetch(remotePcmAbsolutePath, {method: 'GET',})
-          .then(response => {
-            if (!response.ok) { // 404, 500.. missing pcm can be ignored for playing
-              throw Error(response.statusText);
-            }
-            return response.arrayBuffer();
-          })
-          .then(buffer => {
-            this.registerFileData(internalPCMPath, pcmFileName, buffer);
-            this.pmdlib.ccall('pmd_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
-            onMusicLoadFinished(result);
-          })
-          .catch(e => {
-            // console.log(e);
-            return e;
-            //onMusicLoadFinished(result);
-          })
-          .then((e) => { // second try
-            if (e === undefined) {
-              return;
-            }
-            onMusicLoadFinished(result);
-          });
-      } else {
-        // file already exists
-        this.pmdlib.ccall('pmd_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
-        onMusicLoadFinished(result);
-      }
-    } else {
-      // no additional PCM required
+    const pcmFileNames = this.getPcmFilenames();
+    if (pcmFileNames.length < 1) {    // no pcm required
       onMusicLoadFinished(result);
+      return result;
     }
+
+    const downloadFiles = pcmFileNames.filter(pcmFileName => ! this.existsFileData(internalPCMPath, pcmFileName));
+    if (downloadFiles.length < 1) {    // pcm needed but cached all
+      pcmFileNames.forEach(pcmFileName => {
+        this.pmdlib.ccall('pmd_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])]);
+      });
+      onMusicLoadFinished(result);
+      return result;
+    }
+
+    Promise.all(
+        downloadFiles.map(downloadFile =>
+          fetch(this.getAbsolutePath([CATALOG_PREFIX, path, downloadFile]), {method: 'GET',})
+              .then(response => {
+                if (!response.ok) { // 404, 500.. missing pcm can be ignored for playing
+                  return null;
+                }
+                return response.arrayBuffer();
+              })
+        )
+    ).then(buffers => {
+      buffers.forEach((buffer, i) => {
+        if (buffer !== null) {  // buffer should be null if any errors occurred
+          this.registerFileData(internalPCMPath, downloadFiles[i], buffer);
+        }
+      });
+      pcmFileNames.forEach(pcmFileName =>
+        this.pmdlib.ccall('pmd_reload_pcm', null, ['string'], [this.getAbsolutePath([internalPCMPath, pcmFileName])])
+      );
+      onMusicLoadFinished(result);
+    });
 
     return result;
   }
@@ -171,6 +182,11 @@ class PMDLibWrapper {
   setRhythmWithSSG(value) {
     value = value? 1 : 0;
     this.pmdlib.ccall('pmd_set_rws', null, ['number'], [value]);
+  }
+
+  setUsePPS(value) {
+    value = value? 1 : 0;
+    this.pmdlib.ccall('pmd_set_usepps', null, ['number'], [value]);
   }
 
   getVoiceCount() {
@@ -522,6 +538,8 @@ export default class PMDPlayer extends Player {
       // we will get also PCM asynchronously in `loadMusicData()` so the following impl should be given as a callback
       if (status === 0) {
         this.voiceMask = Array(this.getNumVoices()).fill(true);
+        this.lib.setRhythmWithSSG(true);
+        this.lib.setUsePPS(true);
         this.init(filepath, data);
         this.connect();
         this.resume();
@@ -567,17 +585,21 @@ export default class PMDPlayer extends Player {
   getParamDefs() {
     let params = {};
     if (!this.lib.isClosed()) {
-      params = {
-        id: 'rhythmwssg',
-        label: 'Enable FM Rhythm with SSG Drums',
-        hint: 'Play FM(OPNA) rhythm samples with SSG drums',
+      params = [{
+        id: 'usepps',
+        label: 'Enable PPS',
+        hint: 'Play PPS samples as rhythm track, otherwise play with PMD internal SSG if disabled (PMD only)',
         type: 'toggle',
         defaultValue: true,
-      };
+      }, {
+        id: 'rhythmwssg',
+        label: 'Enable FM Rhythm with SSG Drums',
+        hint: 'Play FM(OPNA) rhythm samples with SSG drums (PMD only)',
+        type: 'toggle',
+        defaultValue: true,
+      }];
     }
-    return [
-      params,
-    ];
+    return params;
   }
 
   setParameter(id, value) {
@@ -585,8 +607,11 @@ export default class PMDPlayer extends Player {
       case 'rhythmwssg':
         this.lib.setRhythmWithSSG(value);
         break;
+      case 'usepps':
+        this.lib.setUsePPS(value);
+        break;
       default:
-        console.warn('S98Player has no parameter with id "%s".', id);
+        console.warn('PMDPlayer has no parameter with id "%s".', id);
     }
     this.params[id] = value;
   }

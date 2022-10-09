@@ -7,6 +7,7 @@ extern "C" {
 
 
 void pmd_init(void);
+void pmd_deinit(void);
 void pmd_setrate( int freq );
 int pmd_is_pmd( const char *file );
 int pmd_play ( const char *file , char *pcmdir );
@@ -23,6 +24,7 @@ void pmd_set_pos( int pos );
 int pmd_get_pos( void );
 void pmd_set_rhythm_path( char *path );
 void pmd_set_rhythm_with_ssg( int value );
+void pmd_set_pps_use( int value );
 char* pmd_get_memo(char *dest, unsigned char *musdata, int size, int al);
 int pmd_load_pcm_and_restart( char* filename );
 
