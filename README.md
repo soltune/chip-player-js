@@ -112,7 +112,7 @@ So please consider if you need it carefully.
 
 ```sh
 $ cd fluidlite/build/
-$ emcmake cmake -DENABLE_SF3=YES ..
+$ emcmake cmake -DENABLE_SF3=YES -DSTB_VORBIS=YES ..
 $ emmake make clean && emmake make fluidlite-static
 ```
 
