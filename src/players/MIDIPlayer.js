@@ -9,7 +9,10 @@ import debounce from 'lodash/debounce';
 
 let lib = null;
 
-const dummyMidiOutput = { send: () => {} };
+const dummyMidiOutput = {
+  send: () => {
+  }
+};
 
 const midiDevices = [
   dummyMidiOutput,
@@ -34,9 +37,9 @@ export default class MIDIPlayer extends Player {
       options: [{
         label: 'MIDI Synthesis Engine',
         items: [
-          {label: 'SoundFont (libFluidLite)', value: MIDI_ENGINE_LIBFLUIDLITE},
-          {label: 'Adlib/OPL3 FM (libADLMIDI)', value: MIDI_ENGINE_LIBADLMIDI},
-          {label: 'MIDI Device (Web MIDI)', value: MIDI_ENGINE_WEBMIDI},
+          { label: 'SoundFont (libFluidLite)', value: MIDI_ENGINE_LIBFLUIDLITE },
+          { label: 'Adlib/OPL3 FM (libADLMIDI)', value: MIDI_ENGINE_LIBADLMIDI },
+          { label: 'MIDI Device (Web MIDI)', value: MIDI_ENGINE_WEBMIDI },
         ],
       }],
       defaultValue: 0,
@@ -46,7 +49,8 @@ export default class MIDIPlayer extends Player {
       label: 'Soundfont',
       type: 'enum',
       options: SOUNDFONTS,
-      defaultValue: SOUNDFONTS[0].items[0].value,
+      // Small Soundfonts - GMGSx Plus
+      defaultValue: SOUNDFONTS[1].items[0].value,
       dependsOn: {
         param: 'synthengine',
         value: MIDI_ENGINE_LIBFLUIDLITE,
@@ -125,6 +129,7 @@ export default class MIDIPlayer extends Player {
     this.getParamDefs = this.getParamDefs.bind(this);
     this.switchSynthBasedOnFilename = this.switchSynthBasedOnFilename.bind(this);
     this.ensureWebMidiInitialized = this.ensureWebMidiInitialized.bind(this);
+    this.updateSoundfontParamDefs = this.updateSoundfontParamDefs.bind(this);
 
     lib = chipCore;
     lib._tp_init(audioCtx.sampleRate);
@@ -133,11 +138,6 @@ export default class MIDIPlayer extends Player {
     // Initialize Soundfont filesystem
     lib.FS.mkdir(SOUNDFONT_MOUNTPOINT);
     lib.FS.mount(lib.FS.filesystems.IDBFS, {}, SOUNDFONT_MOUNTPOINT);
-    lib.FS.syncfs(true, (err) => {
-      if (err) {
-        console.log('Error populating FS from indexeddb.', err);
-      }
-    });
 
     this.fileExtensions = fileExtensions;
     this.activeChannels = [];
@@ -145,7 +145,7 @@ export default class MIDIPlayer extends Player {
     this.filepathMeta = {};
     this.midiFilePlayer = new MIDIFilePlayer({
       // playerStateUpdate is debounced to prevent flooding program change events
-      programChangeCb: () => debounce(() => this.emit('playerStateUpdate', false), 200),
+      programChangeCb: () => debounce(() => this.emit('playerStateUpdate', { isStopped: false }), 200),
       output: dummyMidiOutput,
       skipSilence: true,
       sampleRate: this.sampleRate,
@@ -165,6 +165,7 @@ export default class MIDIPlayer extends Player {
         panicChannel: lib._tp_panic_channel,
         render: lib._tp_render,
         reset: lib._tp_reset,
+        getValue: lib.getValue,
       },
     });
 
@@ -186,9 +187,15 @@ export default class MIDIPlayer extends Player {
 
     // Initialize parameters
     this.params = {};
-    this.paramDefs.forEach(param => this.setParameter(param.id, param.defaultValue));
+    this.paramDefs.filter(p => p.id !== 'soundfont').forEach(p => this.setParameter(p.id, p.defaultValue));
 
     this.setAudioProcess(this.midiAudioProcess);
+  }
+
+  handleFileSystemReady() {
+    const soundfontParam = this.paramDefs.find(paramDef => paramDef.id === 'soundfont');
+    this.setParameter(soundfontParam.id, soundfontParam.defaultValue);
+    this.updateSoundfontParamDefs();
   }
 
   midiAudioProcess(e) {
@@ -228,6 +235,7 @@ export default class MIDIPlayer extends Player {
   }
 
   metadataFromFilepath(filepath) {
+    filepath = decodeURIComponent(filepath); // unescape, %25 -> %
     const parts = filepath.split('/');
     const len = parts.length;
     const meta = {};
@@ -258,13 +266,14 @@ export default class MIDIPlayer extends Player {
     this.webMidiIsInitialized = true;
 
     // Initialize MIDI output devices
+    console.debug('Requesting MIDI output devices.');
     if (typeof navigator.requestMIDIAccess === 'function') {
       navigator.requestMIDIAccess({ sysex: true }).then((access) => {
         if (access.outputs.length === 0) {
           console.warn('No MIDI output devices found.');
         } else {
           [...access.outputs.values()].forEach(midiOutput => {
-            console.log('MIDI Output:', midiOutput);
+            console.debug('MIDI Output:', midiOutput);
             midiDevices.push(midiOutput);
             this.paramDefs.find(def => def.id === 'mididevice').options[0].items.push({
               label: midiOutput.name,
@@ -291,7 +300,7 @@ export default class MIDIPlayer extends Player {
 
     const midiFile = new MIDIFile(data);
     this.midiFilePlayer.load(midiFile);
-    this.midiFilePlayer.play(() => this.emit('playerStateUpdate', true));
+    this.midiFilePlayer.play(() => this.emit('playerStateUpdate', { isStopped: true }));
 
     this.activeChannels = [];
     for (let i = 0; i < 16; i++) {
@@ -300,7 +309,10 @@ export default class MIDIPlayer extends Player {
 
     this.connect();
     this.resume();
-    this.emit('playerStateUpdate', false);
+    this.emit('playerStateUpdate', {
+      ...this.getBasePlayerState(),
+      isStopped: false,
+    });
   }
 
   switchSynthBasedOnFilename(filepath) {
@@ -355,7 +367,7 @@ export default class MIDIPlayer extends Player {
   stop() {
     this.suspend();
     console.debug('MIDIPlayer.stop()');
-    this.emit('playerStateUpdate', true);
+    this.emit('playerStateUpdate', { isStopped: true });
   }
 
   togglePause() {
@@ -404,7 +416,10 @@ export default class MIDIPlayer extends Player {
   }
 
   getMetadata() {
-    return this.filepathMeta;
+    return {
+      ...this.filepathMeta,
+      infoTexts: [this.midiFilePlayer.textInfo.join('\n')].filter(text => text !== ''),
+    };
   }
 
   getParameter(id) {
@@ -414,6 +429,22 @@ export default class MIDIPlayer extends Player {
 
   getParamDefs() {
     return this.paramDefs;
+  }
+
+  updateSoundfontParamDefs() {
+    this.paramDefs = this.paramDefs.map(paramDef => {
+      if (paramDef.id === 'soundfont') {
+        const userSoundfonts = paramDef.options[0];
+        const userSoundfontPath = `${SOUNDFONT_MOUNTPOINT}/user/`;
+        if (lib.FS.analyzePath(userSoundfontPath).exists) {
+          userSoundfonts.items = lib.FS.readdir(userSoundfontPath).filter(f => f.match(/\.sf2$/i)).map(f => ({
+            label: f,
+            value: `user/${f}`,
+          }));
+        }
+      }
+      return paramDef;
+    });
   }
 
   setParameter(id, value) {

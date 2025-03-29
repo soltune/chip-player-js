@@ -43,10 +43,17 @@ export default class StreamPlayer extends Player {
         return;
       }
 
+      const sourceData = this.buffer.getChannelData(0);
+      const sourceLength = sourceData.length;
+
+      // TypedArrayを使用して効率的にコピー
       for (let channel = 0; channel < this.channels.length; channel++) {
-        const sourceChannel = (channel > 0 && this.buffer.numberOfChannels < 2)? 0 : channel;
-        for (let i = 0; i < this.bufferSize && i + this.processedFrame < this.buffer.getChannelData(0).length; i++) {
-          this.channels[channel][i] = this.buffer.getChannelData(sourceChannel)[i + this.processedFrame];
+        const sourceChannel = (channel > 0 && this.buffer.numberOfChannels < 2) ? 0 : channel;
+        const sourceData = this.buffer.getChannelData(sourceChannel);
+        const targetData = this.channels[channel];
+        
+        for (let i = 0; i < this.bufferSize && i + this.processedFrame < sourceLength; i++) {
+          targetData[i] = sourceData[i + this.processedFrame];
         }
       }
       this.processedFrame += this.bufferSize;
@@ -61,13 +68,28 @@ export default class StreamPlayer extends Player {
   loadData(data, filepath) {
     this.init();
     this.metadata = this.createMetadata(data, filepath);
+    
     // Safari doesn't support decodeAudioData() as promise based
-    this.audioCtx.decodeAudioData(data.buffer, (buffer) => {
-      this.buffer = buffer;
-      this.connect();
-      this.resume();
-      this.emit('playerStateUpdate', !this.isPlaying());
-    });
+    this.audioCtx.decodeAudioData(data.buffer, 
+      (buffer) => {
+        if (this.buffer) {
+          // 古いバッファを解放
+          this.buffer = null;
+        }
+        this.buffer = buffer;
+        this.connect();
+        this.resume();
+        this.emit('playerStateUpdate', {
+          ...this.getBasePlayerState(),
+          isStopped: false,
+          metadata: this.metadata,
+        });
+      },
+      (error) => {
+        console.error('Error decoding audio data:', error);
+        this.emit('playerError', 'Failed to decode audio data');
+      }
+    );
   }
 
   init() {
@@ -89,14 +111,23 @@ export default class StreamPlayer extends Player {
       const sp = filepath.split('/');
       title = sp[sp.length - 1];
     }
-    return {
+    this.metadata = {
       title: title,
       artist: artist,
     };
+    return this.metadata;
   }
 
   getID3v1String(u8arrData, tagOffset, length) {
-    let offset = (u8arrData.length - 128) + tagOffset;  // 128 bytes from the end of the file
+    if (u8arrData.length < 128) {
+      return '';
+    }
+    
+    let offset = (u8arrData.length - 128) + tagOffset;
+    if (offset < 0 || offset + length > u8arrData.length) {
+      return '';
+    }
+
     const raw = [];
     for (let i = 0; i < length; i++) {
       const char = u8arrData[offset + i];
@@ -176,8 +207,14 @@ export default class StreamPlayer extends Player {
 
   stop() {
     this.suspend();
-    this.init();
-
-    this.emit('playerStateUpdate', true);
+    if (this.buffer) {
+      this.buffer = null;
+    }
+    console.debug('StreamPlayer.stop()');
+    this.emit('playerStateUpdate', {
+      ...this.getBasePlayerState(),
+      isStopped: true,
+      metadata: this.metadata,
+    });
   }
 }

@@ -484,7 +484,10 @@ export default class S98Player extends Player {
       this.connect();
       this.resume();
 
-      this.emit('playerStateUpdate', !this.isPlaying());
+      this.emit('playerStateUpdate', {
+        ...this.getBasePlayerState(),
+        isStopped: false,
+      });
     }
   }
 
@@ -622,6 +625,6 @@ export default class S98Player extends Player {
     this.s98lib.close();
 
     console.debug('S98Player.stop()');
-    this.emit('playerStateUpdate', true);
+    this.emit('playerStateUpdate', { isStopped: true });
   }
 }

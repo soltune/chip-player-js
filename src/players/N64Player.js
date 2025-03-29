@@ -17,11 +17,6 @@ export default class N64Player extends Player {
     // Initialize N64 filesystem
     chipCore.FS.mkdirTree(MOUNTPOINT);
     chipCore.FS.mount(chipCore.FS.filesystems.IDBFS, {}, MOUNTPOINT);
-    chipCore.FS.syncfs(true, (err) => {
-      if (err) {
-        console.log('Error populating FS from indexeddb.', err);
-      }
-    });
 
     this.lib = chipCore;
     this.fileExtensions = fileExtensions;
@@ -68,7 +63,10 @@ export default class N64Player extends Player {
 
           this.connect();
           this.resume();
-          this.emit('playerStateUpdate', false);
+          this.emit('playerStateUpdate', {
+            ...this.getBasePlayerState(),
+            isStopped: false,
+          });
         });
       });
   }
@@ -135,6 +133,6 @@ export default class N64Player extends Player {
     this.suspend();
     this.lib._n64_shutdown();
     console.debug('N64Player.stop()');
-    this.emit('playerStateUpdate', true);
+    this.emit('playerStateUpdate', { isStopped: true });
   }
 }

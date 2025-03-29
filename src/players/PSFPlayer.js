@@ -449,7 +449,10 @@ export default class PSFPlayer extends Player {
       this.connect();
       this.resume();
 
-      this.emit('playerStateUpdate', !this.isPlaying());
+      this.emit('playerStateUpdate', {
+        ...this.getBasePlayerState(),
+        isStopped: false,
+      });
     }
   }
 
@@ -564,7 +567,7 @@ export default class PSFPlayer extends Player {
     this.lib.teardown();
 
     console.debug('PSFPlayer.stop()');
-    this.emit('playerStateUpdate', true);
+    this.emit('playerStateUpdate', { isStopped: true });
   }
 
   // callback in psx_request_file(heplug.c) -> psx_request_file(psf_callback.js)
@@ -607,7 +610,10 @@ export default class PSFPlayer extends Player {
         this.connect();
         this.resume();
 
-        this.this.emit('playerStateUpdate', !this.isPlaying());
+        this.emit('playerStateUpdate', {
+          ...this.getBasePlayerState(),
+          isStopped: false,
+        });
       }
     });
     return -1;

@@ -74,6 +74,13 @@ export default class GMEPlayer extends Player {
 
     this.subBass = new SubBass(audioCtx.sampleRate);
 
+    // SPCファイル用のゲインノードを追加
+    this.gainNode = audioCtx.createGain();
+    this.gainNode.gain.value = 1.0;
+    
+    // 出力チェーンを変更: source -> gainNode -> destNode
+    this.gainNode.connect(destNode);
+
     this.setAudioProcess(this.gmeAudioProcess);
   }
 
@@ -146,7 +153,7 @@ export default class GMEPlayer extends Player {
           this.subtune,
           libgme._gme_track_count(emu)
         );
-        this.emit('playerStateUpdate', true);
+        this.emit('playerStateUpdate', { isStopped: true });
       }
     }
   }
@@ -157,7 +164,10 @@ export default class GMEPlayer extends Player {
     this.metadata = this._parseMetadata(subtune);
     this.setVoiceMask(Array(this.getNumVoices()).fill(true));  // reset channel mask
     console.debug('GMEPlayer.playSubtune(subtune=%s)', subtune);
-    this.emit('playerStateUpdate', false);
+    this.emit('playerStateUpdate', {
+      ...this.getBasePlayerState(),
+      isStopped: false,
+    });
     return libgme._gme_start_track(emu, subtune);
   }
 
@@ -172,6 +182,10 @@ export default class GMEPlayer extends Player {
       /(\.sgc$|\.kss$|\.nsfe?$|\.ay$|Master System|Game Gear)/i
     );
     this.params.subbass = formatNeedsBass ? 1 : 0;
+
+    // x 1.7 gain for SPC files
+    const isSPC = filepath.toLowerCase().endsWith('.spc');
+    this.gainNode.gain.value = isSPC ? 1.7 : 1.0;
 
     if (libgme.ccall(
       "gme_open_data",
@@ -397,6 +411,6 @@ export default class GMEPlayer extends Player {
     if (emu) libgme._gme_delete(emu);
     emu = null;
     console.debug('GMEPlayer.stop()');
-    this.emit('playerStateUpdate', true);
+    this.emit('playerStateUpdate', { isStopped: true });
   }
 }

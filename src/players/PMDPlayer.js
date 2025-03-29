@@ -544,7 +544,10 @@ export default class PMDPlayer extends Player {
         this.connect();
         this.resume();
 
-        this.emit('playerStateUpdate', !this.isPlaying());
+        this.emit('playerStateUpdate', {
+          ...this.getBasePlayerState(),
+          isStopped: false,
+        });
       }
     };
     this.lib.loadMusicData(this.sampleRate, path, filepath, data, _onMusicLoadFinished);
@@ -661,6 +664,6 @@ export default class PMDPlayer extends Player {
     this.lib.teardown();
 
     console.debug('PMDPlayer.stop()');
-    this.emit('playerStateUpdate', true);
+    this.emit('playerStateUpdate', { isStopped: true });
   }
 }

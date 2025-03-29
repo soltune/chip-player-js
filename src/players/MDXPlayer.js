@@ -17,11 +17,6 @@ export default class MDXPlayer extends Player {
     // Initialize MDX filesystem
     chipCore.FS.mkdirTree(MOUNTPOINT);
     chipCore.FS.mount(chipCore.FS.filesystems.IDBFS, {}, MOUNTPOINT);
-    chipCore.FS.syncfs(true, (err) => {
-      if (err) {
-        console.log('Error populating FS from indexeddb.', err);
-      }
-    });
 
     this.speed = 1;
     this.lib = chipCore;
@@ -79,7 +74,10 @@ export default class MDXPlayer extends Player {
 
           this.connect();
           this.resume();
-          this.emit('playerStateUpdate', false);
+          this.emit('playerStateUpdate', {
+            ...this.getBasePlayerState(),
+            isStopped: false,
+          });
         });
       });
   }
@@ -178,6 +176,6 @@ export default class MDXPlayer extends Player {
     this.suspend();
     this.lib._mdx_close(this.mdxCtx);
     console.debug('MDXPlayer.stop()');
-    this.emit('playerStateUpdate', true);
+    this.emit('playerStateUpdate', { isStopped: true });
   }
 }

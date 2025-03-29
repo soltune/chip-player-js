@@ -530,7 +530,10 @@ export default class FMPPlayer extends Player {
         this.init(filepath, data);
         this.connect();
         this.resume();
-        this.emit('playerStateUpdate', !this.isPlaying());
+        this.emit('playerStateUpdate', {
+          ...this.getBasePlayerState(),
+          isStopped: false,
+        });
       });
   }
 
@@ -642,6 +645,6 @@ export default class FMPPlayer extends Player {
     this.suspend();
     this.lib.teardown();
 
-    this.emit('playerStateUpdate', true);
+    this.emit('playerStateUpdate', { isStopped: true });
   }
 }

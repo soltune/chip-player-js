@@ -1,5 +1,7 @@
 import promisify from "./promisify-xhr";
 import {CATALOG_PREFIX} from "./config";
+import shuffle from 'lodash/shuffle';
+import EventEmitter from 'events';
 
 export const REPEAT_OFF = 0;
 export const REPEAT_ALL = 1;
@@ -7,14 +9,22 @@ export const REPEAT_ONE = 2;
 export const NUM_REPEAT_MODES = 3;
 export const REPEAT_LABELS = ['Off', 'All', 'One'];
 
-export default class Sequencer {
-  constructor(players, onSequencerStateUpdate, onError) {
+export const SHUFFLE_OFF = 0;
+export const SHUFFLE_ON = 1;
+export const NUM_SHUFFLE_MODES = 2;
+export const SHUFFLE_LABELS = ['Off', 'On'];
+
+export default class Sequencer extends EventEmitter {
+  constructor(players) {
+    super();
+
+    this.playCurrentSong = this.playCurrentSong.bind(this);
     this.playSong = this.playSong.bind(this);
     this.playSongBuffer = this.playSongBuffer.bind(this);
     this.playSongFile = this.playSongFile.bind(this);
     this.getPlayer = this.getPlayer.bind(this);
-    this.onPlayerStateUpdate = this.onPlayerStateUpdate.bind(this);
-    this._onPlayerError = this._onPlayerError.bind(this);
+    this.handlePlayerStateUpdate = this.handlePlayerStateUpdate.bind(this);
+    this.handlePlayerError = this.handlePlayerError.bind(this);
     this.playContext = this.playContext.bind(this);
     this.advanceSong = this.advanceSong.bind(this);
     this.nextSong = this.nextSong.bind(this);
@@ -29,48 +39,69 @@ export default class Sequencer {
 
     this.player = null;
     this.players = players;
-    this.onSequencerStateUpdate = onSequencerStateUpdate;
-    this.onPlayerError = onError;
+    // this.onSequencerStateUpdate = onSequencerStateUpdate;
+    // this.onPlayerError = onError;
 
     this.currIdx = 0;
     this.context = null;
     this.currUrl = null;
-    this.shuffle = false;
+    this.shuffle = SHUFFLE_OFF;
+    this.shuffleOrder = [];
     this.songRequest = null;
     this.repeat = REPEAT_OFF;
 
     this.players.forEach(player => {
-      player.on('playerStateUpdate', this.onPlayerStateUpdate);
-      player.on('playerError', this._onPlayerError);
+      player.on('playerStateUpdate', this.handlePlayerStateUpdate);
+      player.on('playerError', this.handlePlayerError);
     });
   }
 
-  _onPlayerError(e) {
-    // TODO: extend EventEmitter instead of using callbacks (see worklet branch)
-    this.onPlayerError(e);
+  handlePlayerError(e) {
+    this.emit('playerError', e);
     if (this.context) {
       this.nextSong();
     } else {
-      this.onSequencerStateUpdate(true);
+      this.emit('sequencerStateUpdate', { isEjected: true });
     }
   }
 
-  onPlayerStateUpdate(isStopped) {
-    console.debug('Sequencer.onPlayerStateUpdate(isStopped=%s)', isStopped);
+  handlePlayerStateUpdate(playerState) {
+    const { isStopped } = playerState;
+    console.debug('Sequencer.handlePlayerStateUpdate(isStopped=%s)', isStopped);
+
     if (isStopped) {
       this.currUrl = null;
       if (this.context) {
         this.nextSong();
       }
     } else {
-      this.onSequencerStateUpdate(false);
+      this.emit('sequencerStateUpdate', {
+        ...playerState,
+        url: this.currUrl,
+        isPaused: false,
+        hasPlayer: true,
+        // TODO: combine isEjected and hasPlayer
+        isEjected: false,
+      });
     }
   }
 
   playContext(context, index = 0) {
     this.currIdx = index;
     this.context = context;
-    this.playSong(context[index]);
+    if (this.shuffle === SHUFFLE_ON) {
+      this.setShuffle(this.shuffle);
+    }
+    this.playCurrentSong();
+  }
+
+  playCurrentSong() {
+    let idx = this.currIdx;
+    if (this.shuffle === SHUFFLE_ON) {
+      idx = this.shuffleOrder[idx];
+      console.log('Shuffle (%s): %s', this.currIdx, idx);
+    }
+    this.playSong(this.context[idx]);
   }
 
   playSonglist(urls) {
@@ -81,8 +112,19 @@ export default class Sequencer {
     this.setShuffle(!this.shuffle);
   }
 
-  setShuffle(shuffle) {
-    this.shuffle = !!shuffle;
+  setShuffle(shuff) {
+    this.shuffle = shuff;
+    if (this.shuffle === SHUFFLE_ON && this.context) {
+      // Generate a new shuffle order.
+      // Insert current play index at the beginning.
+      this.shuffleOrder = [this.currIdx, ...shuffle(this.context.map((_, i) => i).filter(i => i !== this.currIdx))];
+      this.currIdx = 0;
+    } else if (this.shuffleOrder) {
+      // Restore linear play sequence at current shuffle position.
+      if (this.shuffleOrder[this.currIdx] !== null) {
+        this.currIdx = this.shuffleOrder[this.currIdx];
+      }
+    }
   }
 
   setRepeat(repeat) {
@@ -99,17 +141,17 @@ export default class Sequencer {
     if (this.currIdx < 0 || this.currIdx >= this.context.length) {
       if (this.repeat === REPEAT_ALL) {
         this.currIdx = (this.currIdx + this.context.length) % this.context.length;
-        this.playSong(this.context[this.currIdx]);
+        this.playCurrentSong();
       } else {
         console.debug('Sequencer.advanceSong(direction=%s) %s passed end of context length %s',
           direction, this.currIdx, this.context.length);
         this.currIdx = 0;
         this.context = null;
         this.player.stop();
-        this.onSequencerStateUpdate(true);
+        this.emit('sequencerStateUpdate', { isEjected: true });
       }
     } else {
-      this.playSong(this.context[this.currIdx]);
+      this.playCurrentSong();
     }
   }
 
@@ -131,8 +173,9 @@ export default class Sequencer {
   }
 
   prevSubtune() {
-    if (! this.hasPrevSubtune()) return;
-    this.playSubtune( this.player.getSubtune() - 1);
+    const subtune = this.player.getSubtune() - 1;
+    if (subtune < 0) return;
+    this.playSubtune(subtune);
   }
 
   hasNextSubtune() {
@@ -141,8 +184,9 @@ export default class Sequencer {
   }
 
   nextSubtune() {
-    if (! this.hasNextSubtune()) return;
-    this.playSubtune(this.player.getSubtune() + 1);
+    const subtune = this.player.getSubtune() + 1;
+    if (subtune >= this.player.getNumSubtunes()) return;
+    this.playSubtune(subtune);
   }
 
   getPlayer() {
@@ -154,7 +198,7 @@ export default class Sequencer {
   }
 
   getCurrIdx() {
-    return this.currIdx;
+    return this.shuffle ? this.shuffleOrder[this.currIdx] : this.currIdx;
   }
 
   getCurrUrl() {
@@ -178,7 +222,7 @@ export default class Sequencer {
       }
     }
     if (this.player === null) {
-      this.onPlayerError(`The file format ".${ext}" was not recognized.`);
+      this.emit('playerError', `The file format ".${ext}" was not recognized.`);
       return;
     }
 
@@ -196,7 +240,7 @@ export default class Sequencer {
         this.playSongBuffer(filepath, buffer)
       })
       .catch(e => {
-        this._onPlayerError(e.message || `HTTP ${e.status} ${e.statusText} ${url}`);
+        this.handlePlayerError(e.message || `HTTP ${e.status} ${e.statusText} ${url}`);
       });
   }
 
@@ -210,7 +254,7 @@ export default class Sequencer {
     // Find a player that can play this filetype
     const player = this.players.find(player => player.canPlay(ext));
     if (player == null) {
-      this.onPlayerError(`The file format ".${ext}" was not recognized.`);
+      this.emit('playerError', `The file format ".${ext}" was not recognized.`);
       return;
     } else {
       this.player = player;
@@ -228,11 +272,9 @@ export default class Sequencer {
     try {
       await this.player.loadData(uint8Array, filepath);
     } catch (e) {
-      this._onPlayerError(`Unable to play ${filepath} (${e.message}).`);
+      this.handlePlayerError(`Unable to play ${filepath} (${e.message}).`);
     }
-     const numVoices = this.player.getNumVoices();
+    const numVoices = this.player.getNumVoices();
     this.player.setVoiceMask([...Array(numVoices)].fill(true));
-
-    console.debug('Sequencer.playSong(...) song request completed');
   }
 }

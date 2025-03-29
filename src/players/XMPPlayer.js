@@ -134,7 +134,10 @@ export default class XMPPlayer extends Player {
 
     this.connect();
     this.resume();
-    this.emit('playerStateUpdate', false);
+    this.emit('playerStateUpdate', {
+      ...this.getBasePlayerState(),
+      isStopped: false
+    });
   }
 
   getVoiceMask() {
@@ -156,8 +159,8 @@ export default class XMPPlayer extends Player {
   }
 
   setTempo(val) {
-    if (!this.metadata.initialSpeed) {
-      console.error('Unable to set speed for this file format.');
+    if (this.metadata && !this.metadata.initialSpeed) {
+      console.log('Unable to set speed for %s.', this.filepathMeta.title);
       return;
     }
     this.tempoScale = val;
@@ -226,6 +229,6 @@ export default class XMPPlayer extends Player {
     this.suspend();
     this.lib._xmp_stop_module(this.xmpCtx);
     console.debug('XMPPlayer.stop()');
-    this.emit('playerStateUpdate', true);
+    this.emit('playerStateUpdate', { isStopped: true });
   }
 }

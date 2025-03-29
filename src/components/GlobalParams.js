@@ -8,7 +8,7 @@ export default class GlobalParams extends PureComponent {
         <label title="boost whole volume, this is useful for the songs with low level" >
         Volume Level Boost:{' '}
         <input
-          type='range' value={this.props.boost}
+          type='range' defaultValue={this.props.boost}
           min='1.0' max='9.0' step='0.5'
           onInput={this.props.handleVolumeBoostChange}
           onChange={this.props.handleVolumeBoostChange} />{' '}

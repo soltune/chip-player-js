@@ -27,7 +27,7 @@ export default class Player extends EventEmitter {
 
     this.paused = true;
     this.fileExtensions = [];
-    this.metadata = {};
+    this.metadata = null;
     this.audioCtx = audioCtx;
     this.destinationNode = destNode;
     this.bufferSize = bufferSize;
@@ -132,6 +132,23 @@ export default class Player extends EventEmitter {
     return [];
   }
 
+  getBasePlayerState() {
+    return {
+      metadata: this.getMetadata(),
+      durationMs: this.getDurationMs(),
+      positionMs: this.getPositionMs(),
+      numVoices: this.getNumVoices(),
+      numSubtunes: this.getNumSubtunes(),
+      subtune: this.getSubtune(),
+      paramDefs: this.getParamDefs(),
+      tempo: this.getTempo(),
+      voiceMask: this.getVoiceMask(),
+      voiceNames: [...Array(this.getNumVoices())].map((_, i) => this.getVoiceName(i)),
+      infoTexts: [],
+      isStopped: false,
+    };
+  }
+
   connect() {
     if (!this._innerAudioProcess) {
       throw Error('Player.setAudioProcess has not been called.');
@@ -193,6 +210,8 @@ export default class Player extends EventEmitter {
       fn();
     }
   }
+
+  handleFileSystemReady() {}
 
   static metadataFromFilepath(filepath) {
     // Guess metadata from path/filename for MIDI files.

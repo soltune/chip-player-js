@@ -230,7 +230,7 @@ class VGMLibWrapper {
     if (!this.existsFileData(path, filename)) {
       this.registerFileData(path, filename, data);
     }
-
+    
     const result = this.vgmLib.ccall('vgm_init', 'number', ['number', 'string', 'string'], [sampleRate, path, filename]);
     if (result === 0) { // result -> 0: success, 1: error
       this.currentFile = filename;
@@ -444,98 +444,60 @@ export default class VGMPlayer extends Player {
       this.resampleBuffer = this.allocResampleBuffer(bufSize);
     }
 
-    if (sampleRate === inputSampleRate) {
-      resampleLen = this.getCopiedAudio(input, len, this.resampleBuffer);
-    } else {
-      // only mono and interleaved stereo data is currently implemented..
-      this.resampleToFloat(this.channels, 0, input, len, this.resampleBuffer, resampleLen);
-      if (this.isStereo) {
-        this.resampleToFloat(this.channels, 1, input, len, this.resampleBuffer, resampleLen);
-      }
-    }
-    return resampleLen;
+    return this.getCopiedAudio(input, len, this.resampleBuffer);
   }
 
   resampleToFloat(channels, channelId, inputPtr, len, resampleOutput, resampleLen) {
-    // Bresenham (line drawing) algorithm based resampling
-    let x0 = 0;
-    let y0 = 0;
-    let x1 = resampleLen - 0;
-    let y1 = len - 0;
-
-    let dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-    let dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-    let err = dx + dy, e2;
-
-    let i;
-    for (; ;) {
-      i = (x0 * channels.length) + channelId;
-      resampleOutput[i] = this.readFloatSample(inputPtr, (y0 * channels.length) + channelId);
-
-      if (x0 >= x1 && y0 >= y1) {
-        break;
-      }
-      e2 = 2 * err;
-      if (e2 > dy) {
-        err += dy;
-        x0 += sx;
-      }
-      if (e2 < dx) {
-        err += dx;
-        y0 += sy;
-      }
+    // 線形補間を使用した高品質なリサンプリング
+    const ratio = len / resampleLen;
+    for (let i = 0; i < resampleLen; i++) {
+      const pos = i * ratio;
+      const index = Math.floor(pos);
+      const frac = pos - index;
+      const nextIndex = Math.min(index + 1, len - 1);
+      
+      const currentSample = this.readFloatSample(inputPtr, (index * channels.length) + channelId);
+      const nextSample = this.readFloatSample(inputPtr, (nextIndex * channels.length) + channelId);
+      
+      // 線形補間
+      const interpolatedSample = currentSample + (nextSample - currentSample) * frac;
+      
+      // クリッピング防止
+      const clampedSample = Math.max(-1.0, Math.min(1.0, interpolatedSample));
+      
+      resampleOutput[(i * channels.length) + channelId] = clampedSample;
     }
   }
 
   copySamplesStereo() {
-    let i, l = 0, r = 0;
     const outSize = this.channels[0].length;
-    if (this.numberOfSamplesRendered + this.numberOfSamplesToRender > outSize) {
-      const availableSpace = outSize - this.numberOfSamplesRendered;
-
-      for (i = 0; i < availableSpace; i++) {
-        l = this.resampleBuffer[this.sourceBufferIdx++];
-        r = this.resampleBuffer[this.sourceBufferIdx++];
-
-        this.channels[0][i + this.numberOfSamplesRendered] = l;
-        this.channels[1][i + this.numberOfSamplesRendered] = r;
-      }
-
-      this.numberOfSamplesToRender -= availableSpace;
-      this.numberOfSamplesRendered = outSize;
-    } else {
-      for (i = 0; i < this.numberOfSamplesToRender; i++) {
-        l = this.resampleBuffer[this.sourceBufferIdx++];
-        r = this.resampleBuffer[this.sourceBufferIdx++];
-
-        this.channels[0][i + this.numberOfSamplesRendered] = l;
-        this.channels[1][i + this.numberOfSamplesRendered] = r;
-      }
-      this.numberOfSamplesRendered += this.numberOfSamplesToRender;
-      this.numberOfSamplesToRender = 0;
+    const availableSpace = Math.min(this.numberOfSamplesToRender, outSize - this.numberOfSamplesRendered);
+    
+    for (let i = 0; i < availableSpace; i++) {
+      const l = this.resampleBuffer[this.sourceBufferIdx++];
+      const r = this.resampleBuffer[this.sourceBufferIdx++];
+      
+      // クリッピング防止
+      this.channels[0][i + this.numberOfSamplesRendered] = Math.max(-1.0, Math.min(1.0, l));
+      this.channels[1][i + this.numberOfSamplesRendered] = Math.max(-1.0, Math.min(1.0, r));
     }
+    
+    this.numberOfSamplesToRender -= availableSpace;
+    this.numberOfSamplesRendered += availableSpace;
   }
 
   copySamplesMono() {
-    let o = 0;
     const outSize = this.channels[0].length;
-    if (this.numberOfSamplesRendered + this.numberOfSamplesToRender > outSize) {
-      let availableSpace = outSize - this.numberOfSamplesRendered;
-
-      for (let i = 0; i < availableSpace; i++) {
-        o = this.resampleBuffer[this.sourceBufferIdx++];
-        this.channels[0][i + this.numberOfSamplesRendered] = o;
-      }
-      this.numberOfSamplesToRender -= availableSpace;
-      this.numberOfSamplesRendered = outSize;
-    } else {
-      for (let i = 0; i < this.numberOfSamplesToRender; i++) {
-        o = this.resampleBuffer[this.sourceBufferIdx++];
-        this.channels[0][i + this.numberOfSamplesRendered] = o;
-      }
-      this.numberOfSamplesRendered += this.numberOfSamplesToRender;
-      this.numberOfSamplesToRender = 0;
+    const availableSpace = Math.min(this.numberOfSamplesToRender, outSize - this.numberOfSamplesRendered);
+    
+    for (let i = 0; i < availableSpace; i++) {
+      const sample = this.resampleBuffer[this.sourceBufferIdx++];
+      // クリッピング防止
+      this.channels[0][i + this.numberOfSamplesRendered] = Math.max(-1.0, Math.min(1.0, sample));
     }
+    
+    this.numberOfSamplesToRender -= availableSpace;
+    this.numberOfSamplesRendered += availableSpace;
   }
 
   fillEmpty(outSize) {
@@ -597,7 +559,10 @@ export default class VGMPlayer extends Player {
       this.connect();
       this.resume();
 
-      this.emit('playerStateUpdate', !this.isPlaying());
+      this.emit('playerStateUpdate', {
+        ...this.getBasePlayerState(),
+        isStopped: false,
+      });
     }
   }
 
@@ -755,7 +720,7 @@ export default class VGMPlayer extends Player {
     this.vgmlib.close();
 
     console.debug('VGMPlayer.stop()');
-    this.emit('playerStateUpdate', true);
+    this.emit('playerStateUpdate', { isStopped: true });
   }
 
   getChannelMaskParams(voices) {
