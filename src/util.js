@@ -4,7 +4,7 @@ import path from 'path';
 
 import DirectoryLink from './components/DirectoryLink';
 
-const CATALOG_PREFIX_REGEX = /^https?:\/\/[a-z0-9\-.:\/]+\/(music|catalog)\//;
+const CATALOG_PREFIX_REGEX = /^https?:\/\/[a-z0-9\-.:/]+\/(music|catalog)\//;
 
 export function updateQueryString(newParams) {
   // Merge new params with current query string
