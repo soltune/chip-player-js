@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<!--
+ webGSF: HTML5 Audio/JavaScript port of mGBA/GSF decoder.
+
+
+ Credits: 
+  * The visualization used on this page was strongly "inspired" by this demo:
+    http://html5-demos.appspot.com/static/webaudio/createMediaSourceElement.html
+
+ Copyright:
+	
+	mGBA is Copyright © 2013 – 2018 Jeffrey Pfau. It is distributed under the Mozilla Public License version 2.0. 
+	A copy of the license is available in the distributed LICENSE file.
+
+	mGBA contains the following third-party libraries:
+	inih, which is copyright © 2009 Ben Hoyt and used under a BSD 3-clause license.
+	blip-buf, which is copyright © 2003 – 2009 Shay Green and used under a Lesser GNU Public License.
+	LZMA SDK, which is public domain.
+	MurmurHash3 implementation by Austin Appleby, which is public domain.
+	getopt for MSVC, which is public domain.
+	
+	foo_input_gsf Copyright Christopher Snowhill
+	web stuff Copyright © 2018 Juergen Wothke. It is distributed under the same Mozilla Public License version 2.0 as the used mGBA base.
+-->
+<meta http-equiv="X-UA-Compatible" content="chrome=1" />
+<title>WebGSF - the Gameboy Sound Format music player</title>
+
+<meta name="description" content="Experimental JavaScript version of mGBA/GSF decoder; it supports formats: .gsf & .minigsf2 ">
+<meta name="author" content="Juergen Wothke">
+<meta name="keywords" content="Web Audio API, HTML5, JavaScript, Gameboy Advance">
+
+<link href="stdlib/font.css" rel="stylesheet" type="text/css">
+<link href="stdlib/common.css" rel="stylesheet" type="text/css">
+<link href="add_on.css" rel="stylesheet" type="text/css">
+
+<link rel="image_src" href="screenshot.gif" />
+<meta property="og:image" content="http://www.wothke.ch/webGSF/screenshot.gif" />
+
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<link rel="shortcut icon" type="image/x-icon" href="favicon.ico" />
+<link type="image/x-icon" href="favicon.ico" />
+
+<script type="text/javascript" src="stdlib/jquery1.11.min.js"></script>
+<script type="text/javascript" src="stdlib/jquery.details.min.js"></script>
+<script type="text/javascript" src="stdlib/scriptprocessor_player.min.js"></script>
+
+<script>window.openDetails=false;</script>
+<script type="text/javascript" src="stdlib/mini_display.js"></script>
+<script type="text/javascript" src="stdlib/mini_controls.js"></script>
+
+<script type="text/javascript" src="backend_gsf.js"></script>
+<script>
+var playerControls;
+var	songDisplay;
+	
+// configure what music infos to display in SongDisplay
+// configure what music infos to display in SongDisplay
+GSFDisplayAccessor = (function(){ var $this = function (doGetSongInfo) {
+		$this.base.call(this, doGetSongInfo);
+	}; 
+	extend(DisplayAccessor, $this, {
+		getDisplayTitle: function() 	{ return "webGSF";},
+		getDisplaySubtitle: function() 	{ return "mGBA in action";},
+		getDisplayLine1: function() { return this.getSongInfo().title +" ("+this.getSongInfo().artist+")";},
+		getDisplayLine2: function() { return this.getSongInfo().copyright; },
+		getDisplayLine3: function() { return ""; }
+	});	return $this; })();
+		
+// link player events to "controls" and "display"
+function doOnTrackEnd(){
+	if (playerControls) playerControls.playNextSong();  
+}
+function doOnTrackReadyToPlay(){ 	
+	ScriptNodePlayer.getInstance().play();
+	songDisplay.redrawSongInfo();
+}
+function doOnPlayerReady() {
+	if (playerControls) playerControls.playNextSong();
+}
+
+function init() {
+	// --------------------------- music player -----------------------
+	var basePath= '';		// not needed here
+	ScriptNodePlayer.createInstance(new GSFBackendAdapter(true), basePath, [], true, doOnPlayerReady,
+										doOnTrackReadyToPlay, doOnTrackEnd);
+		
+	// --------------------------- UI - basic player controls --------------
+	var songs = [
+		"/modland/proxy.php?mod=Gameboy Sound Format/Hitoshi Sakimoto/Final Fantasy Tactics Advance/01 main theme.minigsf",
+		"/modland/proxy.php?mod=Gameboy Sound Format/Barry Leitch/Batman - Rise Of Sin Tzu/01 main theme.minigsf",
+		"/modland/proxy.php?mod=Gameboy Sound Format/Julius/Jazz Jackrabbit Advance/main title.minigsf",
+		"/modland/proxy.php?mod=Gameboy Sound Format/Masaru Setsumaru/Chu Chu Rocket/01 title.minigsf",
+		"/modland/proxy.php?mod=Gameboy Sound Format/Ichiro Shimakura/Mario Party Advance/01 intro.minigsf",
+		"/modland/proxy.php?mod=Gameboy Sound Format/Abe Hideki/Puyo Pop Fever/puyo pop - 01 title.minigsf",
+		"/modland/proxy.php?mod=Gameboy Sound Format/Tommy Tallarico/Earthworm Jim/title.minigsf",
+	];
+	playerControls= new BasicPlayerControls(songs, true, false,
+				(function(someSong) {
+						var options= {};
+						return [someSong, options];
+					})
+				);
+
+	songDisplay= new SongDisplay(new GSFDisplayAccessor((function(){return playerControls.getSongInfo();})), 
+								[0xd65631,0xd7e627,0xd7e627,0x10b642], 1, 1, (function(){playerControls.animate()}));
+
+	playerControls.playNextSong();
+}
+</script>
+<script type="text/javascript" src="stdlib/analytics.js"></script>
+</head>
+
+<body onload="init();">
+<div class="tooltip" id="tooltip" alt= "This is a hobby project, but it costs not only time to regularily maintain this site but also money to pay for the internet service provider (etc). If you want to keep this site up and running.. or if you just like my work (see https://jwothke.wordpress.com/) and you'd like to see more of it in the future, please make a contribution. Thank you!"></div>
+
+<details>
+  <summary>What's this?</summary>
+  <div>
+  <p>WebGSF: Experimental JavaScript/HTML5 version of kode54's <a href="http://www.foobar2000.org/components/view/foo_input_gsf" target="_blank">GSF decoder</a> a 
+  player for "Gameboy Sound Format" (based on mGBA).</p>
+ 
+  <p>Bring your own .minigsf/.gsf files by dropping them onto the game console (you'll have to drop the .gsflib first - before 
+  dropping the song files that use it). Respective files can be found for example on 
+  <a href="https://ftp.modland.com/pub/modules/Gameboy%20Sound%20Format/" target="_blank">modland.com</a>.</p>
+ 
+  <p>2018 by Juergen Wothke  (The source code can be found <a target="_blank" href="https://github.com/wothke/">here</a>.)</p>
+   
+  <p>This page does not use any plugins but is based exclusively on the WebAudio API. The audio samples here 
+  are completely calculated within JavaScript by running the mGBA emulator logic.</p>
+ 
+  <p>Please use the below controls to navigate between the songs that you have dropped on the player:
+  <span id="controls"></span>
+ </div>
+</details>
+<aside></aside>
+<section>
+  <div id="logo">
+		<!-- in new Chrome the SHIT reflections disapear dependig on the canvas height.. what a fucking joke -->
+		<div id="moz-reflect-logo"><canvas  id="logoCanvas"  width="270" height="100"></canvas></div>	
+  </div>
+  
+  <div id="spectrum" >
+		<!-- use "hight" greater than 80 and the fucking reflection is gone.. FUCK YOU IDIOTS -->
+		<div id="moz-reflect-spectrum"><canvas id="spectrumCanvas" width="800" height="80"></canvas></div>
+  </div>
+  <div id="drop" class="drop"><img src="gba.gif"/></div><!--see BasicPlayerControls-->
+</section>
+</body>
+</html>

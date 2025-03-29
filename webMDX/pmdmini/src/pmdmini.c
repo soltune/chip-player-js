@@ -51,6 +51,16 @@ void pmd_init(void)
 	pmd_loop = 0;
 }
 
+void pmd_deinit(void)
+{
+    pmdwindeinit();
+
+    pmdwork = NULL;
+
+    pmd_length = 0;
+    pmd_loop = 0;
+}
+
 
 //
 //　周波数設定
@@ -246,6 +256,11 @@ void pmd_set_rhythm_path( char *path )
 void pmd_set_rhythm_with_ssg( int value )
 {
     setrhythmwithssgeffect(value == 1);
+}
+
+void pmd_set_pps_use( int value )
+{
+    setppsuse(value == 1);
 }
 
 char* pmd_get_memo(char *dest, unsigned char *musdata, int size, int al)

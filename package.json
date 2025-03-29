@@ -22,6 +22,7 @@
     "directory-tree": "^2.2.1",
     "dotenv": "4.0.0",
     "dotenv-expand": "4.2.0",
+    "encoding-japanese": "^1.0.30",
     "eslint": "^5.16.0",
     "eslint-config-react-app": "^4.0.1",
     "eslint-loader": "2.1.2",
@@ -30,6 +31,7 @@
     "eslint-plugin-jsx-a11y": "6.2.1",
     "eslint-plugin-react": "7.12.4",
     "eslint-plugin-react-hooks": "^1.5.0",
+    "events": "^3.3.0",
     "file-loader": "3.0.1",
     "fili": "^2.0.3",
     "firebase": "^5.7.0",
@@ -38,11 +40,13 @@
     "immutability-helper": "^2.7.1",
     "ismobilejs": "^0.4.1",
     "jest": "20.0.4",
-    "lodash": "^4.17.11",
+    "lodash": "^4.17.21",
+    "midievents": "latest",
+    "midifile": "^2.0.0",
     "mini-css-extract-plugin": "^0.7.0",
     "node-unrar-js": "^0.8.1",
     "object-assign": "4.1.1",
-    "path-parse": "^1.0.6",
+    "path-parse": "^1.0.7",
     "postcss-flexbugs-fixes": "3.2.0",
     "postcss-loader": "2.0.8",
     "promise": "8.0.1",
@@ -52,7 +56,7 @@
     "react-dev-utils": "^7.0.5",
     "react-dom": "^16.8.0",
     "react-dropzone": "7.0.0",
-    "react-router-dom": "^5.0.0",
+    "react-router-dom": "^5.2.0",
     "react-virtual-list": "^2.3.0",
     "resolve": "1.6.0",
     "roman-numerals": "^0.3.2",
@@ -98,6 +102,7 @@
     "deploy": "gh-pages -d build",
     "deploy-lite": "npm run build-lite; gh-pages -d build",
     "prepare": "patch-package",
+    "server": "DEV=1 node public/index.js",
     "fixvgm": "node $NODE_DEBUG_OPTION scripts/fixvgm.js"
   },
   "jest": {
@@ -143,7 +148,8 @@
     "extends": "react-app",
     "rules": {
       "jsx-a11y/href-no-hash": "off",
-      "jsx-a11y/anchor-is-valid": "off"
+      "jsx-a11y/anchor-is-valid": "off",
+      "no-fallthrough": "off"
     }
   }
 }

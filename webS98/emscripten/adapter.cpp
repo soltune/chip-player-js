@@ -52,10 +52,10 @@ const char *getEmscriptenRhythmPath() {
 #define CHANNELS 2				
 #define BYTES_PER_SAMPLE 2
 #define SAMPLE_BUF_SIZE	1024
-#define SAMPLE_FREQ	44100
+#define SAMPLE_FREQ	55466
 
 
-Int16 sample_buffer[SAMPLE_BUF_SIZE * CHANNELS];
+static Int16 sample_buffer[SAMPLE_BUF_SIZE * CHANNELS];
 int s98_samples_available= 0;
 
 char* s98_info_texts[9];
@@ -209,7 +209,7 @@ void extractStructFileInfo(char *filename) {
 	} else {
 		/*
 		note: V3 files contain tagged info, e.g.
-		[S98]
+		[S98](BOM)?
 		"title=Opening" 0x0a
 		"artist=Yuzo Koshiro" 0x0a
 		"game=Sorcerian" 0x0a
@@ -232,7 +232,8 @@ void extractStructFileInfo(char *filename) {
 		}
 		
 		if (hasPrefix || g_soundinfo.dwIsV3) {
-			std::string s= std::string(raw_info_buffer + (hasPrefix?strlen(pfx):0));
+			// skip 3 bytes (BOM) when tag is encoded to UTF-8
+			std::string s= std::string(raw_info_buffer + (hasPrefix ? strlen(pfx) + (isUnicodeTag ? 3 : 0) : 0));
 
 			std::string delimiter(1, (char)0xa);
 
@@ -282,10 +283,11 @@ void extractStructFileInfo(char *filename) {
 }
 
 int computeSamples() {
-	if (g_loop_detected) return 1;  // the position goes over the end of tune
+//	if (g_loop_detected) return 1;  // the position goes over the end of tune
 	
 	s98_samples_available = g_s98->Write((Int16 *)sample_buffer, SAMPLE_BUF_SIZE / 4) ;
-	return 0;
+	return (!g_s98->HasLoop())? -1 :
+	            ((g_loop_detected)? 1 : 0);
 }
 
 extern "C"  int s98_load_file(char *filename, void * inBuffer, uint32_t inBufSize)  __attribute__((noinline));
@@ -334,7 +336,8 @@ extern "C" int EMSCRIPTEN_KEEPALIVE s98_get_current_position() {
 	if (g_s98->GetPosition() > g_soundinfo.dwLength) {
 		g_loop_detected = 1;
 	}
-	return g_s98->GetPosition() % g_soundinfo.dwLength;
+//	return g_s98->GetPosition() % g_soundinfo.dwLength;
+	return (g_s98)? g_s98->GetPosition() : 0;
 }
 
 extern "C" void s98_seek_position(int pos) __attribute__((noinline));

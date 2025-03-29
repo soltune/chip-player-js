@@ -1,3 +1,4 @@
+import EventEmitter from 'events';
 //
 // Player can be viewed as a state machine with
 // 3 states (playing, paused, stopped) and 5 transitions
@@ -18,17 +19,18 @@
 // In the "stop" transition, it is disconnected.
 // "stopped" is synonymous with closed/empty.
 //
-export default class Player {
-  constructor(audioCtx, destNode, chipCore, onPlayerStateUpdate) {
+export default class Player extends EventEmitter {
+  constructor(audioCtx, destNode, chipCore, bufferSize) {
+    super();
+
     this._outerAudioProcess = this._outerAudioProcess.bind(this);
 
     this.paused = true;
     this.fileExtensions = [];
-    this.metadata = {};
+    this.metadata = null;
     this.audioCtx = audioCtx;
     this.destinationNode = destNode;
-    this.onPlayerStateUpdate = onPlayerStateUpdate;
-    this.bufferSize = 2048;
+    this.bufferSize = bufferSize;
     this._innerAudioProcess = null;
     this.audioNode = this.audioCtx.createScriptProcessor(this.bufferSize, 2, 2);
     this.audioNode.onaudioprocess = this._outerAudioProcess;
@@ -63,28 +65,48 @@ export default class Player {
     throw Error('Player.stop() must be implemented.');
   }
 
-  restart() {
-    throw Error('Player.restart() must be implemented.');
-  }
-
   isPlaying() {
     throw Error('Player.isPlaying() must be implemented.');
+  }
+
+  getTempo() { // TODO: rename all tempo to speed
+    console.warn('Player.getTempo() not implemented for this player.');
+    return 1;
   }
 
   setTempo() {
     console.warn('Player.setTempo() not implemented for this player.');
   }
 
-  setVoices() {
-    console.warn('Player.setVoices() not implemented for this player.');
-  }
-
   setFadeout(startMs) {
     console.warn('Player.setFadeout() not implemented for this player.');
   }
 
+  getDurationMs() {
+    console.warn('Player.getDurationMs() not implemented for this player.');
+    return 5000;
+  }
+
+  getPositionMs() {
+    console.warn('Player.getPositionMs() not implemented for this player.');
+    return 0;
+  }
+
+  seekMs(ms) {
+    console.warn('Player.seekMs() not implemented for this player.');
+  }
+
   getVoiceName(index) {
     console.warn('Player.getVoiceName() not implemented for this player.');
+  }
+
+  getVoiceMask() {
+    console.warn('Player.getVoiceMask() not implemented for this player.');
+    return [];
+  }
+
+  setVoiceMask() {
+    console.warn('Player.setVoiceMask() not implemented for this player.');
   }
 
   getNumVoices() {
@@ -110,6 +132,23 @@ export default class Player {
     return [];
   }
 
+  getBasePlayerState() {
+    return {
+      metadata: this.getMetadata(),
+      durationMs: this.getDurationMs(),
+      positionMs: this.getPositionMs(),
+      numVoices: this.getNumVoices(),
+      numSubtunes: this.getNumSubtunes(),
+      subtune: this.getSubtune(),
+      paramDefs: this.getParamDefs(),
+      tempo: this.getTempo(),
+      voiceMask: this.getVoiceMask(),
+      voiceNames: [...Array(this.getNumVoices())].map((_, i) => this.getVoiceName(i)),
+      infoTexts: [],
+      isStopped: false,
+    };
+  }
+
   connect() {
     if (!this._innerAudioProcess) {
       throw Error('Player.setAudioProcess has not been called.');
@@ -120,10 +159,6 @@ export default class Player {
   suspend() {
     this.stopped = true;
     this.paused = true;
-  }
-
-  setOnPlayerStateUpdate(fn) {
-    this.onPlayerStateUpdate = fn;
   }
 
   setAudioProcess(fn) {
@@ -175,6 +210,8 @@ export default class Player {
       fn();
     }
   }
+
+  handleFileSystemReady() {}
 
   static metadataFromFilepath(filepath) {
     // Guess metadata from path/filename for MIDI files.

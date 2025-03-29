@@ -8824,6 +8824,16 @@ __declspec(dllexport) bool WINAPI pmdwininit(char *path)
 	return result;
 }
 
+__declspec(dllexport) void WINAPI pmdwindeinit(void)
+{
+	if(pmdwin != NULL) {
+		delete pmdwin;
+		delete pmdwin2;
+
+		pmdwin = NULL;
+		pmdwin2 = NULL;
+	}
+}
 
 //=============================================================================
 //	リズム音の再読み込み

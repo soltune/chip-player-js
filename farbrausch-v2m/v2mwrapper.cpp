@@ -5,7 +5,7 @@
 #include "sounddef.h"
 #include "v2mplayer.h"
 #include "v2mconv.h"
-#include <emscripten.h>
+#include <emscripten.h> // TODO: Remove
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,13 +44,13 @@ int v2m_open(uint8_t *data, int length, int sample_rate) {
   return 1;
 }
 
-void v2m_write_audio(float *buffer, int buffer_size) {
-  v2m.Render(buffer, buffer_size);
+int v2m_write_audio(float *buffer, int buffer_size) {
   g_sample_time += buffer_size;
+  return v2m.Render(buffer, buffer_size);
 }
 
 float v2m_get_position_ms() {
-  return 1000 * (float)v2m.GetTime() / g_sample_rate;
+  return v2m.GetTime();
 }
 
 float v2m_get_duration_ms() {

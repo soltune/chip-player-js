@@ -4,11 +4,12 @@ const fileExtensions = [
   'v2m',
 ];
 
-export default class XMPPlayer extends Player {
-  constructor(audioCtx, destNode, chipCore, onPlayerStateUpdate = function() {}) {
-    super(audioCtx, destNode, chipCore, onPlayerStateUpdate);
+export default class V2MPlayer extends Player {
+  constructor(audioCtx, destNode, chipCore, bufferSize) {
+    super(audioCtx, destNode, chipCore, bufferSize);
     this.loadData = this.loadData.bind(this);
 
+    this.speed = 1;
     this.lib = chipCore;
     this.fileExtensions = fileExtensions;
     this.buffer = chipCore.allocate(this.bufferSize * 8, 'i32', chipCore.ALLOC_NORMAL);
@@ -34,7 +35,10 @@ export default class XMPPlayer extends Player {
 
     this.connect();
     this.resume();
-    this.onPlayerStateUpdate(false);
+    this.emit('playerStateUpdate', {
+      ...this.getBasePlayerState(),
+      isStopped: false
+    });
   }
 
   v2mAudioProcess(e) {
@@ -51,7 +55,10 @@ export default class XMPPlayer extends Player {
       return;
     }
 
-    this.lib._v2m_write_audio(this.buffer, this.bufferSize);
+    const samplesWritten = this.lib._v2m_write_audio(this.buffer, this.bufferSize);
+    if (samplesWritten === 0) {
+      this.stop();
+    }
 
     for (channel = 0; channel < channels.length; channel++) {
       for (i = 0; i < this.bufferSize; i++) {
@@ -59,19 +66,19 @@ export default class XMPPlayer extends Player {
           this.buffer +           // Interleaved channel format
           i * 4 * 2 +             // frame offset   * bytes per sample * num channels +
           channel * 4,            // channel offset * bytes per sample
-          'float'                 // the sample values are signed 16-bit integers
+          'float'                 // the sample values are 32-bit floating point
         );
       }
     }
   }
 
-  setVoices(voices) {
-    console.error('Unable to set voices for this file format.');
+  getTempo() {
+    return this.speed;
   }
 
   setTempo(val) {
+    this.speed = val;
     return this.lib._v2m_set_speed(val);
-    // console.error('Unable to set speed for this file format.');
   }
 
   getPositionMs() {
@@ -98,6 +105,6 @@ export default class XMPPlayer extends Player {
     this.suspend();
     this.lib._v2m_close();
     console.debug('V2MPlayer.stop()');
-    this.onPlayerStateUpdate(true);
+    this.emit('playerStateUpdate', { isStopped: true });
   }
 }

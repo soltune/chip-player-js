@@ -12,15 +12,16 @@ const fileExtensions = [
 ];
 
 export default class XMPPlayer extends Player {
-  constructor(audioCtx, destNode, chipCore, onPlayerStateUpdate = function() {}) {
-    super(audioCtx, destNode, chipCore, onPlayerStateUpdate);
+  constructor(audioCtx, destNode, chipCore, bufferSize) {
+    super(audioCtx, destNode, chipCore, bufferSize);
 
     this.lib = chipCore;
     this.xmpCtx = chipCore._xmp_create_context();
     this.xmp_frame_infoPtr = chipCore._malloc(2048);
     this.fileExtensions = fileExtensions;
+    this.lastBPM = 125;
     this.initialBPM = 125;
-    this.tempoScale = 1;
+    this.tempoScale = this.lastTempoScale = 1; // TODO: rename to speed
     this._positionMs = 0;
     this._durationMs = 1000;
     this.buffer = chipCore.allocate(this.bufferSize * 16, 'i16', chipCore.ALLOC_NORMAL);
@@ -50,7 +51,7 @@ export default class XMPPlayer extends Player {
     } else if (err !== 0) {
       this.suspend();
       console.error("xmp_play_buffer failed. error code: %d", err);
-      throw Error('Unable to play this file!');
+      throw Error('xmp_play_buffer failed');
     }
 
     // Get current module BPM
@@ -104,14 +105,9 @@ export default class XMPPlayer extends Player {
     // Filename fallback
     if (!meta.title) meta.title = this.filepathMeta.title;
 
-    this.initialBPM = meta.initialBPM;
+    this.lastBPM = meta.initialBPM;
 
     return meta;
-  }
-
-  restart() {
-    this.lib._xmp_restart_module(this.xmpCtx);
-    this.resume();
   }
 
   loadData(data, filename) {
@@ -125,30 +121,46 @@ export default class XMPPlayer extends Player {
     );
     if (err !== 0) {
       console.error("xmp_load_module_from_memory failed. error code: %d", err);
-      throw Error('Unable to load this file!');
+      throw Error('xmp_load_module_from_memory failed');
     }
 
     err = this.lib._xmp_start_player(this.xmpCtx, this.audioCtx.sampleRate, 0);
     if (err !== 0) {
       console.error('xmp_start_player failed. error code: %d', err);
+      throw Error('xmp_start_player failed');
     }
 
     this.metadata = this._parseMetadata(filename);
 
     this.connect();
     this.resume();
-    this.onPlayerStateUpdate(false);
+    this.emit('playerStateUpdate', {
+      ...this.getBasePlayerState(),
+      isStopped: false
+    });
   }
 
-  setVoices(voices) {
-    voices.forEach((isEnabled, i) => {
+  getVoiceMask() {
+    const voiceMask = [];
+    for (let i = 0; i < this.metadata.numChannels; i++) {
+      voiceMask.push(!this.lib._xmp_channel_mute(this.xmpCtx, i, -1));
+    }
+    return voiceMask;
+  }
+
+  setVoiceMask(voiceMask) {
+    voiceMask.forEach((isEnabled, i) => {
       this.lib._xmp_channel_mute(this.xmpCtx, i, isEnabled ? 0 : 1);
     });
   }
 
+  getTempo() {
+    return this.tempoScale;
+  }
+
   setTempo(val) {
-    if (!this.metadata.initialSpeed) {
-      console.error('Unable to set speed for this file format.');
+    if (this.metadata && !this.metadata.initialSpeed) {
+      console.log('Unable to set speed for %s.', this.filepathMeta.title);
       return;
     }
     this.tempoScale = val;
@@ -158,9 +170,19 @@ export default class XMPPlayer extends Player {
     const xmp = this.lib;
     const minBPM = 20;
     const maxBPM = 255;
-    const targetBPM = Math.floor(Math.max(Math.min(this.metadata.initialBPM * this.tempoScale, maxBPM), minBPM));
+    const estimatedBPM = Math.floor(Math.max(Math.min(this.lastBPM * this.tempoScale, maxBPM), minBPM));
 
-    if (targetBPM === measuredBPM) return;
+    if (estimatedBPM === measuredBPM) return;
+
+    let targetBPM = this.metadata.initialBPM;
+    if (this.lastTempoScale === this.tempoScale) {  // tempo event received
+      this.lastBPM = measuredBPM;
+      if (this.tempoScale === 1) return;
+      targetBPM = Math.floor(Math.max(Math.min(measuredBPM * this.tempoScale, maxBPM), minBPM));
+    } else {                                        // `Speed` slider changed
+      targetBPM = estimatedBPM;
+      this.lastTempoScale = this.tempoScale;
+    }
 
     console.log('Injecting %d BPM into libxmp. (Initial: %d)', targetBPM, this.metadata.initialBPM);
     const xmp_eventPtr = xmp._malloc(8);
@@ -207,6 +229,6 @@ export default class XMPPlayer extends Player {
     this.suspend();
     this.lib._xmp_stop_module(this.xmpCtx);
     console.debug('XMPPlayer.stop()');
-    this.onPlayerStateUpdate(true);
+    this.emit('playerStateUpdate', { isStopped: true });
   }
 }

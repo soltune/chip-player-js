@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<!--
+ webVGM: HTML5 WebAudio/JavaScript port of VGMPlay.
+
+ 	Copyright (C) 2015 Juergen Wothke
+
+ Original C code of "VGMPlay" (see http://vgmrips.net/forum/viewtopic.php?t=112)
+
+ Credits: The visualization used on this page was strongly "inspired" by this demo:
+ http://html5-demos.appspot.com/static/webaudio/createMediaSourceElement.html
+
+ LICENSE
+ 
+ This library is free software; you can redistribute it and/or modify it
+ under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 2.1 of the License, or (at
+ your option) any later version. This library is distributed in the hope
+ that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU General Public License for more details.
+ 
+ You should have received a copy of the GNU General Public
+ License along with this library; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+-->
+<meta http-equiv="X-UA-Compatible" content="chrome=1" />
+<title>webVGM - the VGM player for the Web</title>
+
+<meta name="description" content="Experimental JavaScript version of VGMPlay; it plays various Arcade and Console game music files - formats like: Video Game Music Files (*.vgm, *.vgz), Creative Music Files (*.cmf), DosBox RAW OPL Log Files (*.dro). Supported sound chips: SN76496 (Sega PSG) and T6W28 (NeoGeo Pocket custom), YM2413* (OPLL), YM2612 (OPN2), YM2151 (OPM), SegaPCM, RF5C68, YM2203 (OPN), YM2608 (OPNA), YM2610/B (OPNB), YM3812* (OPL2), YM3526* (OPL), Y8950* (MSX AUDIO), YMF262* (OP3), YMF278B (OPL4), YMF271 (OPLX), YMZ280B, RF5C164 (Sega MegaCD PCM), PWM (from Sega 32x), AY8910 (MSX PSG), GameBoy DMG, NES APU (incl. FDS), MultiPCM, UPD7759, OKI6258 (Sharp X68000 ADPCM), OKI6295, K051649, K054539, HuC6280 (PC Engine), C140, K053260, Pokey (Atari), QSound, SCSP (Saturn Custom Sound Processor, YMF292-F">
+<meta name="author" content="Juergen Wothke">
+<meta name="keywords" content="WebAudio API, HTML5, JavaScript">
+
+<link href="stdlib/font.css" rel="stylesheet" type="text/css">
+<link href="stdlib/common.css" rel="stylesheet" type="text/css">
+<link href="add_on.css" rel="stylesheet" type="text/css">
+
+<link rel="image_src" href="screenshot.gif" />
+<meta property="og:image" content="http://www.wothke.ch/webvgm/screenshot.gif" />
+
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<link rel="shortcut icon" type="image/x-icon" href="favicon.ico" />
+<link type="image/x-icon" href="favicon.ico" />
+
+<script type="text/javascript" src="stdlib/jquery1.11.min.js"></script>
+<script type="text/javascript" src="stdlib/jquery.details.min.js"></script>
+<script type="text/javascript" src="stdlib/scriptprocessor_player.min.js"></script>
+
+<script>window.openDetails=false;</script>
+<script type="text/javascript" src="stdlib/mini_display.js"></script>
+<script type="text/javascript" src="stdlib/mini_controls.js"></script>
+
+<script type="text/javascript" src="backend_vgm.js"></script>
+<script>
+var playerControls;
+var	songDisplay;
+
+var songs = [
+	// add your music files here, e.g.:
+	'music/Doom.vgz;2',	// boost volume <<2 for this one (hack for songs that for some reason don't play loud enough)
+	'music/06 Kitchen Ace (and Taking Names).vgz;2',
+	'music/01 Introduction ~ Main Theme.vgz;1',
+	'music/01 Awaiting Entry.vgz;1',
+	'music/01 Magical Sound Shower.vgz;1',
+	'music/01 Opening.vgz;1',
+	'music/01_Title.vgm',
+	'music/02 Challenger (Opening Theme).vgz;2',
+	'music/02 First Mission.vgz;2',
+	'music/02 Main BGM 1.vgz;2',
+	'music/03 BGM A.vgz;2',
+	'music/03 Stage 1 - The Haunted Graveyard.vgz',
+	'music/04 Ending.vgz;2',
+	'music/04 Like the Wind (B Course).vgz;1',
+	'music/05.vgz',
+];
+
+// configure what music infos to display in SongDisplay
+VGMDisplayAccessor = (function(){ var $this = function (doGetSongInfo) {
+		$this.base.call(this, doGetSongInfo);
+	}; 
+	extend(DisplayAccessor, $this, {
+		getDisplayTitle: function() 	{ return "webVGM";},
+		getDisplaySubtitle: function() 	{ return "video game music nostalgia..";},
+		getDisplayLine1: function() { return this.getSongInfo().title;},
+		getDisplayLine2: function() { return this.getSongInfo().program; },
+		getDisplayLine3: function() { return ""; }
+	});	return $this; })();
+		
+// link player events to "controls" and "display"
+function doOnTrackEnd(){
+	if (playerControls) playerControls.playNextSong();  
+}
+function doOnTrackReadyToPlay(){ 	
+	ScriptNodePlayer.getInstance().play();
+	songDisplay.redrawSongInfo();
+}
+// depending on the browser/timing the player may be ready before or after (see WASM) init(), i.e.
+// the startup sequence must handle both cases (music can only be started when
+// both the player is ready and init() has been completed..)
+var playerReady= false;		
+function doOnPlayerReady() {
+	playerReady= true;
+	if (playerControls) playerControls.playNextSong(); // playerControls are used to check for init()
+}
+function init() {
+	// --------------------------- VGM music player -----------------------
+	var basePath= '';		// not needed here
+	ScriptNodePlayer.createInstance(new VgmBackendAdapter(), basePath, ["VGMPlay.ini", "yrw801.rom"], true,
+										doOnPlayerReady, doOnTrackReadyToPlay, doOnTrackEnd);
+		
+	playerControls= new BasicPlayerControls(songs, true, false,
+				(function(someSong) {
+					var arr= someSong.split(";");	
+					var boostVolume= arr.length>1?parseInt(arr[1]):0;		
+					var url= arr[0];
+					
+					var options= {};
+					options.track= 0;// archives are not supported and *.vgz/*.vgm contain always 1 track
+					options.boostVolume= boostVolume;
+					return [url, options];
+				}),
+				0
+			);
+
+	var yellow= 0xf4cb25;
+	var red= 0xef210a;
+	var blue= 0x1b1088;
+	var purple= 0x630f64;
+	
+	songDisplay= new SongDisplay(new VGMDisplayAccessor((function(){return playerControls.getSongInfo();})), 
+								[yellow, red, purple, blue, blue], 1, 0.1, (function(){playerControls.animate()}));
+
+	if (playerReady) playerControls.playNextSong();	// player was ready before it could trigger the playback
+}
+</script>
+<script type="text/javascript" src="stdlib/analytics.js"></script>
+</head>
+
+<body onload="init();">
+<div class="tooltip" id="tooltip" alt= "This is a hobby project, but it costs not only time to regularily maintain this site but also money to pay for the internet service provider (etc). If you want to keep this site up and running.. or if you just like my work (see https://jwothke.wordpress.com/) and you'd like to see more of it in the future, please make a contribution. Thank you!"></div>
+
+<details>
+  <summary>What's this?</summary>
+  <div>
+  <p>webVGM: Experimental JavaScript/HTML5 version of <a href="http://vgmrips.net/forum/viewtopic.php?t=112" target="_blank">VGMPlay</a>. 
+	
+	(Plays various Arcade and Console game music files - formats like: Video Game Music Files (*.vgm, *.vgz), Creative Music Files (*.cmf), DosBox RAW OPL Log Files (*.dro). Supported sound chips: SN76496 (Sega PSG) and T6W28 (NeoGeo Pocket custom), YM2413* (OPLL), YM2612 (OPN2), YM2151 (OPM), SegaPCM, RF5C68, YM2203 (OPN), YM2608 (OPNA), YM2610/B (OPNB), YM3812* (OPL2), YM3526* (OPL), Y8950* (MSX AUDIO), YMF262* (OP3), YMF278B (OPL4), YMF271 (OPLX), YMZ280B, RF5C164 (Sega MegaCD PCM), PWM (from Sega 32x), AY8910 (MSX PSG), GameBoy DMG, NES APU (incl. FDS), MultiPCM, UPD7759, OKI6258 (Sharp X68000 ADPCM), OKI6295, K051649, K054539, HuC6280 (PC Engine), C140, K053260, Pokey (Atari), QSound, SCSP (Saturn Custom Sound Processor, YMF292-F)</p>
+	
+  <p>Respective music files can be found <a href="http://vgmrips.net/packs/" target="_blank">here</a>. Bring your own music files by dropping them onto the arcade machine.</p>
+ 
+  <p>2015 by Juergen Wothke (The source code can be found <a target="_blank" href="https://github.com/wothke/">here</a>.)</p>
+ 
+  <p>This page does not use any plugins but is based exclusively on the draft version WebAudio API. 
+  You'll need Chrome or Firefox to make it play the music. The visual effects 
+  work best in Chrome. (If Firefox passes out - press 'reload'... it's experimental.)</p>
+  
+  <p>Contrarry to most other HTML5 based pages out there, the music here is NOT based on  
+  OscillatorNode based waveforms or the playback of some sampledata file. Instead the samples here 
+  are completely calculated within JavaScript by running the vgmPlay emulator logic.</p>  
+ 
+  <p>Please use the below controls to navigate between the songs (e.g. the ones you have dropped on the player):
+  <span id="controls"></span>
+ </div>
+</details>
+<aside></aside>
+<section>
+  <div id="logo" class="logo">
+	<div id="moz-reflect-logo"><canvas  id="logoCanvas"  width="600" height="250"></canvas></div>
+  </div>
+  <div id="spectrum" class="spectrum">
+  	<div id="moz-reflect-spectrum"><canvas id="spectrumCanvas" width="512" height="200"></canvas></div>
+  </div>
+  <div id="drop" class="drop"><img src="arcade.gif" width=270 height=270/></div><!--see BasicPlayerControls-->
+</section>
+</body>
+</html>

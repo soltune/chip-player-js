@@ -1,57 +1,141 @@
 # Chip Player JS
 
-## About this fork
-Chip Player JS is web-based chip tune player written by Matt Montag.  
-This fork is to share my fixes like;  
 
-- Improve Japanese text support on the file selector, using an extra font
+## About this fork
+Chip Player JS is web-based chip tune player written by Matt Montag.
+
+This fork can play Sega Daytona USA correctly.
+![Screen Shot](https://user-images.githubusercontent.com/38772866/99869968-9d002d00-2c12-11eb-9cb6-c5a4d247c239.png)
+  
+This fork is to share my fixes like;  
+- Small bugfixes and improvements
+    - [GME] fixed incorrect text encoding handling in the tags
+    - [GME/nsf] supported `FDS write protect` for some tunes which use multi extend chips
+    - [Font] added additional font to improve rendering Japanese text
+        - the font is created by [MM of 自家製フォント工房](http://jikasei.me/font/kh-dotfont/) licensed by SIL Open Font License (with some modifications made by me)
 - additional file formats support
-    - gbs
-    - s98 ([webS98](https://github.com/wothke/webS98/), based on [m_s98.kpi S98V3](http://www.vesta.dti.ne.jp/~tsato/soft_s98v3.html))
+    - **gbs, hes**
+    - **vgm, vgz** ([webVGM](https://github.com/wothke/vgmplay-0.40.9), based on [VGMPlay](https://github.com/vgmrips/vgmplay))
+        - Replaced GME to improve .vgm/vgz support
+        - `yrw801.rom` must be located at `chip-player-js/public/instruments` to play OPL4(YMF278)
+    - **s98** ([webS98](https://github.com/wothke/webS98/), based on [m_s98.kpi S98V3](http://www.vesta.dti.ne.jp/~tsato/soft_s98v3.html))
         - supports rhythm samples for OPNA
         - corrects volume balance for PC-9801
             - the player reduces the volume of PSG ch if there's `9801` in 'system' tag.
-    - pmd ([webMDX](https://github.com/wothke/webMDX), based on [pmdmini](https://github.com/mistydemeo/pmdmini))
+        - the following sound samples must be located at `chip-player-js/public/rhythm` before building (each filenames are case sensitive)
+            - 2608_BD.WAV
+            - 2608_HH.WAV 
+            - 2608_RIM.WAV 
+            - 2608_SD.WAV
+            - 2608_TOM.WAV
+            - 2608_TOP.WAV
+    - **pmd** ([webMDX](https://github.com/wothke/webMDX), based on [pmdmini](https://github.com/mistydemeo/pmdmini))
         - supports rhythm samples for OPNA
         - supports ADPCM/PCM (.pps, .ppc, .p86, .pzi)
-    - mdx ([webMDX](https://github.com/wothke/webMDX), based on [mdxmini](https://github.com/mistydemeo/mdxmini))
-        - supports ADPCM/PCM (.pdx)
-- and more. (coming soon)
+        - the following sound samples must be located at `chip-player-js/public/rhythm` before building (each filenames are case sensitive)
+            - 2608_BD.WAV
+            - 2608_HH.WAV 
+            - 2608_RIM.WAV 
+            - 2608_SD.WAV
+            - 2608_TOM.WAV
+            - 2608_TOP.WAV
+    - **fmp** ([fmplayer](https://github.com/takamichih/fmplayer/))
+        - supports rhythm rom for OPNA
+        - supports ADPCM/PCM (.pvi, .pzi(for PPZ8))
+        - `ym2608_adpcm_rom.bin` must be located at `chip-player-js/public/rhythm` before building (the filename is case sensitive)
+    - **psf, minipsf** ([webPSX](https://github.com/wothke/webpsx))
+    - **2sf, mini2sf** ([webDS](https://github.com/wothke/webDS))
+    - **gsf** ([webGSF](https://github.com/wothke/webGSF))
+- additional soundfonts
+    - added two high quality piano soundfonts. if you'd like to listen piano solo this is good choice :)
+        - place the following .sf2 at public/sondfonts folder to enable them
+        - [Equinox Grand Pianos](http://www.mediafire.com/?12enyjv0ewj)
+        - [Warren S. Trachtman - Steinway Model-C Soundfont](https://archive.org/details/WST25FStein_00Sep22.sf2)
+- Reverb effect
+    - may be useful when playing a system(like nes, gameboy, msx ...) that does not have its own reverb.
+    - all impulse response files are from [Open AIR](https://www.openair.hosted.york.ac.uk/).
+        - [Koli National Park - Summer](https://www.openair.hosted.york.ac.uk/?page_id=577) ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))
+            - www.openairlib.net
+            - Andrew Chadwick
+            - Simon Shelley
+        - [Maes Howe](https://www.openair.hosted.york.ac.uk/?page_id=602) ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))
+            - www.openairlib.net
+            - Audiolab, University of York
+            - Dr. Damian T. Murphy
+        - [St Lawrence Church Molenbeek](https://www.openair.hosted.york.ac.uk/?page_id=638) ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))
+            - Audiolab, University of York
+            - Simon Shelley
+        - [Stairway, University of York](https://www.openair.hosted.york.ac.uk/?page_id=678) ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))
+            - Audiolab, University of York
+            - Simon Shelley
+        - [The Dixon Studio Theatre, University of York](https://www.openair.hosted.york.ac.uk/?page_id=452) ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))
+            - Ben Lavin
+            - Darren Robinson
+            - Ya-Hsin Chou
+        - [St Andrew’s Church](https://www.openair.hosted.york.ac.uk/?page_id=683) ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))
+            - www.openairlib.net
+            - Audiolab, University of York
+            - Dr. Damian T. Murphy
+        - [Lady Chapel, St Albans Cathedral](https://www.openair.hosted.york.ac.uk/?page_id=595) ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))
+            - www.openairlib.net
+            - Audiolab, University of York
+            - Marcin Gorzel
+            - Gavin Kearney
+            - Aglaia Foteinou
+            - Sorrel Hoare
+            - Simon Shelley
+        - [Tyndall Bruce Monument](https://www.openair.hosted.york.ac.uk/?page_id=764)  ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))   
+            - www.openairlib.net
+            - Audiolab, University of York
+            - Dr. Damian T. Murphy
+    
+
+**This player assumes each pcm files(.pzi, .pvi, .pdx ...) are in the same directory where the music files are.**
+
+## Building Additional library
+On this fork, an additional library must be present before launching `yarn run build-chip-core`.
+
+```sh
+$ source ~/src/emsdk/emsdk_env.sh
+
+$ cd ../webGSF/emscripten
+$ emmake make -f Emscripten.Makefile    # building libwebgsf.a
+
+$ cd ../../
+$ yarn run build-chip-core              # and finally build chip-core (chip-core.wasm)
+
+```
+
+You can also enable sf3 support of FluidLite by building with `ENABLE_SF3` option like the following. 
+Loading sf3 files is quite slow, furthermore, doing the above will increase the .wasm file by around 200kb.　 
+So please consider if you need it carefully.
+
+```sh
+$ cd fluidlite/build/
+$ emcmake cmake -DENABLE_SF3=YES -DSTB_VORBIS=YES ..
+$ emmake make clean && emmake make fluidlite-static
+```
 
 ---
 
-```
-                                            _
-                                ________   (_)
-                               / ____/ /_  ______
-                              / /  _/ __ \/ / __ \
-                             / /___/ / / / / /_/ /\
-                        ____ \______/ /_/_/ ____/ /         __ ____
-                       / __ \/ /__ ____  /_/__  _/___      / /‾___/\
-                      / /_/ / /‾__‾ / /\/ /‾_ \/ ‾__/\__  / /\__ \_/
-                     / ____/ / /_/ / {_/ /  __/ /‾ __/ /_/ /___/ /\
-                    /_/ __/_/\__,_/\__  /\___/_/ /   \____//____/ /
-                    \__/  \__/\____│___/ /\_____/     \____\_____/
-                                    \___/
+![Screen Shot 2019-11-19 at 1 21 04 PM](https://user-images.githubusercontent.com/946117/69187458-80955600-0acf-11ea-9a1f-e090032dcb00.png)
 
-```
+Play online: [Chip Player JS](https://mmontag.github.io/chip-player-js). Feature requests? [Create an issue](https://github.com/mmontag/chip-player-js/issues/new).
 
-Play online: [Chip Player JS](https://mmontag.github.io/chip-player-js)
+### Features
 
-Chip Player JS is a work in progress. Goals:
-
-- [x] Support popular game console formats and tracker formats (not exhaustive)
-- [x] Advanced sound control (channel volume, panning, etc.) like [NotSoFatso](https://disch.zophar.net/notsofatso.php)'s stereo and bandlimiting controls
-- [x] Built-in online music library like [Chipmachine](http://sasq64.github.io/chipmachine/)
-- [x] Simple music management (at least the ability to save favorites) like Winamp/Spotify
-- [x] High-quality MIDI playback with JS wavetable synthesis
-    * [x] Bonus: user-selectable soundbanks
-- [x] Track sequencer with player controls and shuffle mode
-- [x] Media key support in Chrome
-- [ ] High performance
-   - [ ] Cold cache time-to-play under 500 ms (i.e. https://mmontag.github.io/chip-player-js/?play=ModArchives/aryx.s3m in incognito window)
-   - [x] Instant search results
-   - [x] CPU usage under 25% in most circumstances
+- Support popular game console formats and tracker formats (not exhaustive)
+- Advanced sound control (channel volume, panning, etc.) like [NotSoFatso](https://disch.zophar.net/notsofatso.php)'s stereo and bandlimiting controls
+- Built-in online music library like [Chipmachine](http://sasq64.github.io/chipmachine/)
+- Simple music management (at least the ability to save favorites) like Winamp/Spotify
+- High-quality MIDI playback with JS wavetable synthesis
+    * Bonus: user-selectable soundbanks
+- Track sequencer with player controls and shuffle mode
+- Media key support in Chrome
+- High performance
+   - Time-to-audio under 500 ms (i.e. https://mmontag.github.io/chip-player-js/?play=ModArchives/aryx.s3m)
+   - Instant search results
+   - CPU usage under 25% in most circumstances
 
 ## Development Notes
 
@@ -79,12 +163,18 @@ Prerequisites: yarn, cmake, emsdk.
 * Clone the repository. 
 * Run `yarn install`.
 
-In building the subprojects, we ultimately invoke `emmake make` instead of `make` to yield an object file that can Emscripten can link to in the final build.
+In building the subprojects, we ultimately invoke `emmake make` instead of `make` to yield an object file that Emscripten can link to in the final build.
 
 * Install the [Emscripten SDK (emsdk)](https://github.com/emscripten-core/emsdk).
 * The build script in [package.json](package.json) looks for the emsdk in `~/src/emsdk`. Modify this line to match your emsdk install location if necessary:
 
   ```"build-chip-core": "source ~/src/emsdk/emsdk_env.sh; node scripts/build-chip-core.js",```
+  
+#### Tight coupling to Github Pages
+
+The project is currently set up to deploy to Github Pages. The `deploy` and `deploy-lite` NPM scripts invoke the gh-pages NPM module. 
+
+If you wish to deploy to your own Github Pages account, change the `"homepage"` field in package.json.
 
 
 #### Creating Config File
@@ -135,8 +225,30 @@ source ~/src/emsdk/emsdk_env.sh  # load the emscripten environment variables
 mkdir build                      # create a build folder for Cmake output
 cd build                         
 emcmake cmake -DDISABLE_SF3=1 .. # Cmake will generate a Makefile by default
+                                 # Problems here? Try deleting CMake cache files
 emmake make fluidlite-static
 ```
+
+#### Subproject: psflib and lazyusf2
+
+Our goal is to produce **psflib/libpsflib.a** and **lazyusf2/liblazyusf.a**. These use a special Emscripten.Makefile (loosely based on [Jeurgen Wothke's webn64 .bat script](https://github.com/wothke/webn64/blob/master/emscripten/makeEmscripten.bat)).
+
+Build psflib:
+
+```sh
+cd chip-player-js/psflib/
+source ~/src/emsdk/emsdk_env.sh  # load the emscripten environment variables
+emmake make -f Emscripten.Makefile libpsflib.a
+```
+
+Build liblazyusf:
+
+```sh
+cd ../lazyusf2/
+emmake make -f Emscripten.Makefile liblazyusf.a
+```
+
+#### WebAssembly build
 
 Once these are in place we can build the parent project.
 Our goal is to produce **public/chip-core.wasm**.
@@ -164,6 +276,12 @@ Or deploy to Github Pages:
 
 ```sh
 yarn deploy
+```
+
+Deploy to Github Pages without rebuilding chip-core.wasm: 
+
+```sh
+yarn deploy-lite
 ```
 
 ### Related Projects and Resources
@@ -228,6 +346,7 @@ The best modern option for playing MIDI is probably using a well-designed GM Sou
 Diverse and usable GM SoundFonts.
 
 - GeneralUser SF2 sound bank: http://schristiancollins.com/generaluser.php
+- Many excellent piano SoundFonts: https://sites.google.com/site/soundfonts4u
 - The Ultimate Megadrive SoundFont: https://musical-artifacts.com/artifacts/24
 - NTONYX SoundFont: http://ntonyx.com/sf_f.htm
 
@@ -235,6 +354,14 @@ Diverse and usable GM SoundFonts.
 
 - The best pop music MIDI archive comes from [Colin Raffel's thesis work](https://colinraffel.com/projects/lmd/) on MIDI alignment. About 20,000 cleaned MIDI files
     * Colin Raffel. "Learning-Based Methods for Comparing Sequences, with Applications to Audio-to-MIDI Alignment and Matching". PhD Thesis, 2016.
+- VGM Rips: https://vgmrips.net
+- VGMusic.com: https://archive.org/details/vgmusic
+- Sound Canvas MIDI Collection: https://archive.org/details/sound_canvas_midi_collection
+- The Mod Archive: https://modarchive.org/
+- Zophar's Domain: https://www.zophar.net/music
+- OPL Archive: http://opl.wafflenet.com/
+- Piano E-Competition MIDI: http://www.piano-e-competition.com/midiinstructions.asp
+- Modland: https://modland.com/pub/modules/
 
 #### Miscellaneous
 

@@ -41,6 +41,7 @@ public:
 	const char* GetDeviceName(int deviceIndex);
 	void SetChannelMask(int deviceIndex, uint mask);
 	void SetVolumes(int deviceIndex, int psgDb, int fmDb, int rhythmDb, int adpcmDb);
+	bool HasLoop();
 #endif
 	DWORD SetPosition(DWORD dwpos);
 	DWORD Write(Int16 *Buffer, DWORD numSample);

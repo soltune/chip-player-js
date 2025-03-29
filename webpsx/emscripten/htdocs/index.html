@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<!--
+ webPSX: HTML5 Audio/JavaScript port of Highly Experimantal.
+
+ 	Copyright (C) 2015 Juergen Wothke
+
+ Original C code of "deadbeef_he" (see https://github.com/kode54/deadbeef_he/)
+
+ Credits: The visualization used on this page was strongly "inspired" by this demo:
+ http://html5-demos.appspot.com/static/webaudio/createMediaSourceElement.html
+
+ LICENSE
+ 
+ This library is free software; you can redistribute it and/or modify it
+ under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 2.1 of the License, or (at
+ your option) any later version. This library is distributed in the hope
+ that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU General Public License for more details.
+ 
+ You should have received a copy of the GNU General Public
+ License along with this library; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+-->
+<meta http-equiv="X-UA-Compatible" content="chrome=1" />
+<title>webPSX - the PSX music player for the Web</title>
+
+<meta name="description" content="Experimental JavaScript version of Highly Experimental; it supports PlayStation formats like: psf, minipsf, psf2, minipsf2, psflib">
+<meta name="author" content="Juergen Wothke">
+<meta name="keywords" content="Web Audio API, HTML5, JavaScript">
+
+<link href="stdlib/font.css" rel="stylesheet" type="text/css">
+<link href="stdlib/common.css" rel="stylesheet" type="text/css">
+<link href="add_on.css" rel="stylesheet" type="text/css">
+
+<link rel="image_src" href="screenshot.gif" />
+<meta property="og:image" content="http://www.wothke.ch/webpsx/screenshot.gif" />
+
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<link rel="shortcut icon" type="image/x-icon" href="favicon.ico" />
+<link type="image/x-icon" href="favicon.ico" />
+
+<script type="text/javascript" src="stdlib/jquery1.11.min.js"></script>
+<script type="text/javascript" src="stdlib/jquery.details.min.js"></script>
+<script type="text/javascript" src="stdlib/scriptprocessor_player.min.js"></script>
+
+<script>window.openDetails=true;</script>
+<script type="text/javascript" src="stdlib/mini_display.js"></script>
+<script type="text/javascript" src="stdlib/mini_controls.js"></script>
+
+<script type="text/javascript" src="backend_psx.js"></script>
+<script>
+var playerControls;
+var	songDisplay;
+	
+// configure what music infos to display in SongDisplay
+PSXDisplayAccessor = (function(){ var $this = function (doGetSongInfo) {
+		$this.base.call(this, doGetSongInfo);
+	}; 
+	extend(DisplayAccessor, $this, {
+		getDisplayTitle: function() 	{ return "webPSX";},
+		getDisplaySubtitle: function() 	{ return "Highly Experimental music..";},
+		getDisplayLine1: function() { return this.getSongInfo().title +" ("+this.getSongInfo().artist+")";},
+		getDisplayLine2: function() { return this.getSongInfo().copyright; },
+		getDisplayLine3: function() { return ""; }
+	});	return $this; })();
+	
+// PSX specific "player controls" extended by manual BIOS loading step
+PSXPlayerControls = (function(){ var $this = function (songs, enableSeek, doParseUrl) { 
+		$this.base.call(this, songs, enableSeek, false, doParseUrl, null, -1);
+	}; 
+	extend(BasicPlayerControls, $this, {
+/* enable to activate upload of specific bios:
+		dropbios: function(ev) {
+			var options= {};
+			options.setBIOS= true;
+			this.dropFile(false, ev, 'uploadFile', options, (function(filename){}));
+		},
+		initExtensions: function() {
+			var dropBiosDiv= document.getElementById("dropbios");
+			dropBiosDiv.ondrop  = this.dropbios.bind(this);
+			dropBiosDiv.ondragover = this.allowDrop.bind(this);
+		}
+*/
+	});	return $this; })();	
+	
+// link player events to "controls" and "display"
+function doOnTrackEnd(){
+	if (playerControls) playerControls.playNextSong();  
+}
+function doOnTrackReadyToPlay(){ 	
+	ScriptNodePlayer.getInstance().play();
+	songDisplay.redrawSongInfo();
+}
+// depending on the browser/timing the player may be ready before or after (see WASM) init(), i.e.
+// the startup sequence must handle both cases (music can only be started when
+// both the player is ready and init() has been completed..)
+var playerReady= false;		
+function doOnPlayerReady() {
+	// BIOS successfully loaded.. close the modal dialog
+	window.location.hash= '';
+
+	playerReady= true;
+	if (playerControls) playerControls.playNextSong(); // playerControls are used to check for init()
+}
+
+
+function init() {
+/*	enable to activate upload of specific bios:
+	window.location.hash= '';			// needed if URL already contains the #openModal
+	window.location.hash= 'openModal';	// open modal dialog for BIOS selection
+*/
+	// --------------------------- PSX music player -----------------------
+	var basePath= '';
+	ScriptNodePlayer.createInstance(new PSXBackendAdapter(false, true), basePath, [ ""	// use built-in
+		// if default name should be used: place "PSX2ROM.gz" 
+		// file here and use "new PSXBackendAdapter(false)" above (use "true" if bios upload is to be used)
+	], true, doOnPlayerReady, doOnTrackReadyToPlay, doOnTrackEnd);
+		
+	// --------------------------- UI - basic player controls --------------
+	var songs = [
+		"/modland/proxy.php?mod=Playstation Sound Format/Makoto Tomozawa/Resident Evil - Complete Disc/01 main menu.minipsf",
+		"/modland/proxy.php?mod=Playstation Sound Format/Josh Mancell/Crash Bandicoot/14 papu papu.psf",
+		"/modland/proxy.php?mod=Playstation Sound Format/Mark Mothersbaugh/Crash Bandicoot 2 - Cortex Strikes Back/01 title screen.minipsf",
+		"/modland/proxy.php?mod=Playstation Sound Format/Mark Mothersbaugh/Crash Bandicoot 3 - Warped/02 warp room.minipsf",
+		"/modland/proxy.php?mod=Playstation Sound Format/Masami Ueda/Resident Evil 2/	06 - prologue.minipsf",
+	];
+	playerControls= new PSXPlayerControls(songs, true, 
+				(function(someSong) {
+						var options= {};
+						return [someSong, options];
+					})
+				);
+
+	songDisplay= new SongDisplay(new PSXDisplayAccessor((function(){return playerControls.getSongInfo();})), 
+								[0x0010ff,0x00f0ff], 1, 0.1, (function(){playerControls.animate()}));
+
+	if (playerReady) playerControls.playNextSong();	// player was ready before it could trigger the playback
+}
+</script>
+<script type="text/javascript" src="stdlib/analytics.js"></script>
+</head>
+
+<body onload="init();">
+<!-- enable to activate upload of specific bios
+<div id="openModal" class="modalDialog">
+	<div>
+		<h2>PlayStation2 setup</h2>
+		<p>This emulator requires an original PlayStation2 BIOS image. Due to copyright concerns the BIOS is not bundled with the player installed on this web page. </p>
+		<p> Upload your respective BIOS image by drag&amp;dropping it on the below BIOS chip (you can also use a .gz compressed BIOS image). In case you have misplaced your PS2 console don't dispair.. Google will surely help..</p>
+		<p></p>
+		  <div id="dropbios" class="dropbios"><img src="BIOS.gif"/></div>
+  
+	</div>
+</div>
+-->
+<div class="tooltip" id="tooltip" alt= "This is a hobby project, but it costs not only time to regularily maintain this site but also money to pay for the internet service provider (etc). If you want to keep this site up and running.. or if you just like my work (see https://jwothke.wordpress.com/) and you'd like to see more of it in the future, please make a contribution. Thank you!"></div>
+
+<details>
+  <summary>What's this?</summary>
+  <div>
+  <p>webPSX: Experimental JavaScript/HTML5 version of <a href="https://github.com/kode54/deadbeef_he/" target="_blank">Highly Experimental</a>. Plays 
+  Playstation 1 & 2 music (respective files can be found <a target="_blank" href="https://ftp.modland.com/pub/modules/Playstation%20Sound%20Format/">here</a>.).</p>
+ 
+  <p>Bring your own music files by dropping them onto the below PlayStation. (In order to play a .minipsf file you first need to drop the .psflib file that it depends on.)</p>
+ 
+  <p>2015 by Juergen Wothke  (The source code can be found <a target="_blank" href="https://github.com/wothke/">here</a>.)</p>
+ 
+  <p>This page does not use any plugins but is based exclusively on the draft version WebAudio API. 
+  You'll need Chrome or Firefox to make it play the music. The visual effects 
+  work best in Chrome. (If Firefox passes out - press 'reload'... it's experimental.)
+  
+  <p>Contrarry to most other HTML5 based pages out there, the music here is NOT based on  
+  OscillatorNode based waveforms or the playback of some sampledata file. Instead the samples here 
+  are completely calculated within JavaScript by running the HighlyExperimental emulator logic. (The source code can be found <a target="_blank" href="https://github.com/wothke/">here</a>.)</p>  
+ 
+  <p>Please use the below controls to navigate between the songs that you have dropped on the player:
+  <span id="controls"></span>
+ </div>
+</details>
+<aside></aside>
+<section>
+  <div id="logo">
+		<!-- in new Chrome the SHIT reflections disapear dependig on the canvas height.. what a fucking joke -->
+		<div id="moz-reflect-logo"><canvas  id="logoCanvas"  width="270" height="100"></canvas></div>	
+  </div>
+  
+  <div id="spectrum" >
+		<!-- use "hight" greater than 80 and the fucking reflection is gone.. FUCK YOU IDIOTS -->
+		<div id="moz-reflect-spectrum"><canvas id="spectrumCanvas" width="800" height="80"></canvas></div>
+  </div>
+  <div id="drop" class="drop"><img src="psx.gif" width=270 height=270/></div><!--see BasicPlayerControls-->
+</section>
+</body>
+</html>

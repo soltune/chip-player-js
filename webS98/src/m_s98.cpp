@@ -736,6 +736,11 @@ void s98File::SetVolumes(int deviceIndex, int psgDb, int fmDb, int rhythmDb, int
     devices[deviceIndex]->SetVolumes(psgDb, fmDb, rhythmDb, adpcmDb);
 }
 
+bool s98File::HasLoop()
+{
+    return (s98loop)? true : false;
+}
+
 // below code was used as glue in the original KMP plugin... need different glue
 // to connect to JavaScript world..
 

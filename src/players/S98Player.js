@@ -118,14 +118,15 @@ class S98LibWrapper {
 
     if (result === 0) { // result -> 0: success, 1: error
       this.currentFile = filename;
+
     }
     return result;
   }
 }
 
 export default class S98Player extends Player {
-  constructor(audioCtx, destNode, chipCore, onPlayerStateUpdate) {
-    super(audioCtx, destNode, chipCore, onPlayerStateUpdate);
+  constructor(audioCtx, destNode, chipCore, bufferSize) {
+    super(audioCtx, destNode, chipCore, bufferSize);
     this.setParameter = this.setParameter.bind(this);
     this.getParameter = this.getParameter.bind(this);
     this.getParamDefs = this.getParamDefs.bind(this);
@@ -153,6 +154,7 @@ export default class S98Player extends Player {
     this.isPC98System = false;
 
     this.params = {};
+    this.voiceMask = [];
 
     // register rhythm data for OPNA
     this.registerRhythmData();
@@ -170,24 +172,20 @@ export default class S98Player extends Player {
       }
 
       const outSize = this.channels[0].length;
+      const fadeoutTimeMs = 2000;
       this.numberOfSamplesRendered = 0;
 
       while (this.numberOfSamplesRendered < outSize) {
         if (this.numberOfSamplesToRender === 0) {
 
-          let finished = false;
-          this.currentPlaytime = Math.max(this.getPositionMs(), this.currentPlaytime);
-          if (this.currentPlaytime > 0 && this.getPositionMs() === 0) {
-            finished = true;  // detected the termination of non-looped tune
-          } else {
-            finished = (this.s98lib.computeAudioSamples() === 1);
-            if (!this.isFadingOut && this.getDurationMs() - this.currentPlaytime <= 2000) {
-              this.setFadeout(this.currentPlaytime);
-            }
+          this.currentPlaytime = this.getPositionMs();
+          const detectLoop = this.s98lib.computeAudioSamples();
+          if (!this.isFadingOut && detectLoop > 0 && this.getDurationMs() <= this.currentPlaytime) {
+            this.setFadeout(this.currentPlaytime);
           }
 
-          if (finished) {
-            // no frame left
+          if ((detectLoop === -1 && this.currentPlaytime >= this.getDurationMs() )  // without loop
+             || this.currentPlaytime >= (this.getDurationMs() + fadeoutTimeMs) ) {  // with loop
             this.fillEmpty(outSize);
             this.stop();
             return;
@@ -202,9 +200,8 @@ export default class S98Player extends Player {
 
           // Fading out
           if (this.isFadingOut && this.currentPlaytime >= this.fadeOutStartMs) {
-            const duration = this.getDurationMs() - this.fadeOutStartMs;
-            const current = this.currentPlaytime - this.fadeOutStartMs;
-            const ratio = (duration - current) / duration;
+            const current = this.currentPlaytime - this.getDurationMs();
+            const ratio = Math.max((fadeoutTimeMs - current) / fadeoutTimeMs, 0);
             this.resampleBuffer = this.resampleBuffer.map((value) => {
               return value * ratio
             });
@@ -482,11 +479,15 @@ export default class S98Player extends Player {
 
     const status = this.s98lib.loadMusicData(this.sampleRate, filepath, data);
     if (status === 0) {
+      this.voiceMask = Array(this.getNumVoices()).fill(true);
       this.init(filepath, data);
       this.connect();
       this.resume();
 
-      this.onPlayerStateUpdate(!this.isPlaying());
+      this.emit('playerStateUpdate', {
+        ...this.getBasePlayerState(),
+        isStopped: false,
+      });
     }
   }
 
@@ -594,7 +595,7 @@ export default class S98Player extends Player {
     return this.getAvailableChannels().length;
   }
 
-  setVoices(voices) {
+  setVoiceMask(voices) {
     let shift = 0;
     for (let deviceIndex = 0; deviceIndex < this.s98lib.getDeviceCount(); deviceIndex++) {
       const availableChannels = this.getAvailableChannelsOf(deviceIndex).length;
@@ -608,6 +609,11 @@ export default class S98Player extends Player {
       this.s98lib.setChannelMask(deviceIndex, mask);
       shift += availableChannels;
     }
+    this.voiceMask = voices;
+  }
+
+  getVoiceMask() {
+    return this.voiceMask;
   }
 
   seekMs(positionMs) {
@@ -619,6 +625,6 @@ export default class S98Player extends Player {
     this.s98lib.close();
 
     console.debug('S98Player.stop()');
-    this.onPlayerStateUpdate(true);
+    this.emit('playerStateUpdate', { isStopped: true });
   }
 }

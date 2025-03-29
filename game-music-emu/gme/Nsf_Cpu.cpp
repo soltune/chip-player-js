@@ -79,7 +79,7 @@ void Nsf_Impl::write_mem( addr_t addr, int data )
 			#if !NSF_EMU_APU_ONLY
 				// 0x8000-0xDFFF is writable
 				int i = addr - 0x8000;
-				if ( (unsigned) i < fdsram_size && fds_enabled() )
+				if ( (unsigned) i < fdsram_size && only_fds_enabled() )
 					fdsram() [i] = data;
 				else
 			#endif
