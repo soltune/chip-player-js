@@ -3,9 +3,6 @@
 
 ## About this fork
 Chip Player JS is web-based chip tune player written by Matt Montag.
-
-This fork can play Sega Daytona USA correctly.
-![Screen Shot](https://user-images.githubusercontent.com/38772866/99869968-9d002d00-2c12-11eb-9cb6-c5a4d247c239.png)
   
 This fork is to share my fixes like;  
 - Small bugfixes and improvements
@@ -15,9 +12,6 @@ This fork is to share my fixes like;
         - the font is created by [MM of 自家製フォント工房](http://jikasei.me/font/kh-dotfont/) licensed by SIL Open Font License (with some modifications made by me)
 - additional file formats support
     - **gbs, hes**
-    - **vgm, vgz** ([webVGM](https://github.com/wothke/vgmplay-0.40.9), based on [VGMPlay](https://github.com/vgmrips/vgmplay))
-        - Replaced GME to improve .vgm/vgz support
-        - `yrw801.rom` must be located at `chip-player-js/public/instruments` to play OPL4(YMF278)
     - **s98** ([webS98](https://github.com/wothke/webS98/), based on [m_s98.kpi S98V3](http://www.vesta.dti.ne.jp/~tsato/soft_s98v3.html))
         - supports rhythm samples for OPNA
         - corrects volume balance for PC-9801

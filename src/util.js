@@ -29,6 +29,13 @@ export function unlockAudioContext(context) {
       .then(() => events.forEach(event => document.body.removeEventListener(event, unlock)));
     events.forEach(event => document.body.addEventListener(event, unlock, false));
   }
+
+  // resume audio even if on background (iOS)
+  window.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      context.resume();
+    }
+  });
 }
 
 export function titlesFromMetadata(metadata) {
