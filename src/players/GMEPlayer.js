@@ -74,14 +74,19 @@ export default class GMEPlayer extends Player {
 
     this.subBass = new SubBass(audioCtx.sampleRate);
 
-    // SPCファイル用のゲインノードを追加
-    this.gainNode = audioCtx.createGain();
+    this.gainNode = this.audioCtx.createGain();
     this.gainNode.gain.value = 1.0;
-    
-    // 出力チェーンを変更: source -> gainNode -> destNode
     this.gainNode.connect(destNode);
 
     this.setAudioProcess(this.gmeAudioProcess);
+  }
+
+  connect() {
+    if (!this._innerAudioProcess) {
+      throw Error('Player.setAudioProcess has not been called.');
+    }
+    this.gainNode.connect(this.destinationNode);
+    this.audioNode.connect(this.gainNode);
   }
 
   gmeAudioProcess(e) {
@@ -183,9 +188,8 @@ export default class GMEPlayer extends Player {
     );
     this.params.subbass = formatNeedsBass ? 1 : 0;
 
-    // x 1.7 gain for SPC files
     const isSPC = filepath.toLowerCase().endsWith('.spc');
-    this.gainNode.gain.value = isSPC ? 1.7 : 1.0;
+    this.gainNode.gain.value = isSPC ? 2.0 : 1.0;
 
     if (libgme.ccall(
       "gme_open_data",
