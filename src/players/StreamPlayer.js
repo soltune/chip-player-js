@@ -67,22 +67,34 @@ export default class StreamPlayer extends Player {
 
   loadData(data, filepath) {
     this.init();
-    this.metadata = this.createMetadata(data, filepath);
-    
-    // Safari doesn't support decodeAudioData() as promise based
-    this.audioCtx.decodeAudioData(data.buffer, 
-      (buffer) => {
-        if (this.buffer) {
-          // 古いバッファを解放
-          this.buffer = null;
-        }
-        this.buffer = buffer;
-        this.connect();
-        this.resume();
-        this.emit('playerStateUpdate', {
-          ...this.getBasePlayerState(),
-          isStopped: false,
-          metadata: this.metadata,
+    this.loadStream(data, filepath);
+  }
+
+  loadStream(url, filepath) {
+    this.removeAllEventListeners();
+
+    const cacheBuster = `?t=${Date.now()}`;
+    const urlWithCacheBuster = url + cacheBuster;
+
+    this.currentUrl = url;
+    this.audioElement.src = urlWithCacheBuster;
+    this.audioElement.load();
+
+    const metadataHandler = () => {
+      if (isNaN(this.audioElement.duration)) {
+        console.error('[StreamPlayer] Invalid duration detected');
+        this.emit('playerError', 'Invalid audio duration');
+        return;
+      }
+
+      this.durationMs = this.audioElement.duration * 1000;
+      this.metadata = { title: filepath.split('/').pop() };
+      this.paused = false;
+
+      if (this.audioElement.readyState >= 2) { // HAVE_CURRENT_DATA
+        this.audioElement.play().catch(error => {
+          console.error('[StreamPlayer] Failed to start playback:', error);
+          this.emit('playerError', 'Failed to start playback');
         });
       },
       (error) => {
