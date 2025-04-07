@@ -1,68 +1,76 @@
 import Player from "./Player.js";
-const encoding = require('encoding-japanese');
 
-const fileExtensions = [
-  'mp3', 'ogg'  // vgm stream has various type of format. They can be converted to mp3 as it's not realistic to support all of them on the web...
-];
+const fileExtensions = ['mp3', 'ogg'];
 
 export default class StreamPlayer extends Player {
   constructor(audioCtx, destNode, chipCore, bufferSize) {
     super(audioCtx, destNode, chipCore, bufferSize);
-    this.setParameter = this.setParameter.bind(this);
-    this.getParameter = this.getParameter.bind(this);
-    this.getParamDefs = this.getParamDefs.bind(this);
+    this.initializeProperties();
+    
+    if (!audioCtx) {
+      throw new Error('AudioContext is required');
+    }
 
-    this.sampleRate = audioCtx.sampleRate;
-    this.channels = [];
+    this.mediaSource = new MediaSource();
+    this.audioElement = new Audio();
+    this.audioElement.crossOrigin = "anonymous";
+    this.audioElement.src = URL.createObjectURL(this.mediaSource);
+    
+    try {
+      this.sourceNode = this.audioCtx.createMediaElementSource(this.audioElement);
+      if (destNode) {
+        this.sourceNode.connect(destNode);
+      } else {
+        this.sourceNode.connect(this.audioCtx.destination);
+      }
+    } catch (error) {
+      console.error('Failed to create MediaElementAudioSourceNode:', error);
+      throw error;
+    }
 
-    this.paused = true;
-    this.fileExtensions = fileExtensions;
-    this.tempo = 1.0;
-    this.buffer = null;
-    this.processedFrame = 0;
-    this.durationMs = 0;
+    this.setupBufferingListeners();
+  }
 
-    this.params = {};
-    this.setAudioProcess((e) => {
-      for (let i = 0; i < e.outputBuffer.numberOfChannels; i++) {
-        this.channels[i] = e.outputBuffer.getChannelData(i);
+  setupBufferingListeners() {
+    this.audioElement.addEventListener('canplay', () => {
+      this.emit('bufferingComplete');
+      if (this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume();
       }
 
-      if (this.paused || this.buffer === null) {
-        for (let channel = 0; channel < this.channels.length; channel++) {
-          this.channels[channel].fill(0);
-        }
-        return;
-      }
+      this.audioElement.play().then(() => {
+        this.paused = false;
+      }).catch(error => {
+        console.error('Failed to start playback:', error);
+        this.emit('playerError', 'Failed to start playback');
+      });
+    });
 
-      if (this.getPositionMs() >= this.getDurationMs()) {
-        for (let channel = 0; channel < this.channels.length; channel++) {
-          this.channels[channel].fill(0);
-        }
-        this.stop();
-        return;
-      }
+    this.audioElement.addEventListener('playing', () => {
+      this.paused = false;
+    });
 
-      const sourceData = this.buffer.getChannelData(0);
-      const sourceLength = sourceData.length;
+    this.audioElement.addEventListener('stalled', () => {
+      this.paused = true;
+      this.audioElement.pause();
+      this.emit('bufferingStart');
+    });
 
-      // TypedArrayを使用して効率的にコピー
-      for (let channel = 0; channel < this.channels.length; channel++) {
-        const sourceChannel = (channel > 0 && this.buffer.numberOfChannels < 2) ? 0 : channel;
-        const sourceData = this.buffer.getChannelData(sourceChannel);
-        const targetData = this.channels[channel];
-        
-        for (let i = 0; i < this.bufferSize && i + this.processedFrame < sourceLength; i++) {
-          targetData[i] = sourceData[i + this.processedFrame];
-        }
-      }
-      this.processedFrame += this.bufferSize;
+    this.audioElement.addEventListener('suspend', () => {
+      // this.paused = true;
+      // this.audioElement.pause();
     });
   }
 
-  restart() {
-    this.seekMs(0);
-    this.resume();
+  initializeProperties() {
+    this.sampleRate = this.audioCtx.sampleRate;
+    this.paused = true;
+    this.fileExtensions = fileExtensions;
+    this.tempo = 1.0;
+    this.currentUrl = null;
+    this.durationMs = 0;
+    this.metadata = null;
+    this.params = {};
   }
 
   loadData(data, filepath) {
@@ -96,78 +104,75 @@ export default class StreamPlayer extends Player {
           console.error('[StreamPlayer] Failed to start playback:', error);
           this.emit('playerError', 'Failed to start playback');
         });
-      },
-      (error) => {
-        console.error('Error decoding audio data:', error);
-        this.emit('playerError', 'Failed to decode audio data');
       }
-    );
+
+      this.emit('playerStateUpdate', {
+        ...this.getBasePlayerState(),
+        isStopped: false,
+        metadata: this.metadata,
+      });
+    };
+
+    const playHandler = () => {
+      this.isStopped = false;
+    };
+
+    const endedHandler = () => {
+      this.isPaused = true;
+      this.isStopped = true;
+
+      this.audioElement.pause();
+      this.audioElement.currentTime = 0;
+      this.audioElement.src = '';
+      this.audioElement.load();
+
+      this.emit('playerStateUpdate', {
+        ...this.getBasePlayerState(),
+        isStopped: true,
+        metadata: this.metadata,
+      });
+    };
+
+    this.audioElement.addEventListener('loadedmetadata', metadataHandler);
+    this.audioElement.addEventListener('play', playHandler);
+    this.audioElement.addEventListener('ended', endedHandler);
+
+    this.currentEventListeners = {
+      loadedmetadata: metadataHandler,
+      play: playHandler,
+      ended: endedHandler
+    };
+  }
+
+  removeAllEventListeners() {
+    if (this.currentEventListeners) {
+      Object.entries(this.currentEventListeners).forEach(([event, handler]) => {
+        this.audioElement.removeEventListener(event, handler);
+      });
+      this.currentEventListeners = null;
+    }
   }
 
   init() {
     this.durationMs = 0;
-    this.processedFrame = 0;
-    this.buffer = null;
-  }
-
-  createMetadata(u8arrData, filepath) {
-    let offset = 0;
-    let title = '', artist = '';
-    if (this.getID3v1String(u8arrData, offset, 3) === 'TAG') {
-      offset += 3;
-      title = this.getID3v1String(u8arrData, offset, 30);
-      offset += 30;
-      artist = this.getID3v1String(u8arrData, offset, 30);
+    this.currentUrl = null;
+    this.metadata = null;
+    this.removeAllEventListeners();
+    if (this.audioElement) {
+      this.audioElement.pause();
+      this.audioElement.currentTime = 0;
+      this.audioElement.src = '';
     }
-    if (!title) {
-      const sp = filepath.split('/');
-      title = sp[sp.length - 1];
-    }
-    this.metadata = {
-      title: title,
-      artist: artist,
-    };
-    return this.metadata;
-  }
-
-  getID3v1String(u8arrData, tagOffset, length) {
-    if (u8arrData.length < 128) {
-      return '';
-    }
-    
-    let offset = (u8arrData.length - 128) + tagOffset;
-    if (offset < 0 || offset + length > u8arrData.length) {
-      return '';
-    }
-
-    const raw = [];
-    for (let i = 0; i < length; i++) {
-      const char = u8arrData[offset + i];
-      if (char === 0) {
-        break;
-      }
-      raw.push(char);
-    }
-    return encoding.convert(raw, {to: 'UNICODE', type: 'string'});
-  }
-
-  getNumSubtunes() {
-    return 1;
-  }
-
-  getSubtune() {
-    return 0;
   }
 
   getPositionMs() {
-    return this.processedFrame * 1000 / this.sampleRate;
+    if (!this.audioElement) return 0;
+    return Math.floor(this.audioElement.currentTime * 1000);
   }
 
   getDurationMs() {
-    if (!this.durationMs) {
-      this.durationMs = this.buffer.getChannelData(0).length * 1000 / this.sampleRate;
-    }
-    return this.durationMs;
+    if (!this.audioElement || isNaN(this.audioElement.duration)) return 0;
+    return Math.floor(this.audioElement.duration * 1000);
   }
 
   getMetadata() {
@@ -183,19 +188,18 @@ export default class StreamPlayer extends Player {
   }
 
   setParameter(id, value) {
-    switch (id) {
-      default:
-        console.warn('StreamPlayer has no parameter with id "%s".', id);
-    }
     this.params[id] = value;
   }
 
-  isPlaying() {
-    return !this.isPaused() && this.getPositionMs() < this.getDurationMs();
+  isPaused() {
+    return this.paused;
   }
 
-  setTempo(val) {
+  isPlaying() {
+    return !this.paused && this.getPositionMs() < this.getDurationMs();
   }
+
+  setTempo(val) {}
 
   setFadeout(startMs) {}
 
@@ -214,19 +218,71 @@ export default class StreamPlayer extends Player {
   }
 
   seekMs(positionMs) {
-    this.processedFrame = Math.floor(positionMs * this.sampleRate / 1000);
+    if (!this.audioElement) return;
+
+    try {
+      const seekTime = positionMs / 1000;
+      const clampedTime = Math.max(0, Math.min(seekTime, this.audioElement.duration));
+      this.audioElement.currentTime = clampedTime;
+      
+      this.emit('playerStateUpdate', {
+        ...this.getBasePlayerState(),
+        positionMs: positionMs,
+        metadata: this.metadata,
+      });
+    } catch (error) {
+      console.error('Failed to seek:', error);
+      this.emit('playerError', 'Failed to seek');
+    }
+  }
+
+  getTempo() {
+    return 1.0;
   }
 
   stop() {
-    this.suspend();
-    if (this.buffer) {
-      this.buffer = null;
+    if (this.audioElement) {
+      this.audioElement.pause();
+      this.audioElement.currentTime = 0;
+      this.paused = true;
     }
-    console.debug('StreamPlayer.stop()');
+    
     this.emit('playerStateUpdate', {
       ...this.getBasePlayerState(),
       isStopped: true,
       metadata: this.metadata,
     });
+  }
+
+  resume() {
+    if (this.audioElement) {
+      if (this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume();
+      }
+      this.audioElement.play();
+      this.paused = false;
+    }
+  }
+
+  suspend() {
+    if (this.audioElement) {
+      this.audioElement.pause();
+      this.paused = true;
+    }
+  }
+
+  togglePause() {
+    if (this.audioElement) {
+      if (this.paused) {
+        this.resume();
+      } else {
+        this.suspend();
+      }
+    }
+    return this.paused;
+  }
+
+  isStreaming() {
+    return true;
   }
 }

@@ -226,8 +226,14 @@ export default class Sequencer extends EventEmitter {
       return;
     }
 
-    // Fetch the song file (cancelable request)
-    // Cancel any outstanding request so that playback doesn't happen out of order
+    this.currUrl = url;
+    const filepath = url.replace(CATALOG_PREFIX, '');
+
+    if (this.player.isStreaming()) {
+      this.player.loadData(url, filepath);
+      return;
+    }
+
     if (this.songRequest) this.songRequest.abort();
     this.songRequest = promisify(new XMLHttpRequest());
     this.songRequest.responseType = 'arraybuffer';
@@ -235,8 +241,6 @@ export default class Sequencer extends EventEmitter {
     this.songRequest.send()
       .then(xhr => xhr.response)
       .then(buffer => {
-        this.currUrl = url;
-        const filepath = url.replace(CATALOG_PREFIX, '');
         this.playSongBuffer(filepath, buffer)
       })
       .catch(e => {

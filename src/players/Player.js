@@ -213,6 +213,10 @@ export default class Player extends EventEmitter {
 
   handleFileSystemReady() {}
 
+  isStreaming() {
+    return false;
+  }
+
   static metadataFromFilepath(filepath) {
     // Guess metadata from path/filename for MIDI files.
     // Assumes structure:  /Game MIDI/{game}/**/{title}
