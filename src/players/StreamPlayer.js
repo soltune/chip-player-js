@@ -11,10 +11,10 @@ export default class StreamPlayer extends Player {
       throw new Error('AudioContext is required');
     }
 
-    this.mediaSource = new MediaSource();
+    // this.mediaSource = new MediaSource();
     this.audioElement = new Audio();
     this.audioElement.crossOrigin = "anonymous";
-    this.audioElement.src = URL.createObjectURL(this.mediaSource);
+    this.audioElement.src = '';
     
     try {
       this.sourceNode = this.audioCtx.createMediaElementSource(this.audioElement);
