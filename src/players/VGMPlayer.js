@@ -74,7 +74,7 @@ const CHIP_CHANNELS = {
     ['PSG 1', 'PSG 2', 'PSG 3'],
   ],
   0x13: [ // GameBoy
-    ['CH 1', 'CH 2', 'CH 3', 'CH 4'],
+    ['Square 1', 'Square 2', 'WAVF', 'Noise'],
   ],
   0x14: [ // NES APU
     ['Square', 'Square', 'Triangle', 'Noise', 'DPCM', 'FDS'],
@@ -155,10 +155,11 @@ const CHIP_CHANNELS = {
 };
 
 class VGMLibWrapper {
-  constructor(chipCore) {
+  constructor(chipCore, sampleRate) {
     this.vgmLib = chipCore;
     this.fs = this.vgmLib.FS;
     this.currentFile = null;
+    this.inputSampleRate = sampleRate;
   }
 
   getAudioBuffer() {
@@ -231,7 +232,7 @@ class VGMLibWrapper {
       this.registerFileData(path, filename, data);
     }
     
-    const result = this.vgmLib.ccall('vgm_init', 'number', ['number', 'string', 'string'], [sampleRate, path, filename]);
+    const result = this.vgmLib.ccall('vgm_init', 'number', ['number', 'string', 'string'], [this.inputSampleRate, path, filename]);
     if (result === 0) { // result -> 0: success, 1: error
       this.currentFile = filename;
       this.vgmLib.ccall('vgm_set_subsong', 'number', ['number', 'number'], [0, 0]);
@@ -286,10 +287,11 @@ export default class VGMPlayer extends Player {
     this.getParameter = this.getParameter.bind(this);
     this.getParamDefs = this.getParamDefs.bind(this);
 
-    this.vgmlib = new VGMLibWrapper(chipCore);
-    this.fs = this.vgmlib.fs;
+   
     this.sampleRate = audioCtx.sampleRate;
-    this.inputSampleRate = this.vgmlib.getSampleRate();
+    this.inputSampleRate = 48000;  //this.vgmlib.getSampleRate();
+    this.vgmlib = new VGMLibWrapper(chipCore, this.inputSampleRate);
+    this.fs = this.vgmlib.fs;
     this.channels = [];
 
     this.resampleBuffer = this.allocResampleBuffer(0);
@@ -420,22 +422,6 @@ export default class VGMPlayer extends Player {
     return this.getResampledFloats(this.sourceBuffer, this.sourceBufferLen, this.sampleRate, this.inputSampleRate);
   }
 
-  getCopiedAudio(input, len, resampleOutput) {
-    // just copy the rescaled values so there is no need for special handling in playback loop
-    for (let i = 0; i < len * this.channels.length; i++) {
-      resampleOutput[i] = this.readFloatSample(input, i);
-    }
-    return len;
-  }
-
-  readFloatSample(buffer, idx) {
-    return (this.vgmlib.getDelegate().HEAP16[buffer + idx]) / 0x8000;
-  }
-
-  allocResampleBuffer(s) {
-    return new Float32Array(s);
-  }
-
   getResampledFloats(input, len, sampleRate, inputSampleRate) {
     let resampleLen = Math.round(len * sampleRate / inputSampleRate);
     const bufSize = resampleLen * this.channels.length;	// for each of the x channels
@@ -444,7 +430,16 @@ export default class VGMPlayer extends Player {
       this.resampleBuffer = this.allocResampleBuffer(bufSize);
     }
 
-    return this.getCopiedAudio(input, len, this.resampleBuffer);
+    if (sampleRate === inputSampleRate) {
+      resampleLen = this.getCopiedAudio(input, len, this.resampleBuffer);
+    } else {
+      // only mono and interleaved stereo data is currently implemented..
+      this.resampleToFloat(this.channels, 0, input, len, this.resampleBuffer, resampleLen);
+      if (this.isStereo) {
+        this.resampleToFloat(this.channels, 1, input, len, this.resampleBuffer, resampleLen);
+      }
+    }
+    return resampleLen;
   }
 
   resampleToFloat(channels, channelId, inputPtr, len, resampleOutput, resampleLen) {
@@ -467,6 +462,22 @@ export default class VGMPlayer extends Player {
       
       resampleOutput[(i * channels.length) + channelId] = clampedSample;
     }
+  }
+
+  getCopiedAudio(input, len, resampleOutput) {
+    // just copy the rescaled values so there is no need for special handling in playback loop
+    for (let i = 0; i < len * this.channels.length; i++) {
+      resampleOutput[i] = this.readFloatSample(input, i);
+    }
+    return len;
+  }
+
+  readFloatSample(buffer, idx) {
+    return (this.vgmlib.getDelegate().HEAP16[buffer + idx]) / 0x8000;
+  }
+
+  allocResampleBuffer(s) {
+    return new Float32Array(s);
   }
 
   copySamplesStereo() {
@@ -528,7 +539,7 @@ export default class VGMPlayer extends Player {
   }
 
   init(fullFilename, data) {
-    this.resetSampleRate(this.sampleRate, this.vgmlib.getSampleRate());
+    this.resetSampleRate(this.sampleRate, this.inputSampleRate);
     this.currentPlaytime = 0;
     this.chips = null;
     this.channelNames = null;
