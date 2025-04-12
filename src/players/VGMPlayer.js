@@ -289,7 +289,8 @@ export default class VGMPlayer extends Player {
 
    
     this.sampleRate = audioCtx.sampleRate;
-    this.inputSampleRate = 48000;  //this.vgmlib.getSampleRate();
+    // Suppress to 48000hz due to noise in some Game Boy files at frequencies above 88200hz
+    this.inputSampleRate = 48000;  //this.vgmlib.getSampleRate(); 
     this.vgmlib = new VGMLibWrapper(chipCore, this.inputSampleRate);
     this.fs = this.vgmlib.fs;
     this.channels = [];

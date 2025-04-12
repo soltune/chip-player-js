@@ -263,7 +263,7 @@ body,#root {
     width: 210px;
     height: 210px;
     background-color: var(--neutral0);
-    object-fit: scale-down;
+    object-fit: contain;
     image-rendering: unset;
     border-left: 1px solid var(--clickable);
     flex-shrink: 0;
