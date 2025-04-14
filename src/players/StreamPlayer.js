@@ -232,7 +232,7 @@ export default class StreamPlayer extends Player {
       });
     } catch (error) {
       console.error('Failed to seek:', error);
-      this.emit('playerError', 'Failed to seek');
+      //this.emit('playerError', 'Failed to seek');
     }
   }
 

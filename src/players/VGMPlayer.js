@@ -155,11 +155,12 @@ const CHIP_CHANNELS = {
 };
 
 class VGMLibWrapper {
-  constructor(chipCore, sampleRate) {
+  constructor(chipCore, internalSampleRate, deviceSampleRate) {
     this.vgmLib = chipCore;
     this.fs = this.vgmLib.FS;
     this.currentFile = null;
-    this.inputSampleRate = sampleRate;
+    this.internalSampleRate = internalSampleRate;
+    this.deviceSampleRate = deviceSampleRate;
   }
 
   getAudioBuffer() {
@@ -185,7 +186,7 @@ class VGMLibWrapper {
   }
 
   seekPlaybackPosition(pos) {
-    const posInSample = pos / 1000 * this.getSampleRate();
+    const posInSample = pos / 1000 * this.deviceSampleRate;
     this.vgmLib.ccall('vgm_seek_position', 'number', ['number'], [posInSample]);
   }
 
@@ -232,7 +233,7 @@ class VGMLibWrapper {
       this.registerFileData(path, filename, data);
     }
     
-    const result = this.vgmLib.ccall('vgm_init', 'number', ['number', 'string', 'string'], [this.inputSampleRate, path, filename]);
+    const result = this.vgmLib.ccall('vgm_init', 'number', ['number', 'string', 'string'], [this.internalSampleRate, path, filename]);
     if (result === 0) { // result -> 0: success, 1: error
       this.currentFile = filename;
       this.vgmLib.ccall('vgm_set_subsong', 'number', ['number', 'number'], [0, 0]);
@@ -291,7 +292,7 @@ export default class VGMPlayer extends Player {
     this.sampleRate = audioCtx.sampleRate;
     // Suppress to 48000hz due to noise in some Game Boy files at frequencies above 88200hz
     this.inputSampleRate = 48000;  //this.vgmlib.getSampleRate(); 
-    this.vgmlib = new VGMLibWrapper(chipCore, this.inputSampleRate);
+    this.vgmlib = new VGMLibWrapper(chipCore, this.inputSampleRate, this.sampleRate);
     this.fs = this.vgmlib.fs;
     this.channels = [];
 
