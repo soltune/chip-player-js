@@ -617,11 +617,11 @@ export default class VGMPlayer extends Player {
   }
 
   getPositionMs() {
-    return this.vgmlib.getPlaybackPosition() * 1000 / this.sampleRate;
+    return this.vgmlib.getPlaybackPosition() * 1000 / this.inputSampleRate;
   }
 
   getDurationMs() {
-    return this.vgmlib.getMaxPlaybackPosition() * 1000 / this.sampleRate;
+    return this.vgmlib.getMaxPlaybackPosition() * 1000 / this.inputSampleRate;
   }
 
   getMetadata() {
