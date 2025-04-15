@@ -724,7 +724,8 @@ export default class VGMPlayer extends Player {
   }
 
   seekMs(positionMs) {
-    this.vgmlib.seekPlaybackPosition(positionMs);
+    const adjustedPositionMs = Math.round(positionMs * (this.inputSampleRate / this.sampleRate));
+    this.vgmlib.seekPlaybackPosition(adjustedPositionMs);
   }
 
   stop() {
