@@ -337,8 +337,7 @@ export default class VGMPlayer extends Player {
         if (this.numberOfSamplesToRender === 0) {
 
           this.currentPlaytime = this.getPositionMs();
-          this.vgmlib.computeAudioSamples();
-          if (this.currentPlaytime >= this.getDurationMs() ) {
+          if (this.vgmlib.computeAudioSamples()) {
             this.fillEmpty(outSize);
             this.stop();
             return;
