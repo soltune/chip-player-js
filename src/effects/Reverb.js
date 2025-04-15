@@ -47,7 +47,11 @@ export class ImpulseResponseReverb {
     }
 
     set gain(value) {
-        this.gainNode.value = value;
+        this.gainNode.gain.value = value;
+    }
+
+    get gain() {
+        return this.gainNode.gain.value;
     }
 }
 

@@ -17,6 +17,7 @@ export default function AppFooter(props) {
     // this.state.
     boost,
     reverb,
+    reverbGain,
     currentSongDurationMs,
     currentSongNumSubtunes,
     currentSongNumVoices,
@@ -42,6 +43,7 @@ export default function AppFooter(props) {
     getCurrentSongLink,
     handleOrderClick,
     handleReverbClick,
+    handleReverbGainChange,
     handleCycleRepeat,
     handleCycleShuffle,
     handleSetVoiceMask,
@@ -205,8 +207,10 @@ export default function AppFooter(props) {
                 boost={boost}
                 order={order}
                 reverb={reverb}
+                reverbGain={reverbGain}
                 reverbImpulseModels={IMPULSE_MODELS}
                 handleReverbClick={handleReverbClick}
+                handleReverbGainChange={handleReverbGainChange}
                 handleVolumeBoostChange={handleVolumeBoostChange}
                 handleOrderClick={handleOrderClick} />
         </div>}

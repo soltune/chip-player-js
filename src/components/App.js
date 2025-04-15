@@ -83,6 +83,7 @@ class App extends React.Component {
     this.handleVolumeBoostChange = this.handleVolumeBoostChange.bind(this);
     this.handleOrderClick = this.handleOrderClick.bind(this);
     this.handleReverbClick = this.handleReverbClick.bind(this);
+    this.handleReverbGainChange = this.handleReverbGainChange.bind(this);
     this.getCurrentSongLink = this.getCurrentSongLink.bind(this);
 
     this.attachMediaKeyHandlers();
@@ -182,6 +183,7 @@ class App extends React.Component {
       directories: {},
       hasPlayer: false,
       paramDefs: [],
+      reverbGain: this.reverb.gain,
     };
 
     // Load the chip-core Emscripten runtime
@@ -719,6 +721,13 @@ class App extends React.Component {
     this.setState({reverb: fileName});
   }
 
+  handleReverbGainChange(event) {
+    const gain = parseFloat(event.target.value);
+
+    this.reverb.gain = gain;
+    this.setState({ reverbGain: gain });
+  };
+
   fetchDirectory(path) {
     // added: disabled caches
     return fetch(`${API_BASE}/browse?path=%2F${encodeURIComponent(path)}`, {cache: 'no-store'})
@@ -882,6 +891,7 @@ class App extends React.Component {
           <AppFooter
             boost={this.state.boost}
             reverb={this.state.reverb}
+            reverbGain={this.state.reverbGain}
             currentSongDurationMs={this.state.currentSongDurationMs}
             currentSongNumSubtunes={this.state.currentSongNumSubtunes}
             currentSongNumVoices={this.state.currentSongNumVoices}
@@ -891,6 +901,7 @@ class App extends React.Component {
             getCurrentSongLink={this.getCurrentSongLink}
             handleOrderClick={this.handleOrderClick}
             handleReverbClick={this.handleReverbClick}
+            handleReverbGainChange={this.handleReverbGainChange}
             handleCycleRepeat={this.handleCycleRepeat}
             handleCycleShuffle={this.handleCycleShuffle}
             handleSetVoiceMask={this.handleSetVoiceMask}

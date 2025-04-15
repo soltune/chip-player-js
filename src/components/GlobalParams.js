@@ -6,7 +6,7 @@ export default class GlobalParams extends PureComponent {
     return (
       <div className='GlobalParams'>
         <label title="boost whole volume, this is useful for the songs with low level" >
-        Volume Level Boost:{' '}
+        Volume Boost:{' '}
         <input
           type='range' defaultValue={this.props.boost}
           min='1.0' max='9.0' step='0.5'
@@ -26,6 +26,15 @@ export default class GlobalParams extends PureComponent {
                     </optgroup>);
                 })}
             </select>
+        </label>
+        <br />
+        <label title="adjust reverb gain" >
+        Reverb Gain:{' '}
+          <input
+            type="range" min="0.0" max="2.0" step="0.1"
+            defaultValue={this.props.reverbGain}
+            onChange={this.props.handleReverbGainChange}
+              /> {this.props.reverbGain.toFixed(1)}
         </label>
         <br />
         <label title="change file list order to 'Title', 'File size', and 'Modified date'" >
