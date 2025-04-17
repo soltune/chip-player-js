@@ -519,7 +519,7 @@ export default class S98Player extends Player {
   }
 
   getPositionMs() {
-    return this.s98lib.getPlaybackPosition();
+    return this.isPaused()? 0 : this.s98lib.getPlaybackPosition();
   }
 
   getDurationMs() {

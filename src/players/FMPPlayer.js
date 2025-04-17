@@ -555,7 +555,7 @@ export default class FMPPlayer extends Player {
   }
 
   getPositionMs() {
-    return this.lib.getPlaybackPosition();
+    return this.isPaused()? 0 : this.lib.getPlaybackPosition();
   }
 
   getDurationMs() {

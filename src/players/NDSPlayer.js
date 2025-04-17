@@ -458,7 +458,7 @@ export default class NDSPlayer extends Player {
   }
 
   getPositionMs() {
-    return this.lib.getPlaybackPosition();
+    return this.isPaused()? 0 : this.lib.getPlaybackPosition();
   }
 
   getDurationMs() {
