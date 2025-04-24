@@ -9,6 +9,7 @@ import PlayerParams from './PlayerParams';
 
 import GlobalParams from './GlobalParams';
 import { pathToLinks } from '../util';
+import { CATALOG_PREFIX } from '../config';
 import { IMPULSE_MODELS } from "../effects/Reverb";
 import { REPEAT_LABELS, SHUFFLE_LABELS } from '../Sequencer';
 
@@ -63,6 +64,7 @@ export default function AppFooter(props) {
   } = props;
 
   const pathLinks = pathToLinks(songUrl);
+  const path = songUrl?.slice(CATALOG_PREFIX.length);
   const handleToggleInfo = useCallback((e) => {
     e.preventDefault();
     toggleInfo();
@@ -153,9 +155,9 @@ export default function AppFooter(props) {
             <div className="SongDetails">
               {faves && songUrl &&
                 <div style={{ float: 'left', marginBottom: '58px' }}>
-                  <FavoriteButton isFavorite={faves.includes(songUrl)}
+                  <FavoriteButton isFavorite={faves.includes(path)}
                                   toggleFavorite={handleToggleFavorite}
-                                  href={songUrl}/>
+                                  href={path}/>
                 </div>}
               <div className="SongDetails-title">
                 <a style={{ color: 'var(--neutral4)' }} href={getCurrentSongLink()}>

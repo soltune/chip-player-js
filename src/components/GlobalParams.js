@@ -28,8 +28,8 @@ export default class GlobalParams extends PureComponent {
             </select>
         </label>
         <br />
-        <label title="adjust reverb gain" >
-        Reverb Gain:{' '}
+        <label title="adjust reverb level" >
+        Reverb Level:{' '}
           <input
             type="range" min="0.0" max="2.0" step="0.1"
             defaultValue={this.props.reverbGain}

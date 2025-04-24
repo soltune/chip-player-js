@@ -1,5 +1,6 @@
 import React, { useCallback } from "react";
 import FavoriteButton from "./FavoriteButton";
+import { CATALOG_PREFIX } from '../config';
 
 export default function Favorites(props) {
   const {
@@ -49,6 +50,7 @@ export default function Favorites(props) {
               {
                 favorites.map((href, i) => {
                   const title = decodeURIComponent(href.split('/').pop());
+                  const songUrl = CATALOG_PREFIX + href;
                   const isPlaying = currContext === favorites && currIdx === i;
                   return (
                     <div className={isPlaying ? 'Song-now-playing' : ''}
@@ -58,7 +60,7 @@ export default function Favorites(props) {
                       <FavoriteButton isFavorite={true}
                                       toggleFavorite={toggleFavorite}
                                       href={href}/>
-                      <a onClick={onSongClick(href, favorites, i)} href={href}>{title}</a>
+                      <a onClick={onSongClick(songUrl, favorites, i)} href={songUrl}>{title}</a>
                     </div>
                   );
                 })

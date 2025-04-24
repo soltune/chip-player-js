@@ -1,4 +1,4 @@
-import React, { Fragment } from 'react';
+import React, { Fragment, useMemo } from 'react';
 import bytes from 'bytes';
 import { CATALOG_PREFIX } from '../config';
 import DirectoryLink from './DirectoryLink';
@@ -16,6 +16,7 @@ export default function BrowseList({ virtual, ...props }) {
     browsePath,
     playContext,
   } = props;
+  const favoritesSet = useMemo(() => new Set(favorites), [favorites]);
 
   // Scroll Into View
   // ----------------
@@ -52,10 +53,9 @@ export default function BrowseList({ virtual, ...props }) {
             return (
               <div key={name} className={isPlaying ? 'Song-now-playing BrowseList-row' : 'BrowseList-row'}>
                 <div className="BrowseList-colName">
-                  {favorites &&
-                    <FavoriteButton isFavorite={favorites.includes(href)}
-                                    href={href}
-                                    toggleFavorite={toggleFavorite}/>}
+                  <FavoriteButton isFavorite={favoritesSet.has(path)}
+                                  href={path}
+                                  toggleFavorite={toggleFavorite}/>
                   <a onClick={(e) => handleSongClick(href, playContext, item.idx)(e)}
                      href={href}>
                     {name}
