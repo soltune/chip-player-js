@@ -47,38 +47,71 @@ export default class MDXPlayer extends Player {
           // MDX files were authored on old case-insensitive filesystems, but
           // the music server filesystem (and URLs in general) are case-sensitive.
           const pdxUrl = CATALOG_PREFIX + path.join(dir, pdx.toUpperCase());
-          return ensureEmscFileWithUrl(this.lib, pdxFilename, pdxUrl);
-        }
-      })
-      .then(() => {
-        this.muteAudioDuringCall(this.audioNode, () => {
-          err = this.lib.ccall(
-            'mdx_open', 'number',
-            ['number', 'string', 'string'],
-            [this.mdxCtx, mdxFilename, null],
-          );
+          // Continue even if PDX file download fails
+          return Promise.allSettled([
+            ensureEmscFileWithUrl(this.lib, pdxFilename, pdxUrl)
+          ]).then(() => {
+            // Continue regardless of PDX file download result
+            this.muteAudioDuringCall(this.audioNode, () => {
+              err = this.lib.ccall(
+                'mdx_open', 'number',
+                ['number', 'string', 'string'],
+                [this.mdxCtx, mdxFilename, null],
+              );
 
-          if (err !== 0) {
-            console.error("mdx_load_file failed. error code: %d", err);
-            throw Error('mdx_load_file failed');
-          }
-          this.lib._mdx_set_speed(this.mdxCtx, this.speed);
+              if (err !== 0) {
+                console.error("mdx_load_file failed. error code: %d", err);
+                throw Error('mdx_load_file failed');
+              }
+              this.lib._mdx_set_speed(this.mdxCtx, this.speed);
 
-          // Metadata
-          const ptr = this.lib._malloc(256);
-          this.lib._mdx_get_title(this.mdxCtx, ptr);
-          const buf = this.lib.HEAPU8.subarray(ptr, ptr + 256);
-          const len = buf.indexOf(0);
-          const title = new TextDecoder("shift-jis").decode(buf.subarray(0, len));
-          this.metadata = { title: title || path.basename(filename) };
+              // Metadata
+              const ptr = this.lib._malloc(256);
+              this.lib._mdx_get_title(this.mdxCtx, ptr);
+              const buf = this.lib.HEAPU8.subarray(ptr, ptr + 256);
+              const len = buf.indexOf(0);
+              const title = new TextDecoder("shift-jis").decode(buf.subarray(0, len));
+              this.metadata = { title: title || path.basename(filename) };
 
-          this.connect();
-          this.resume();
-          this.emit('playerStateUpdate', {
-            ...this.getBasePlayerState(),
-            isStopped: false,
+              this.connect();
+              this.resume();
+              this.emit('playerStateUpdate', {
+                ...this.getBasePlayerState(),
+                isStopped: false,
+              });
+            });
           });
-        });
+        } else {
+          // Process when PDX file is not required
+          this.muteAudioDuringCall(this.audioNode, () => {
+            err = this.lib.ccall(
+              'mdx_open', 'number',
+              ['number', 'string', 'string'],
+              [this.mdxCtx, mdxFilename, null],
+            );
+
+            if (err !== 0) {
+              console.error("mdx_load_file failed. error code: %d", err);
+              throw Error('mdx_load_file failed');
+            }
+            this.lib._mdx_set_speed(this.mdxCtx, this.speed);
+
+            // Metadata
+            const ptr = this.lib._malloc(256);
+            this.lib._mdx_get_title(this.mdxCtx, ptr);
+            const buf = this.lib.HEAPU8.subarray(ptr, ptr + 256);
+            const len = buf.indexOf(0);
+            const title = new TextDecoder("shift-jis").decode(buf.subarray(0, len));
+            this.metadata = { title: title || path.basename(filename) };
+
+            this.connect();
+            this.resume();
+            this.emit('playerStateUpdate', {
+              ...this.getBasePlayerState(),
+              isStopped: false,
+            });
+          });
+        }
       });
   }
 
