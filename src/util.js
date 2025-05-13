@@ -23,12 +23,16 @@ export function updateQueryString(newParams) {
 export function unlockAudioContext(context) {
   // https://hackernoon.com/unlocking-web-audio-the-smarter-way-8858218c0e09
   console.log('AudioContext initial state is %s.', context.state);
-  if (context.state === 'suspended') {
-    const events = ['touchstart', 'touchend', 'mousedown', 'mouseup'];
-    const unlock = () => context.resume()
-      .then(() => events.forEach(event => document.body.removeEventListener(event, unlock)));
-    events.forEach(event => document.body.addEventListener(event, unlock, false));
+  const events = ['touchstart', 'touchend', 'mousedown', 'mouseup'];
+  const unlock = () => {
+    if (context.state === 'suspended') {
+      // Need to resume when suspended due to bluetooth headphone connection/disconnection on iOS, 
+      // so removeEventListener() is disabled
+      context.resume(); 
+      // .then(() => events.forEach(event => document.body.removeEventListener(event, unlock)));
+    }
   }
+  events.forEach(event => document.body.addEventListener(event, unlock, false));
 
   // resume audio even if on background (iOS)
   window.addEventListener("visibilitychange", () => {
