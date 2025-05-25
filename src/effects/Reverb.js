@@ -3,14 +3,15 @@ export class ImpulseResponseReverb {
     constructor (audioContext, sourceNode, destinationNode) {
         this.audioContext = audioContext;
         this.convolver = null;
-        this.bridge = this.audioContext.createGain();
-        this.gainNode = this.audioContext.createGain();
-        this.gainNode.value = 1;
-        this.sourceNode = sourceNode;
+        this.in = this.audioContext.createGain();
+        this.outputGain = this.audioContext.createGain();
+        this.outputGain.value = 1;
         this.destinationNode = destinationNode;
 
-        this.sourceNode.connect(this.bridge);
-        this.gainNode.connect(this.destinationNode);
+        sourceNode.connect(this.in);
+        this.outputGain.connect(this.destinationNode);
+
+        // source -> bridge -> (convolver) -> gainNode -> destination
     }
 
     loadModel(irUrl) {
@@ -28,8 +29,8 @@ export class ImpulseResponseReverb {
                     this.convolver = this.audioContext.createConvolver();
                     this.convolver.buffer = audioBuffer;
 
-                    this.bridge.connect(this.convolver);
-                    this.convolver.connect(this.gainNode);
+                    this.in.connect(this.convolver);
+                    this.convolver.connect(this.outputGain);
 
                 }, error => {
                     throw Error('decodeAudioData error');
@@ -39,7 +40,7 @@ export class ImpulseResponseReverb {
     }
 
     dispose() {
-        this.bridge.disconnect();
+        this.in.disconnect();
         if (this.convolver) {
             this.convolver.disconnect();
             this.convolver = null;
@@ -47,11 +48,11 @@ export class ImpulseResponseReverb {
     }
 
     set gain(value) {
-        this.gainNode.gain.value = value;
+        this.outputGain.gain.value = value;
     }
 
     get gain() {
-        return this.gainNode.gain.value;
+        return this.outputGain.gain.value;
     }
 }
 

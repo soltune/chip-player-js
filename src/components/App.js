@@ -10,6 +10,7 @@ import 'firebase/firestore';
 import { NavLink, Route, Switch, withRouter } from 'react-router-dom';
 import Dropzone from 'react-dropzone';
 import { ImpulseResponseReverb } from "../effects/Reverb";
+import { StereoSimulator } from "../effects/StereoSimulator";
 
 import ChipCore from '../chip-core';
 import firebaseConfig from '../config/firebaseConfig';
@@ -85,6 +86,7 @@ class App extends React.Component {
     this.handleReverbClick = this.handleReverbClick.bind(this);
     this.handleReverbGainChange = this.handleReverbGainChange.bind(this);
     this.getCurrentSongLink = this.getCurrentSongLink.bind(this);
+    this.handleStereoClick = this.handleStereoClick.bind(this);
 
     this.attachMediaKeyHandlers();
     this.contentAreaRef = React.createRef();
@@ -138,9 +140,16 @@ class App extends React.Component {
     const gainNode = audioCtx.createGain();
     gainNode.gain.value = 1;
 
-    gainNode.connect(compressor);
+    // Note: Nodes Connection Image
+    //    Player.scriptProcessorNode -> App.playerNode [GainNode] ----
+    //     --> App.StereoSimulator -- [Dry] -------------> App.audioCompressor[DynamicsCompressor] -> DestinationNode
+    //      　　　　　　　　　　  \ [Wet] --> App.reverb[ImpulseResponseReverb] /
 
-    this.reverb = new ImpulseResponseReverb(audioCtx, gainNode, compressor);
+    // stereo simulator
+    this.stereoSimulator = new StereoSimulator(audioCtx, gainNode, compressor);
+
+    // convolve reverb
+    this.reverb = new ImpulseResponseReverb(audioCtx, this.stereoSimulator.outputNode, compressor);
     this.reverb.gain = 0.7;
 
     const playerNode = this.playerNode = gainNode;
@@ -178,6 +187,7 @@ class App extends React.Component {
       repeat: REPEAT_OFF,
       boost: 1.0,
       reverb: '',
+      stereoEnabled: false,
       order: 'orderByTitle',
       shuffle: SHUFFLE_OFF,
       directories: {},
@@ -803,6 +813,16 @@ class App extends React.Component {
     reader.readAsArrayBuffer(file);
   };
 
+  handleStereoClick(event) {
+    const enabled = event.target.checked;
+    if (enabled) {
+      this.stereoSimulator.enable();
+    } else {
+      this.stereoSimulator.disable();
+    }
+    this.setState({ stereoEnabled: enabled });
+  }
+
   render() {
     const { title, subtitle } = titlesFromMetadata(this.state.currentSongMetadata);
     const currContext = this.sequencer?.getCurrContext();
@@ -892,6 +912,7 @@ class App extends React.Component {
             boost={this.state.boost}
             reverb={this.state.reverb}
             reverbGain={this.state.reverbGain}
+            stereoEnabled={this.state.stereoEnabled}
             currentSongDurationMs={this.state.currentSongDurationMs}
             currentSongNumSubtunes={this.state.currentSongNumSubtunes}
             currentSongNumVoices={this.state.currentSongNumVoices}
@@ -902,6 +923,7 @@ class App extends React.Component {
             handleOrderClick={this.handleOrderClick}
             handleReverbClick={this.handleReverbClick}
             handleReverbGainChange={this.handleReverbGainChange}
+            handleStereoClick={this.handleStereoClick}
             handleCycleRepeat={this.handleCycleRepeat}
             handleCycleShuffle={this.handleCycleShuffle}
             handleSetVoiceMask={this.handleSetVoiceMask}
