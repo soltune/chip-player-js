@@ -191,7 +191,7 @@ export default function AppFooter(props) {
               Close
             </button>
           </div>
-          {sequencer.getPlayer() ?
+          {sequencer?.getPlayer() ?
             <PlayerParams
               ejected={ejected}
               tempo={tempo}
