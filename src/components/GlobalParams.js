@@ -37,15 +37,6 @@ export default class GlobalParams extends PureComponent {
               /> {this.props.reverbGain.toFixed(1)}
         </label>
         <br />
-        <label title="enable stereo simulation (recommended for mono sources only)" >
-        Stereo Simulation: {' '}
-          <input
-            type="checkbox"
-            checked={this.props.stereoEnabled}
-            onChange={this.props.handleStereoClick}
-          />
-        </label>
-        <br />
         <label title="change file list order to 'Title', 'File size', and 'Modified date'" >
         List Order:{' '}
         <label className='inline'><input onClick={this.props.handleOrderClick}
