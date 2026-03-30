@@ -23,13 +23,32 @@ export function updateQueryString(newParams) {
 export function unlockAudioContext(context) {
   // https://hackernoon.com/unlocking-web-audio-the-smarter-way-8858218c0e09
   console.log('AudioContext initial state is %s.', context.state);
+
+  // Track whether audio session may have been lost (zombie "running" state on iOS).
+  // iOS Safari does not fire statechange when another app takes the audio session,
+  // so context.state remains "running" even though the audio device is dead.
+  // Recovery is only possible during a user gesture (touch/click).
+  let needsRecovery = false;
+
+  context.addEventListener('statechange', () => {
+    if (context.state === 'interrupted') {
+      needsRecovery = false; // Will be handled by resume on hidden
+    }
+  });
+
   const events = ['touchstart', 'touchend', 'mousedown', 'mouseup'];
-  const unlock = () => {
+  const unlock = (e) => {
     if (context.state === 'suspended') {
-      // Need to resume when suspended due to bluetooth headphone connection/disconnection on iOS, 
+      // Need to resume when suspended due to bluetooth headphone connection/disconnection on iOS,
       // so removeEventListener() is disabled
-      context.resume(); 
-      // .then(() => events.forEach(event => document.body.removeEventListener(event, unlock)));
+      context.resume();
+    }
+    if (needsRecovery) {
+      // iOS zombie state: context.state is "running" but audio device is dead.
+      // Attempt recovery via suspend→resume within user gesture context.
+      context.suspend().then(() => context.resume()).then(() => {
+        needsRecovery = false;
+      }).catch(() => {});
     }
   }
   events.forEach(event => document.body.addEventListener(event, unlock, false));
@@ -38,6 +57,12 @@ export function unlockAudioContext(context) {
   window.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
       context.resume();
+    } else {
+      // Returning to foreground: mark as potentially needing recovery.
+      // If another app took the audio session, context.state will be "running"
+      // but the audio device will be dead. We can't fix it here (no user gesture),
+      // so flag it for the next touch/click event.
+      needsRecovery = true;
     }
   });
 }
