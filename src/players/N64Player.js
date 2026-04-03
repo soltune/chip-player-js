@@ -25,6 +25,12 @@ export default class N64Player extends Player {
   }
 
   loadData(data, filename) {
+    // The Sequencer calls suspend() (not stop()) between songs, so
+    // _n64_shutdown() would not otherwise run. Without this, the emulator
+    // keeps accumulating audio samples from the previous song into its
+    // internal buffer, which then leak into the start of the new song.
+    this.lib._n64_shutdown();
+
     let err;
     this.filepathMeta = Player.metadataFromFilepath(filename);
 
@@ -47,26 +53,51 @@ export default class N64Player extends Player {
 
     return Promise.all(promises)
       .then(([fsFilename]) => {
-        this.muteAudioDuringCall(this.audioNode, () => {
-          err = this.lib.ccall(
-            'n64_load_file', 'number',
-            ['string', 'number', 'number', 'number'],
-            [fsFilename, this.buffer, this.bufferSize, this.audioCtx.sampleRate],
-          );
+        err = this.lib.ccall(
+          'n64_load_file', 'number',
+          ['string', 'number', 'number', 'number'],
+          [fsFilename, this.buffer, this.bufferSize, this.audioCtx.sampleRate],
+        );
 
-          if (err !== 0) {
-            console.error("n64_load_file failed. error code: %d", err);
-            throw Error('n64_load_file failed');
-          }
+        if (err !== 0) {
+          console.error("n64_load_file failed. error code: %d", err);
+          throw Error('n64_load_file failed');
+        }
 
-          this.metadata = { title: filename };
+        this.metadata = { title: filename };
 
-          this.connect();
-          this.resume();
-          this.emit('playerStateUpdate', {
-            ...this.getBasePlayerState(),
-            isStopped: false,
-          });
+        // Disconnect any prior connection so old audio frames are not left in
+        // the hardware pipeline when we suspend below. Throws if not connected
+        // (e.g. first load), which is safe to ignore.
+        try { this.audioNode.disconnect(); } catch (e) {}
+
+        // audioCtx.suspend() freezes whatever frames are currently in the
+        // hardware buffer; if old audio committed before paused=true was set
+        // is still in the pipeline, it will replay on resume(). We must wait
+        // long enough for the pipeline to fully drain with silence before
+        // calling suspend(). The drain time is two buffer durations (one for
+        // the silence callback to fire, one for it to reach hardware) plus
+        // the hardware output latency. If enough time has already elapsed
+        // since suspend() was called (e.g. during a network fetch), no wait
+        // is added.
+        const baseLatency = this.audioCtx.baseLatency || 0.02;
+        const drainMs = (2 * this.bufferSize / this.audioCtx.sampleRate + baseLatency) * 1000 + 50;
+        const elapsed = this._suspendedAt !== undefined
+          ? performance.now() - this._suspendedAt
+          : Infinity;
+        const waitMs = Math.max(0, drainMs - elapsed);
+        return new Promise(resolve => setTimeout(resolve, waitMs));
+      })
+      .then(() => this.audioCtx.suspend())
+      .then(() => {
+        this.connect();
+        this.resume();
+        return this.audioCtx.resume();
+      })
+      .then(() => {
+        this.emit('playerStateUpdate', {
+          ...this.getBasePlayerState(),
+          isStopped: false,
         });
       });
   }
@@ -127,6 +158,13 @@ export default class N64Player extends Player {
     this.muteAudioDuringCall(this.audioNode, () =>
       this.lib._n64_seek_ms(seekMs)
     );
+  }
+
+  suspend() {
+    super.suspend();
+    // Record the time paused=true took effect so loadData() can calculate
+    // how long to wait for the hardware pipeline to drain before suspend().
+    this._suspendedAt = performance.now();
   }
 
   stop() {
