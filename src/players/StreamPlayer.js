@@ -34,6 +34,13 @@ export default class StreamPlayer extends Player {
   setupBufferingListeners() {
     this.audioElement.addEventListener('canplay', () => {
       this.emit('bufferingComplete');
+      // Guard against stale canplay events that arrive after suspend() was
+      // called. this.paused alone cannot be used here because stalled also
+      // sets it to true (for UI), yet we must resume after buffering.
+      // this._intentionalPause is only set by suspend() and cleared by
+      // resume() or when loadedmetadata fires for a new song, so it
+      // reliably reflects user/system intent rather than buffering state.
+      if (this._intentionalPause) return;
       if (this.audioCtx.state === 'suspended') {
         this.audioCtx.resume();
       }
@@ -65,6 +72,7 @@ export default class StreamPlayer extends Player {
   initializeProperties() {
     this.sampleRate = this.audioCtx.sampleRate;
     this.paused = true;
+    this._intentionalPause = false;
     this.fileExtensions = fileExtensions;
     this.tempo = 1.0;
     this.currentUrl = null;
@@ -98,6 +106,7 @@ export default class StreamPlayer extends Player {
       this.durationMs = this.audioElement.duration * 1000;
       this.metadata = { title: filepath.split('/').pop() };
       this.paused = false;
+      this._intentionalPause = false; // new song is ready; allow canplay to play
 
       if (this.audioElement.readyState >= 2) { // HAVE_CURRENT_DATA
         this.audioElement.play().catch(error => {
@@ -256,6 +265,7 @@ export default class StreamPlayer extends Player {
 
   resume() {
     if (this.audioElement) {
+      this._intentionalPause = false;
       if (this.audioCtx.state === 'suspended') {
         this.audioCtx.resume();
       }
@@ -266,6 +276,7 @@ export default class StreamPlayer extends Player {
 
   suspend() {
     if (this.audioElement) {
+      this._intentionalPause = true;
       this.audioElement.pause();
       this.paused = true;
     }
