@@ -1,4 +1,5 @@
 import Player from "./Player.js";
+import { parseID3 } from "./id3Parser.js";
 
 const fileExtensions = ['mp3', 'ogg'];
 
@@ -89,12 +90,16 @@ export default class StreamPlayer extends Player {
   loadStream(url, filepath) {
     this.removeAllEventListeners();
 
-    const cacheBuster = `?t=${Date.now()}`;
-    const urlWithCacheBuster = url + cacheBuster;
-
     this.currentUrl = url;
-    this.audioElement.src = urlWithCacheBuster;
+    // Set filename-based metadata immediately as a fallback.
+    // _fetchID3Metadata will overwrite this with tag data when the fetch completes.
+    this.metadata = { title: filepath.split('/').pop() };
+
+    this.audioElement.src = url;
     this.audioElement.load();
+
+    // Kick off ID3 tag fetch in parallel with audio loading
+    this._fetchID3Metadata(url);
 
     const metadataHandler = () => {
       if (isNaN(this.audioElement.duration)) {
@@ -104,7 +109,8 @@ export default class StreamPlayer extends Player {
       }
 
       this.durationMs = this.audioElement.duration * 1000;
-      this.metadata = { title: filepath.split('/').pop() };
+      // this.metadata is already initialized above; don't overwrite it here
+      // so that ID3 tags fetched in parallel are not lost.
       this.paused = false;
       this._intentionalPause = false; // new song is ready; allow canplay to play
 
@@ -151,6 +157,35 @@ export default class StreamPlayer extends Player {
       play: playHandler,
       ended: endedHandler
     };
+  }
+
+  async _fetchID3Metadata(url) {
+    try {
+      const res = await fetch(url, { headers: { Range: 'bytes=0-65535' } });
+      // Accept both 200 (server ignores Range) and 206 (Partial Content)
+      if (!res.ok) return;
+      const buffer = await res.arrayBuffer();
+      const tags = parseID3(buffer);
+      if (!tags) return;
+
+      // Guard against stale responses arriving after the user has moved to a different song
+      if (this.currentUrl !== url) return;
+
+      this.metadata = {
+        ...this.metadata,
+        title:  tags.title  || this.metadata?.title,
+        artist: tags.artist || undefined,
+        album:  tags.album  || undefined,
+        track:  tags.track  || undefined,
+      };
+
+      this.emit('playerStateUpdate', {
+        ...this.getBasePlayerState(),
+        metadata: this.metadata,
+      });
+    } catch (e) {
+      // Network error or parse failure — silently fall back to filename-based metadata
+    }
   }
 
   removeAllEventListeners() {
