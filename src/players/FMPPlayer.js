@@ -10,6 +10,7 @@ const rhythmFile = 'ym2608_adpcm_rom.bin';
 const internalPCMPath = '/fmppcm';  // on the remote, pcm files should be located where fmp files present
 
 const SAMPLES_PER_BUFFER = 16384; // allowed: buffer sizes: 256, 512, 1024, 2048, 4096, 8192, 16384
+const FMP_CHANNEL_COUNT = 2; // FMP always outputs interleaved stereo (L/R/L/R...)
 const CHANNELS = {
   "OPNA": [
     'FM 1', 'FM 2', 'FM 3', 'FM 4', 'FM 5', 'FM 6', 'PSG 1', 'PSG 2', 'PSG 3',
@@ -390,33 +391,37 @@ export default class FMPPlayer extends Player {
   }
 
   resampleToFloat(channels, channelId, inputPtr, len, resampleOutput, resampleLen) {
-    // Bresenham (line drawing) algorithm based resampling
-    let x0 = 0;
-    let y0 = 0;
-    let x1 = resampleLen - 0;
-    let y1 = len - 0;
+    const ratio = len / resampleLen;
+    for (let i = 0; i < resampleLen; i++) {
+      const pos = i * ratio;
+      const index = Math.floor(pos);
+      const frac = pos - index;
 
-    let dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-    let dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-    let err = dx + dy, e2;
+      // Use FMP_CHANNEL_COUNT as the input stride (FMP always outputs interleaved stereo),
+      // independent of the output channel count (channels.length).
+      const i0 = Math.max(index - 1, 0);
+      const i1 = index;
+      const i2 = Math.min(index + 1, len - 1);
+      const i3 = Math.min(index + 2, len - 1);
 
-    let i;
-    for (; ;) {
-      i = (x0 * channels.length) + channelId;
-      resampleOutput[i] = this.readFloatSample(inputPtr, (y0 * channels.length) + channelId);
+      const p0 = this.readFloatSample(inputPtr, (i0 * FMP_CHANNEL_COUNT) + channelId);
+      const p1 = this.readFloatSample(inputPtr, (i1 * FMP_CHANNEL_COUNT) + channelId);
+      const p2 = this.readFloatSample(inputPtr, (i2 * FMP_CHANNEL_COUNT) + channelId);
+      const p3 = this.readFloatSample(inputPtr, (i3 * FMP_CHANNEL_COUNT) + channelId);
 
-      if (x0 >= x1 && y0 >= y1) {
-        break;
-      }
-      e2 = 2 * err;
-      if (e2 > dy) {
-        err += dy;
-        x0 += sx;
-      }
-      if (e2 < dx) {
-        err += dx;
-        y0 += sy;
-      }
+      // Catmull-Rom cubic interpolation (4-point)
+      const t = frac;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const sample = 0.5 * (
+        (2 * p1) +
+        (-p0 + p2) * t +
+        (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+        (-p0 + 3 * p1 - 3 * p2 + p3) * t3
+      );
+
+      // Catmull-Rom can overshoot at sharp transients, so clamp to valid range.
+      resampleOutput[(i * channels.length) + channelId] = Math.max(-1.0, Math.min(1.0, sample));
     }
   }
 

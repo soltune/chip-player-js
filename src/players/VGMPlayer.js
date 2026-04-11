@@ -8,6 +8,7 @@ const remoteInstrumentPath = '/instruments';
 const localInstrumentPath = '/';
 
 const SAMPLES_PER_BUFFER = 16384; // allowed: buffer sizes: 256, 512, 1024, 2048, 4096, 8192, 16384
+const VGM_CHANNEL_COUNT = 2; // VGM always outputs interleaved stereo (L/R/L/R...)
 const CHIP_CHANNELS = {
   0x00: [ // SN76496
     ['PSG 1', 'PSG 2', 'PSG 3', 'PSG 4'],
@@ -444,24 +445,37 @@ export default class VGMPlayer extends Player {
   }
 
   resampleToFloat(channels, channelId, inputPtr, len, resampleOutput, resampleLen) {
-    // 線形補間を使用した高品質なリサンプリング
     const ratio = len / resampleLen;
     for (let i = 0; i < resampleLen; i++) {
       const pos = i * ratio;
       const index = Math.floor(pos);
       const frac = pos - index;
-      const nextIndex = Math.min(index + 1, len - 1);
-      
-      const currentSample = this.readFloatSample(inputPtr, (index * channels.length) + channelId);
-      const nextSample = this.readFloatSample(inputPtr, (nextIndex * channels.length) + channelId);
-      
-      // 線形補間
-      const interpolatedSample = currentSample + (nextSample - currentSample) * frac;
-      
-      // クリッピング防止
-      const clampedSample = Math.max(-1.0, Math.min(1.0, interpolatedSample));
-      
-      resampleOutput[(i * channels.length) + channelId] = clampedSample;
+
+      // Use VGM_CHANNEL_COUNT as the input stride (VGM always outputs interleaved stereo),
+      // independent of the output channel count (channels.length).
+      const i0 = Math.max(index - 1, 0);
+      const i1 = index;
+      const i2 = Math.min(index + 1, len - 1);
+      const i3 = Math.min(index + 2, len - 1);
+
+      const p0 = this.readFloatSample(inputPtr, (i0 * VGM_CHANNEL_COUNT) + channelId);
+      const p1 = this.readFloatSample(inputPtr, (i1 * VGM_CHANNEL_COUNT) + channelId);
+      const p2 = this.readFloatSample(inputPtr, (i2 * VGM_CHANNEL_COUNT) + channelId);
+      const p3 = this.readFloatSample(inputPtr, (i3 * VGM_CHANNEL_COUNT) + channelId);
+
+      // Catmull-Rom cubic interpolation (4-point)
+      const t = frac;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const sample = 0.5 * (
+        (2 * p1) +
+        (-p0 + p2) * t +
+        (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+        (-p0 + 3 * p1 - 3 * p2 + p3) * t3
+      );
+
+      // Catmull-Rom can overshoot at sharp transients, so clamp to valid range.
+      resampleOutput[(i * channels.length) + channelId] = Math.max(-1.0, Math.min(1.0, sample));
     }
   }
 
