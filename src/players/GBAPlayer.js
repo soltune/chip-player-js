@@ -443,8 +443,10 @@ export default class GBAPlayer extends Player {
     this.currentPlaytime = 0;
     this.isFadingOut = false;
     this.fadeOutStartMs = 0;
-    this.params = { sound_enhance: '1' }; // default: Light
-    this._applyEnhancePreset('1');
+    // Preserve sound_enhance across song loads; fall back to 'Light' on first load.
+    const presetId = this.params?.sound_enhance ?? '1';
+    this.params = { sound_enhance: presetId };
+    this._applyEnhancePreset(presetId);
     this.lastLoadedFilename = null;
 
     // HPF state for harmonic exciter (Approach 2), one per channel
