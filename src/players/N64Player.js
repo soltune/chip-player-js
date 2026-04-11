@@ -7,7 +7,7 @@ const fileExtensions = [
   'miniusf',
 ];
 const MOUNTPOINT = '/n64';
-const INT16_MAX = Math.pow(2, 16) - 1;
+const INT16_MAX = Math.pow(2, 15); // 32768: normalization divisor for signed 16-bit (-32768..+32767)
 
 export default class N64Player extends Player {
   constructor(audioCtx, destNode, chipCore, bufferSize) {
