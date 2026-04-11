@@ -7,6 +7,13 @@ const fileExtensions = [
 ];
 const CHANNEL_NAME = ['Square', 'Square', 'Wave', 'Noise', 'PCM', 'PCM'];
 const SAMPLES_PER_BUFFER = 16384; // allowed: buffer sizes: 256, 512, 1024, 2048, 4096, 8192, 16384
+const GBA_CHANNEL_COUNT = 2; // GBA DirectSound always outputs interleaved stereo (L/R/L/R...)
+const SOUND_ENHANCE_PRESETS = {
+  '0': { treble:  0, presence: 0, exciter: 0 }, // Off
+  '1': { treble:  4, presence: 2, exciter: 3 }, // Light
+  '2': { treble:  7, presence: 4, exciter: 6 }, // Medium
+  '3': { treble: 11, presence: 6, exciter: 9 }, // Strong
+};
 
 class GBALibWrapper {
   constructor(chipCore) {
@@ -174,6 +181,18 @@ export default class GBAPlayer extends Player {
     this.channels = [];
     this.lastLoadedFilename = null;
 
+    // EQ filter chain (Approach 1)
+    this.presenceFilter = audioCtx.createBiquadFilter();
+    this.presenceFilter.type = 'peaking';
+    this.presenceFilter.frequency.value = 3000;
+    this.presenceFilter.Q.value = 1.0;
+    this.presenceFilter.gain.value = 2;
+
+    this.trebleFilter = audioCtx.createBiquadFilter();
+    this.trebleFilter.type = 'highshelf';
+    this.trebleFilter.frequency.value = 6000;
+    this.trebleFilter.gain.value = 4;
+
     this.resampleBuffer = this.allocResampleBuffer(0);
     this.isStereo = destNode.channelCount === 2;
 
@@ -235,6 +254,7 @@ export default class GBAPlayer extends Player {
           this.sourceBufferLen = this.lib.getAudioBufferLength();
 
           this.numberOfSamplesToRender = this.getResampledAudio();
+          this.applyExciter(this.resampleBuffer, this.numberOfSamplesToRender);
           this.sourceBufferIdx = 0;
 
           if (this.isFadingOut) {
@@ -295,25 +315,68 @@ export default class GBAPlayer extends Player {
     return resampleLen;
   }
 
+  applyExciter(buffer, numSamples) {
+    const preset = SOUND_ENHANCE_PRESETS[this.params.sound_enhance] || SOUND_ENHANCE_PRESETS['0'];
+    const mixLevel = preset.exciter / 10 * 0.4; // 0..1 scaled to 0..0.4
+    if (mixLevel === 0) return;
+
+    const numChannels = this.isStereo ? 2 : 1;
+    // Derive HPF coefficient from target cutoff fc and actual device sample rate.
+    // Formula: α = fs / (fs + 2π × fc), gives consistent ~2500Hz cutoff at any sample rate.
+    const fc = 2500;
+    const alpha = this.sampleRate / (this.sampleRate + 2 * Math.PI * fc);
+
+    for (let i = 0; i < numSamples; i++) {
+      for (let ch = 0; ch < numChannels; ch++) {
+        const idx = i * numChannels + ch;
+        const x = buffer[idx];
+
+        // 1-pole high-pass: y[n] = α * (y[n-1] + x[n] - x[n-1])
+        const hf = alpha * (this.hpfState[ch] + x - this.hpfPrev[ch]);
+        this.hpfPrev[ch] = x;
+        this.hpfState[ch] = hf;
+
+        // Soft clipping generates odd harmonics; drive=3 gives subtle saturation
+        const drive = 3.0;
+        const excited = Math.tanh(hf * drive) / drive;
+
+        buffer[idx] = x + excited * mixLevel;
+      }
+    }
+  }
+
   resampleToFloat(channels, channelId, inputPtr, len, resampleOutput, resampleLen) {
-    // 線形補間を使用した高品質なリサンプリング
     const ratio = len / resampleLen;
     for (let i = 0; i < resampleLen; i++) {
       const pos = i * ratio;
       const index = Math.floor(pos);
       const frac = pos - index;
-      const nextIndex = Math.min(index + 1, len - 1);
-      
-      const currentSample = this.readFloatSample(inputPtr, (index * channels.length) + channelId);
-      const nextSample = this.readFloatSample(inputPtr, (nextIndex * channels.length) + channelId);
-      
-      // 線形補間
-      const interpolatedSample = currentSample + (nextSample - currentSample) * frac;
-      
-      // クリッピング防止
-      const clampedSample = Math.max(-1.0, Math.min(1.0, interpolatedSample));
-      
-      resampleOutput[(i * channels.length) + channelId] = clampedSample;
+
+      // Use GBA_CHANNEL_COUNT as the input stride (GBA always outputs interleaved stereo),
+      // independent of the output channel count (channels.length).
+      const i0 = Math.max(index - 1, 0);
+      const i1 = index;
+      const i2 = Math.min(index + 1, len - 1);
+      const i3 = Math.min(index + 2, len - 1);
+
+      const p0 = this.readFloatSample(inputPtr, (i0 * GBA_CHANNEL_COUNT) + channelId);
+      const p1 = this.readFloatSample(inputPtr, (i1 * GBA_CHANNEL_COUNT) + channelId);
+      const p2 = this.readFloatSample(inputPtr, (i2 * GBA_CHANNEL_COUNT) + channelId);
+      const p3 = this.readFloatSample(inputPtr, (i3 * GBA_CHANNEL_COUNT) + channelId);
+
+      // Catmull-Rom cubic interpolation (4-point)
+      const t = frac;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const sample = 0.5 * (
+        (2 * p1) +
+        (-p0 + p2) * t +
+        (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+        (-p0 + 3 * p1 - 3 * p2 + p3) * t3
+      );
+
+      // Catmull-Rom can overshoot at sharp transients, so clamp to valid range.
+      resampleOutput[(i * channels.length) + channelId] = Math.max(-1.0, Math.min(1.0, sample));
     }
   }
 
@@ -380,8 +443,13 @@ export default class GBAPlayer extends Player {
     this.currentPlaytime = 0;
     this.isFadingOut = false;
     this.fadeOutStartMs = 0;
-    this.params = {};
+    this.params = { sound_enhance: '1' }; // default: Light
+    this._applyEnhancePreset('1');
     this.lastLoadedFilename = null;
+
+    // HPF state for harmonic exciter (Approach 2), one per channel
+    this.hpfPrev = [0, 0];
+    this.hpfState = [0, 0];
 
     this.metadata = this.createMetadata();
   }
@@ -467,20 +535,39 @@ export default class GBAPlayer extends Player {
   }
 
   getParamDefs() {
-    // let params = {
-    //   id: 'spu_reverb',
-    //   label: 'Enable SPU Reverb',
-    //   hint: 'Enable SPU reverb',
-    //   type: 'toggle',
-    //   defaultValue: true,
-    // };
     return [
-      // params,
+      {
+        id: 'sound_enhance',
+        label: 'Enhancement',
+        hint: 'Audio enhancement preset: EQ (treble/presence) + harmonic exciter',
+        type: 'enum',
+        options: [{
+          label: 'Enhancement',
+          items: [
+            { label: 'Off',    value: '0' },
+            { label: 'Light',  value: '1' },
+            { label: 'Medium', value: '2' },
+            { label: 'Strong', value: '3' },
+          ],
+        }],
+        defaultValue: '1',
+      },
     ];
+  }
+
+  _applyEnhancePreset(presetId) {
+    const preset = SOUND_ENHANCE_PRESETS[presetId];
+    if (!preset) return;
+    this.trebleFilter.gain.value = preset.treble;
+    this.presenceFilter.gain.value = preset.presence;
+    // exciter intensity is read dynamically from params by applyExciter()
   }
 
   setParameter(id, value) {
     switch (id) {
+      case 'sound_enhance':
+        this._applyEnhancePreset(value);
+        break;
       default:
         console.warn('GBAPlayer has no parameter with id "%s".', id);
     }
@@ -525,6 +612,12 @@ export default class GBAPlayer extends Player {
 
   seekMs(positionMs) {
     this.lib.seekPlaybackPosition(positionMs);
+  }
+
+  connect() {
+    this.audioNode.connect(this.presenceFilter);
+    this.presenceFilter.connect(this.trebleFilter);
+    this.trebleFilter.connect(this.destinationNode);
   }
 
   stop() {
