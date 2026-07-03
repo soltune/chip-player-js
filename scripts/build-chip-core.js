@@ -137,10 +137,11 @@ const chipModules = [
     name: 'libvgm',
     enabled: true,
     sourceFiles: [
-      // Fork: built from the in-repo subtree, not a side-by-side clone.
-      'libvgm/build/bin/libvgm-emu.a',
-      'libvgm/build/bin/libvgm-utils.a',
-      'libvgm/build/bin/libvgm-player.a',
+      // Side-by-side clone (the in-tree libvgm subtree is a stale snapshot that
+      // lacks symbols required by libvgm-wrapper.cpp, e.g. PLR_DEV_INFO.parentIdx).
+      '../libvgm/build/bin/libvgm-emu.a',
+      '../libvgm/build/bin/libvgm-utils.a',
+      '../libvgm/build/bin/libvgm-player.a',
       'src/bindings/libvgm-wrapper.cpp',
     ],
     exportedFunctions: [
@@ -167,15 +168,17 @@ const chipModules = [
       '_lvgm_reset',
     ],
     flags: [
-      '-Ilibvgm',
+      '-I../libvgm',
     ],
   },
   {
     name: 'fluidlite',
     enabled: true,
     sourceFiles: [
-      // Fork: built from the in-repo subtree, not a side-by-side clone.
-      'fluidlite/build/libfluidlite.a',
+      // Side-by-side clone (the in-tree fluidlite subtree lacks
+      // fluid_synth_get_active_voice_count). For SF3 soundfont support,
+      // configure with -DENABLE_SF3=YES -DSTB_VORBIS=YES (see README).
+      '../FluidLite/build/libfluidlite.a',
     ],
     exportedFunctions: [
       '_new_fluid_settings',
@@ -313,7 +316,7 @@ const chipModules = [
       'src/device/fmgen/fmgen.cpp',
       'src/device/fmgen/fmtimer.cpp',
       'src/device/fmgen/opm.cpp',
-      'src/device/fmgen/opna.cpp',
+      'src/device/fmgen/fmgen_opna.cpp',
       'src/device/fmgen/psg.cpp',
 
       'src/device/s98mame.cpp',
@@ -323,7 +326,7 @@ const chipModules = [
       'src/device/s_logtbl.c',
       'src/device/s_sng.c',
       'src/m_s98.cpp',
-      'emscripten/adapter.cpp',
+      'emscripten/s98_adapter.cpp',
     ].map(file => 'webS98/' + file),
     exportedFunctions: [
       '_s98_load_file',
@@ -346,6 +349,8 @@ const chipModules = [
       '-DEMSCRIPTEN',
       '-IwebS98/src/',
       '-IwebS98/src/device',
+      // Namespace webS98's emu2413 away from libvgm's copy (same symbol names).
+      '-include', 'webS98/src/device/emu2413/emu2413_ns.h',
     ],
   },
   {
@@ -362,7 +367,7 @@ const chipModules = [
       'pmdmini/src/pmdwin/p86drv.cpp',
       'pmdmini/src/pmdwin/pmdwin.cpp',
       'pmdmini/src/pmdwin/ppsdrv.cpp',
-      'pmdmini/src/pmdwin/ppz8l.cpp ',
+      'pmdmini/src/pmdwin/ppz8l.cpp',
       'pmdmini/src/pmdwin/table.cpp',
       'pmdmini/src/pmdwin/util.cpp',
       'pmdmini/src/pmdmini.c',
@@ -374,7 +379,7 @@ const chipModules = [
       // 'mdxmini/src/pcm8.c',
       // 'mdxmini/src/pdxfile.c',
       // 'mdxmini/src/ym2151.c',
-      'emscripten/adapter.cpp'
+      'emscripten/mdx_adapter.cpp'
     ].map(file => 'webMDX/' + file),
     exportedFunctions: [
       '_pmd_load_file',
@@ -459,7 +464,7 @@ const chipModules = [
       // 'psflib/psf2fs.c',
       // 'psflib/psflib.c', // replaced to psflib/libpsflib.a
       'emscripten/heplug.c',
-      'emscripten/adapter.cpp',
+      'emscripten/psx_adapter.cpp',
     ].map(file => 'webpsx/' + file),
     exportedFunctions: [
       '_psf2fs_create',
@@ -498,7 +503,7 @@ const chipModules = [
       'vio2sf/desmume/arm_instructions.c',
       'vio2sf/desmume/armcpu.c',
       'vio2sf/desmume/barray.c',
-      'vio2sf/desmume/bios.c',
+      'vio2sf/desmume/nds_bios.c',
       'vio2sf/desmume/cp15.c',
       'vio2sf/desmume/FIFO.c',
       'vio2sf/desmume/GPU.c',
@@ -510,9 +515,9 @@ const chipModules = [
       'vio2sf/desmume/resampler.c',
       'vio2sf/desmume/state.c',
       'vio2sf/desmume/thumb_instructions.c',
-      'vio2sf/desmume/SPU.cpp',
+      'vio2sf/desmume/nds_spu.cpp',
       'emscripten/twosfplug.cpp',
-      'emscripten/adapter.cpp',
+      'emscripten/nds_adapter.cpp',
     ].map(file => 'webDS/' + file),
     exportedFunctions: [
       '_nds_setup',
@@ -532,6 +537,7 @@ const chipModules = [
     flags: [
       '-DEMSCRIPTEN',
       '-DHAVE_ZLIB_H',
+      '-Wno-register', // vio2sf C sources are compiled as C++17 by the single em++ invocation
       '--js-library', 'webDS/nds_callback.js',
       '-IwebDS/vio2sf/desmume/',
       // '-IwebDS/psflib',
@@ -543,7 +549,7 @@ const chipModules = [
     sourceFiles: [
       'libwebgsf.a',
       'gsfplug.cpp',
-      'adapter.cpp',
+      'gsf_adapter.cpp',
     ].map(file => 'webGSF/emscripten/' + file),
     exportedFunctions: [
       '_gba_init',
@@ -720,7 +726,9 @@ build_proc.on('exit', function (code) {
   if (code === 0) {
     console.log(`Built ${wasmOutFile}.`);
     // Don't use --pre-js because it can get stripped out by closure.
+    // Fork: use fs instead of a shell heredoc; the ES6 runtime contains
+    // \`${...}\` sequences that the shell would expand/corrupt.
     console.log('Prepending %s: %s', jsOutFile, preJs.trim());
-    execSync(`cat <<EOF > ${jsOutFile}\n${preJs}\n$(cat ${jsOutFile})\nEOF`);
+    fs.writeFileSync(jsOutFile, preJs + '\n' + fs.readFileSync(jsOutFile, 'utf8'));
   }
 });
