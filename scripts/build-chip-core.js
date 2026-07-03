@@ -274,7 +274,7 @@ const chipModules = [
       '-ffunction-sections',
       '-fdata-sections',
       '-DRONAN',
-      '-s', 'SAFE_HEAP=0',
+      
     ],
   },
   {
@@ -657,6 +657,9 @@ const runtimeMethods = [
   'UTF8ToString',
   'HEAPU8',
   'HEAPF32',
+  // Fork: wothke-style players (S98/FMP/PMD/PSF/NDS/GBA) read via HEAP16/HEAP32.
+  'HEAP16',
+  'HEAP32',
   'stringToNewUTF8',
   'ccall',
   'getValue',
@@ -681,7 +684,11 @@ const flags = [
   '-s', 'EXPORTED_RUNTIME_METHODS=[' + runtimeMethods.join(',') + ']',
   '-s', 'ALLOW_MEMORY_GROWTH=1',
   '-s', 'ASSERTIONS=0',      // assertions increase runtime size about 100K
-  '-flto',                   // Add Link-Time Optimization
+  // Fork: -flto removed. LTO miscompiles the legacy mdxmini/pmdwin code
+  // ("memory access out of bounds" in mdx_open/pmd_load_file at -Oz -flto).
+  // Fork: legacy engine code (pmdwin etc.) relies on signed-overflow wrapping;
+  // without -fwrapv, -Oz miscompiles it into out-of-bounds heap writes.
+  '-fwrapv',
   '-msimd128',
   // '-s', 'NO_DISABLE_EXCEPTION_CATCHING',
   '-s', 'MALLOC="emmalloc"', // Use the smaller allocator
@@ -695,6 +702,9 @@ const flags = [
   // '-s', 'INITIAL_MEMORY=33554432', // 32MB initial memory; can grow with ALLOW_MEMORY_GROWTH
   '-s', 'INITIAL_MEMORY=65536000', // 64MB initial memory
   '-s', 'WASM_BIGINT',       // support passing 64 bit integers to/from JS
+  // Fork: restore the pre-Emscripten-4 stack size. The default shrank to 64KB,
+  // which overflows in fmp/pmdwin/mdxmini/vio2sf (memory access out of bounds).
+  '-s', 'STACK_SIZE=5242880',
   '-lidbfs.js',
   '-Oz',                     // set to O0 for fast compile during development
   '-o', jsOutFile,

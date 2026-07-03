@@ -469,7 +469,9 @@ class App extends React.Component {
           this.playbackTimer = setTimeout(() => {
             // If still playing this song after 5 seconds, log a playback.
             if (this.state.songId === songId) {
-              postWithOptionalAuth(this.props.userContext.user, `${API_BASE}/playback`, { songId, durationMs: 5000 });
+              // Fork: tolerate servers without the /playback endpoint (tracking only).
+              postWithOptionalAuth(this.props.userContext.user, `${API_BASE}/playback`, { songId, durationMs: 5000 })
+                .catch((e) => console.debug('Playback logging unavailable:', e?.message || e));
             }
           }, 5000);
 

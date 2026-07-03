@@ -202,7 +202,8 @@ export default class GMEPlayer extends Player {
     this.fadeFinished = false;
     this.subtune = subtune;
     this.metadata = this._parseMetadata(subtune);
-    this.setVoiceMask(Array(this.getNumVoices()).fill(true));  // reset channel mask
+    // Fork: reset channel mask on subtune change (getNumVoices was removed upstream).
+    this.setVoiceMask(Array(core._gme_voice_count(this.gmeCtx)).fill(true));
     console.debug('GMEPlayer.playSubtune(subtune=%s)', subtune);
     this.emit('playerStateUpdate', {
       ...this.getBasePlayerState(),
