@@ -12,7 +12,8 @@ set(PLAYER_FILES
 	vgmplayer_cmdhandler.cpp
 	vgmplayer.cpp
 	playera.cpp
-	player_wrapper.cpp
+	# player_wrapper.cpp is not part of this subtree import; the chip-player-js
+	# binding (src/bindings/libvgm-wrapper.cpp) uses the C++ PlayerA API directly.
 )
 # export headers
 set(PLAYER_HEADERS

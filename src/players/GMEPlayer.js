@@ -18,9 +18,9 @@ const fileExtensions = [
   'nsfe',
   'spc',
   'ay',
-  // Fork: kss/hes/sgc enabled (see game-music-emu/gme/blargg_config.h)
+  // Fork: kss/hes enabled (mmontag/game-music-emu builds them by default;
+  // sgc does not exist in that lineage)
   'kss',
-  'sgc',
   'gbs',
   'hes',
 ];

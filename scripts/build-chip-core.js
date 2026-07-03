@@ -72,9 +72,10 @@ const chipModules = [
     name: 'gme',
     enabled: true,
     sourceFiles: [
-      // Fork: built from the in-repo subtree (keeps our blargg_config.h, e.g. hes/kss),
-      // not a side-by-side clone. See CLAUDE.md build notes.
-      'game-music-emu/build/gme/libgme.a',
+      // Side-by-side clone of mmontag/game-music-emu (in-tree subtree lacks gme_disable_echo).
+      // Fork: copy our game-music-emu/gme/blargg_config.h into the clone before building
+      // to keep hes/kss/sgc enabled. See scripts/build-libs.sh.
+      '../game-music-emu/build/gme/libgme.a',
     ],
     exportedFunctions: [
       '_gme_open_data',
@@ -108,8 +109,8 @@ const chipModules = [
     sourceFiles: [
       // 'libxmp/lib/libxmp.a', // full libxmp build
       // 'libxmp/libxmp-lite-stagedir/lib/libxmp-lite.a',
-      // Fork: built from the in-repo subtree, not a side-by-side clone.
-      'libxmp/build/libxmp-lite.a',
+      // Side-by-side clone (in-tree subtree is 4.5.0; xmp_seek_time_frame needs 4.7+).
+      '../libxmp/build/libxmp-lite.a',
     ],
     exportedFunctions: [
       '_xmp_create_context',
