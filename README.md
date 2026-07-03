@@ -86,26 +86,38 @@ This fork is to share my fixes like;
 
 **This player assumes each pcm files(.pzi, .pvi, .pdx ...) are in the same directory where the music files are.**
 
-## Building Additional library
-On this fork, an additional library must be present before launching `yarn run build-chip-core`.
+## Building the libraries (this fork)
+All static libraries required by `npm run build-chip-core` — the upstream
+side-by-side clones (libxmp, game-music-emu, FluidLite, libvgm, libsidplayfp)
+and the in-repo ones (psflib, lazyusf2, webGSF's libwebgsf.a) — are built by
+one script:
 
 ```sh
-$ source ~/src/emsdk/emsdk_env.sh
-
-$ cd ../webGSF/emscripten
-$ emmake make -f Emscripten.Makefile    # building libwebgsf.a
-
-$ cd ../../
-$ yarn run build-chip-core              # and finally build chip-core (chip-core.wasm)
-
+$ scripts/build-libs.sh          # clones siblings next to this repo if missing
+$ npm run build-chip-core        # then link chip-core (src/chip-core.wasm)
 ```
+
+Requirements: emsdk 5.x at `~/src/emsdk`, cmake, automake/libtool, and `xa`
+(for libsidplayfp; `brew install automake libtool xa`).
+
+Flag policy baked into the script and `scripts/build-chip-core.js`:
+- **no `-flto`** — LTO miscompiles the legacy engine code (pmdwin, mdxmini,
+  gme's kss/hes emulators, libxmp) under Emscripten 5, causing
+  "memory access out of bounds" at load.
+- **`-fwrapv`** — the same legacy code assumes wrapping signed overflow.
+- `STACK_SIZE=5MB` — Emscripten 5 shrank the default stack to 64KB, which
+  the old engines overflow.
+
+libsidplayfp needs extra care (unpublished resid fork, GNU/BSD od
+differences); the script handles it — details in
+[scripts/patches/libsidplayfp-NOTES.txt](scripts/patches/libsidplayfp-NOTES.txt).
 
 You can also enable sf3 support of FluidLite by building with `ENABLE_SF3` option like the following. 
 Loading sf3 files is quite slow, furthermore, doing the above will increase the .wasm file by around 200kb.　 
 So please consider if you need it carefully.
 
 ```sh
-$ cd fluidlite/build/
+$ cd ../FluidLite/build/         # side-by-side clone (the in-repo copy is deprecated)
 $ emcmake cmake -DENABLE_SF3=YES -DSTB_VORBIS=YES ..
 $ emmake make clean && emmake make fluidlite-static
 ```
