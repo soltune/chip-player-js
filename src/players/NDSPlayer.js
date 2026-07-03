@@ -1,3 +1,4 @@
+import autoBind from 'auto-bind';
 import Player from "./Player.js";
 import {CATALOG_PREFIX} from "../config";
 const encoding = require('encoding-japanese');
@@ -166,22 +167,22 @@ class DSLibWrapper {
 }
 
 export default class NDSPlayer extends Player {
-  constructor(audioCtx, destNode, chipCore, bufferSize) {
-    super(audioCtx, destNode, chipCore, bufferSize);
-    this.setParameter = this.setParameter.bind(this);
-    this.getParameter = this.getParameter.bind(this);
-    this.getParamDefs = this.getParamDefs.bind(this);
+  constructor(...args) {
+    super(...args);
+    autoBind(this);
+
+    this.playerKey = 'nds';
+    this.name = 'NDS Player';
     window.nds_fileRequestCallback　= this.fileRequestCallback.bind(this);
 
-    this.lib = new DSLibWrapper(chipCore);
+    this.lib = new DSLibWrapper(this.core);
     this.fs = this.lib.fs;
-    this.sampleRate = audioCtx.sampleRate;
     this.inputSampleRate = this.lib.getSampleRate();
     this.channels = [];
     this.lastLoadedFilename = null;
 
     this.resampleBuffer = this.allocResampleBuffer(0);
-    this.isStereo = destNode.channelCount === 2;
+    this.isStereo = true; // updated per callback in processAudioInner
 
     this.paused = true;
     this.fileExtensions = fileExtensions;
@@ -197,67 +198,67 @@ export default class NDSPlayer extends Player {
 
     this.params = {};
 
-    this.setAudioProcess((e) => {
-      for (let i = 0; i < e.outputBuffer.numberOfChannels; i++) {
-        this.channels[i] = e.outputBuffer.getChannelData(i);
+  }
+
+  processAudioInner(channels) {
+    this.channels = channels;
+    this.isStereo = channels.length === 2;
+
+    if (this.paused) {
+      for (let i = 0; i < this.channels.length; i++) {
+        this.channels[i].fill(0);
       }
+      return;
+    }
 
-      if (this.paused) {
-        for (let i = 0; i < this.channels.length; i++) {
-          this.channels[i].fill(0);
-        }
-        return;
-      }
+    const outSize = this.channels[0].length;
+    this.numberOfSamplesRendered = 0;
+    const fadeOutMs = 2000;
 
-      const outSize = this.channels[0].length;
-      this.numberOfSamplesRendered = 0;
-      const fadeOutMs = 2000;
+    while (this.numberOfSamplesRendered < outSize) {
+      if (this.numberOfSamplesToRender === 0) {
 
-      while (this.numberOfSamplesRendered < outSize) {
-        if (this.numberOfSamplesToRender === 0) {
+        let finished = false;
+        this.currentPlaytime = Math.max(this.getPositionMs(), this.currentPlaytime);
+        const duration = this.getDurationMs();
 
-          let finished = false;
-          this.currentPlaytime = Math.max(this.getPositionMs(), this.currentPlaytime);
-          const duration = this.getDurationMs();
-
-          finished = (this.currentPlaytime >= duration + fadeOutMs);
-          if (!finished) {
-            if (this.currentPlaytime >= duration && !this.isFadingOut) {
-              this.setFadeout(this.currentPlaytime);
-            }
-            finished = (this.lib.computeAudioSamples() === 1);
+        finished = (this.currentPlaytime >= duration + fadeOutMs);
+        if (!finished) {
+          if (this.currentPlaytime >= duration && !this.isFadingOut) {
+            this.setFadeout(this.currentPlaytime);
           }
-
-          if (finished) {
-            // no frame left
-            this.fillEmpty(outSize);
-            this.stop();
-            return;
-          }
-
-          // refresh just in case they are not using one fixed buffer..
-          this.sourceBuffer = this.lib.getAudioBuffer();
-          this.sourceBufferLen = this.lib.getAudioBufferLength();
-
-          this.numberOfSamplesToRender = this.getResampledAudio();
-          this.sourceBufferIdx = 0;
-
-          if (this.isFadingOut) {
-            const current = this.currentPlaytime - duration;
-            const ratio = Math.max((fadeOutMs - current) / fadeOutMs, 0);
-            this.resampleBuffer = this.resampleBuffer.map((value) => {
-              return value * ratio
-            });
-          }
+          finished = (this.lib.computeAudioSamples() === 1);
         }
 
-        if (this.isStereo) {
-          this.copySamplesStereo();
-        } else {
-          this.copySamplesMono();
+        if (finished) {
+          // no frame left
+          this.fillEmpty(outSize);
+          this.stop();
+          return;
+        }
+
+        // refresh just in case they are not using one fixed buffer..
+        this.sourceBuffer = this.lib.getAudioBuffer();
+        this.sourceBufferLen = this.lib.getAudioBufferLength();
+
+        this.numberOfSamplesToRender = this.getResampledAudio();
+        this.sourceBufferIdx = 0;
+
+        if (this.isFadingOut) {
+          const current = this.currentPlaytime - duration;
+          const ratio = Math.max((fadeOutMs - current) / fadeOutMs, 0);
+          this.resampleBuffer = this.resampleBuffer.map((value) => {
+            return value * ratio
+          });
         }
       }
-    });
+
+      if (this.isStereo) {
+        this.copySamplesStereo();
+      } else {
+        this.copySamplesMono();
+      }
+    }
   }
 
   getResampledAudio(input, len) {
@@ -410,7 +411,7 @@ export default class NDSPlayer extends Player {
     this.resume();
   }
 
-  loadData(data, filepath) {
+  loadData(data, filepath, persistedSettings = {}) {
     this.suspend();
     
     if (!this.lib.isClosed()) {
@@ -439,7 +440,6 @@ export default class NDSPlayer extends Player {
     if (this.lib.loadMusicData(this.sampleRate, path, filename) === 0) {
       this.voiceMask = Array(this.getNumVoices()).fill(true);
       this.init();
-      this.connect();
 
       this.resume();
 
@@ -599,7 +599,6 @@ export default class NDSPlayer extends Player {
         this.lib.registerFileData(path, filename, buffer);
         if (this.lib.loadMusicData(this.sampleRate, path, this.lastLoadedFilename) === 0) {
           this.init();
-          this.connect();
 
           this.resume();
 

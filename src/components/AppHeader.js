@@ -1,33 +1,32 @@
-import React from "react";
+import React, { useContext } from 'react';
+import { Link } from 'react-router-dom';
+import { UserContext } from './UserProvider';
 
-export default class AppHeader extends React.PureComponent {
-  render() {
-    return (
-      <header className="AppHeader">
-        <a className="AppHeader-title" href="..">Chip Player JS</a>{' '}
-        {this.props.user ?
-          <span>
-              • Logged in as {this.props.user.displayName}.{' '}
-            <a href="#" onClick={this.props.handleLogout}>Logout</a>
-            </span>
-          :
-          <span>
-              • <a href="#" onClick={this.props.handleLogin}>Login/Sign Up</a> to Save Favorites
-            </span>
-        }
-        {!this.props.isPhone &&
-        <p className="AppHeader-subtitle">
-            <span className="AppHeader-byline">Feedback:{' '}
-              <a href="https://twitter.com/matthewmontag" target="_blank" rel="noopener noreferrer">
-                @matthewmontag
-              </a>
-            </span>
-          Powered by{' '}
-          <a href="https://bitbucket.org/mpyne/game-music-emu/wiki/Home">Game Music Emu</a>,{' '}
-          <a href="https://github.com/cmatsuoka/libxmp">LibXMP</a>, and{' '}
-          <a href="https://github.com/divideconcept/FluidLite">FluidLite</a>.
-        </p>}
-      </header>
-    );
-  }
+const AppHeader = () => {
+  const { user, handleLogout, handleLogin } = useContext(UserContext);
+
+  return (
+    <header className="AppHeader">
+      <Link className="AppHeader-title" to={{ pathname: "/" }}>Chip Player JS</Link>
+      {user ?
+        <>
+          {' • '}
+          Logged in as {user.displayName}.
+          {' '}
+          <a href="#" onClick={handleLogout}>Logout</a>
+        </>
+        :
+        <>
+          {' • '}
+          <a href="#" onClick={handleLogin}>Login/Sign Up</a> to Save Favorites
+        </>
+      }
+      {' • '}
+      <a href="https://twitter.com/messages/compose?recipient_id=587634572" target="_blank" rel="noopener noreferrer">
+        Feedback
+      </a>
+    </header>
+  );
 }
+
+export default AppHeader;

@@ -5,6 +5,8 @@
 // Created by Matt Montag on 9/4/18.
 //
 #include <math.h>
+#include <string.h>
+#include <sys/stat.h>
 #include <emscripten.h>
 
 #include "../fluidlite/include/fluidlite.h"
@@ -32,6 +34,7 @@ char g_ChannelsMuted[16];
 int g_ChannelProgramNums[16];
 short g_shortBuffer[4096];
 int tp_set_synth_engine(int);
+char g_currentSoundfontFileHash[512];
 
 typedef struct Synth {
   void (*noteOn)(int channel, int key, int velocity);
@@ -169,6 +172,7 @@ extern void tp_init(int sampleRate) {
   fluid_settings_setint(settings, "synth.threadsafe-api", 0);
   fluid_settings_setnum(settings, "synth.gain", 0.5);
   fluid_settings_setnum(settings, "synth.sample-rate", sampleRate);
+  fluid_settings_setstr(settings, "synth.drums-channel.active", "no");
   g_FluidSynth = new_fluid_synth(settings);
     fluid_synth_set_interp_method(g_FluidSynth, -1, FLUID_INTERP_LINEAR);
 
@@ -194,6 +198,7 @@ extern void tp_init(int sampleRate) {
 
 extern void tp_unload_soundfont() {
   if (fluid_synth_sfcount(g_FluidSynth) > 0) {
+    strcpy(g_currentSoundfontFileHash, "");
     fluid_sfont_t *sfont = fluid_synth_get_sfont(g_FluidSynth, 0);
     fluid_synth_remove_sfont(g_FluidSynth, sfont);
     // Causes a crash related to pthreads in Emscripten.
@@ -202,8 +207,19 @@ extern void tp_unload_soundfont() {
 }
 
 extern int tp_load_soundfont(const char *filename) {
-  tp_unload_soundfont();
-  return fluid_synth_sfload(g_FluidSynth, filename, 1);
+  // Avoid loading the same soundfont again (quick hack)
+  char newFileHash[512];
+  struct stat filestat;
+  stat(filename, &filestat);
+  sprintf(newFileHash, "%s-%ld", filename, (long)filestat.st_ctime);
+
+  if (strcmp(newFileHash, g_currentSoundfontFileHash) != 0) {
+    tp_unload_soundfont();
+    strcpy(g_currentSoundfontFileHash, newFileHash);
+    return fluid_synth_sfload(g_FluidSynth, filename, 1);
+  } else {
+    return fluid_synth_get_sfont(g_FluidSynth, 0)->id;
+  }
 }
 
 extern int tp_add_soundfont(const char *filename) {
@@ -258,6 +274,21 @@ extern int tp_set_synth_engine(int synthId) {
   g_synthId = synthId;
   g_synth = g_Synths[g_synthId];
   return 0;
+}
+
+extern void tp_set_ch10_melodic(int isMelodic) {
+  fluid_settings_t* settings = fluid_synth_get_settings(g_FluidSynth);
+  if (isMelodic) {
+    fluid_settings_setstr(settings, "synth.drums-channel.active", "no");
+    fluid_synth_bank_select(g_FluidSynth, 9, 0);
+  } else {
+    fluid_settings_setstr(settings, "synth.drums-channel.active", "yes");
+    fluid_synth_bank_select(g_FluidSynth, 9, 127);
+  }
+}
+
+extern fluid_synth_t* tp_get_fluid_synth() {
+  return g_FluidSynth;
 }
 
 #ifdef __cplusplus

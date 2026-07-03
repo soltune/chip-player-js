@@ -1,3 +1,4 @@
+import autoBind from 'auto-bind';
 import Player from "./Player.js";
 import {CATALOG_PREFIX} from "../config";
 const encoding = require('encoding-japanese');
@@ -14,6 +15,56 @@ const SOUND_ENHANCE_PRESETS = {
   '2': { treble:  7, presence: 4, exciter: 6 }, // Medium
   '3': { treble: 11, presence: 6, exciter: 9 }, // Strong
 };
+
+// RBJ audio-EQ-cookbook biquad (Direct Form 1). Replaces the former Web Audio
+// BiquadFilterNodes: under the upstream player architecture, players render
+// into a shared ScriptProcessorNode and cannot own graph nodes.
+class Biquad {
+  constructor() {
+    this.b0 = 1; this.b1 = 0; this.b2 = 0; this.a1 = 0; this.a2 = 0;
+    this.reset();
+  }
+
+  reset() {
+    this.x1 = 0; this.x2 = 0; this.y1 = 0; this.y2 = 0;
+  }
+
+  setPeaking(sampleRate, freq, q, gainDb) {
+    const A = Math.pow(10, gainDb / 40);
+    const w0 = 2 * Math.PI * freq / sampleRate;
+    const alpha = Math.sin(w0) / (2 * q);
+    const cosw0 = Math.cos(w0);
+    const a0 = 1 + alpha / A;
+    this.b0 = (1 + alpha * A) / a0;
+    this.b1 = (-2 * cosw0) / a0;
+    this.b2 = (1 - alpha * A) / a0;
+    this.a1 = (-2 * cosw0) / a0;
+    this.a2 = (1 - alpha / A) / a0;
+  }
+
+  setHighShelf(sampleRate, freq, gainDb) {
+    const A = Math.pow(10, gainDb / 40);
+    const w0 = 2 * Math.PI * freq / sampleRate;
+    const cosw0 = Math.cos(w0);
+    const S = 1; // shelf slope, matches BiquadFilterNode default behavior closely enough
+    const alpha = Math.sin(w0) / 2 * Math.sqrt((A + 1 / A) * (1 / S - 1) + 2);
+    const twoSqrtAAlpha = 2 * Math.sqrt(A) * alpha;
+    const a0 = (A + 1) - (A - 1) * cosw0 + twoSqrtAAlpha;
+    this.b0 = (A * ((A + 1) + (A - 1) * cosw0 + twoSqrtAAlpha)) / a0;
+    this.b1 = (-2 * A * ((A - 1) + (A + 1) * cosw0)) / a0;
+    this.b2 = (A * ((A + 1) + (A - 1) * cosw0 - twoSqrtAAlpha)) / a0;
+    this.a1 = (2 * ((A - 1) - (A + 1) * cosw0)) / a0;
+    this.a2 = ((A + 1) - (A - 1) * cosw0 - twoSqrtAAlpha) / a0;
+  }
+
+  process(x) {
+    const y = this.b0 * x + this.b1 * this.x1 + this.b2 * this.x2
+      - this.a1 * this.y1 - this.a2 * this.y2;
+    this.x2 = this.x1; this.x1 = x;
+    this.y2 = this.y1; this.y1 = y;
+    return y;
+  }
+}
 
 class GBALibWrapper {
   constructor(chipCore) {
@@ -167,34 +218,27 @@ class GBALibWrapper {
 }
 
 export default class GBAPlayer extends Player {
-  constructor(audioCtx, destNode, chipCore, bufferSize) {
-    super(audioCtx, destNode, chipCore, bufferSize);
-    this.setParameter = this.setParameter.bind(this);
-    this.getParameter = this.getParameter.bind(this);
-    this.getParamDefs = this.getParamDefs.bind(this);
-    window.gba_fileRequestCallback　= this.fileRequestCallback.bind(this);
+  constructor(...args) {
+    super(...args);
+    autoBind(this);
+    window.gba_fileRequestCallback = this.fileRequestCallback;
 
-    this.lib = new GBALibWrapper(chipCore);
+    this.playerKey = 'gba';
+    this.name = 'GBA Player';
+
+    this.lib = new GBALibWrapper(this.core);
     this.fs = this.lib.fs;
-    this.sampleRate = audioCtx.sampleRate;
     this.inputSampleRate = this.lib.getSampleRate();
     this.channels = [];
     this.lastLoadedFilename = null;
 
-    // EQ filter chain (Approach 1)
-    this.presenceFilter = audioCtx.createBiquadFilter();
-    this.presenceFilter.type = 'peaking';
-    this.presenceFilter.frequency.value = 3000;
-    this.presenceFilter.Q.value = 1.0;
-    this.presenceFilter.gain.value = 2;
-
-    this.trebleFilter = audioCtx.createBiquadFilter();
-    this.trebleFilter.type = 'highshelf';
-    this.trebleFilter.frequency.value = 6000;
-    this.trebleFilter.gain.value = 4;
+    // EQ filter chain (Approach 1) - in-process biquads, one pair per channel
+    this.eqPresence = [new Biquad(), new Biquad()];
+    this.eqTreble = [new Biquad(), new Biquad()];
+    this.eqActive = false;
 
     this.resampleBuffer = this.allocResampleBuffer(0);
-    this.isStereo = destNode.channelCount === 2;
+    this.isStereo = true; // updated per callback in processAudioInner
 
     this.paused = true;
     this.fileExtensions = fileExtensions;
@@ -211,68 +255,83 @@ export default class GBAPlayer extends Player {
     this.params = {};
     this.voiceMask = [];
 
-    this.setAudioProcess((e) => {
-      for (let i = 0; i < e.outputBuffer.numberOfChannels; i++) {
-        this.channels[i] = e.outputBuffer.getChannelData(i);
+  }
+
+  processAudioInner(channels) {
+    this.channels = channels;
+    this.isStereo = channels.length === 2;
+
+    if (this.paused) {
+      for (let i = 0; i < this.channels.length; i++) {
+        this.channels[i].fill(0);
       }
+      return;
+    }
 
-      if (this.paused) {
-        for (let i = 0; i < this.channels.length; i++) {
-          this.channels[i].fill(0);
-        }
-        return;
-      }
+    const outSize = this.channels[0].length;
+    this.numberOfSamplesRendered = 0;
+    const fadeOutMs = 2000;
 
-      const outSize = this.channels[0].length;
-      this.numberOfSamplesRendered = 0;
-      const fadeOutMs = 2000;
+    while (this.numberOfSamplesRendered < outSize) {
+      if (this.numberOfSamplesToRender === 0) {
 
-      while (this.numberOfSamplesRendered < outSize) {
-        if (this.numberOfSamplesToRender === 0) {
+        let finished = false;
+        this.currentPlaytime = Math.max(this.getPositionMs(), this.currentPlaytime);
+        const duration = this.getDurationMs();
 
-          let finished = false;
-          this.currentPlaytime = Math.max(this.getPositionMs(), this.currentPlaytime);
-          const duration = this.getDurationMs();
-
-          finished = (this.currentPlaytime >= duration + fadeOutMs);
-          if (!finished) {
-            if (this.currentPlaytime >= duration && !this.isFadingOut) {
-              this.setFadeout(this.currentPlaytime);
-            }
-            finished = (this.lib.computeAudioSamples() === 1);
+        finished = (this.currentPlaytime >= duration + fadeOutMs);
+        if (!finished) {
+          if (this.currentPlaytime >= duration && !this.isFadingOut) {
+            this.setFadeout(this.currentPlaytime);
           }
-
-          if (finished) {
-            // no frame left
-            this.fillEmpty(outSize);
-            this.stop();
-            return;
-          }
-
-          // refresh just in case they are not using one fixed buffer..
-          this.sourceBuffer = this.lib.getAudioBuffer();
-          this.sourceBufferLen = this.lib.getAudioBufferLength();
-
-          this.numberOfSamplesToRender = this.getResampledAudio();
-          this.applyExciter(this.resampleBuffer, this.numberOfSamplesToRender);
-          this.sourceBufferIdx = 0;
-
-          if (this.isFadingOut) {
-            const current = this.currentPlaytime - duration;
-            const ratio = Math.max((fadeOutMs - current) / fadeOutMs, 0);
-            this.resampleBuffer = this.resampleBuffer.map((value) => {
-              return value * ratio
-            });
-          }
+          finished = (this.lib.computeAudioSamples() === 1);
         }
 
-        if (this.isStereo) {
-          this.copySamplesStereo();
-        } else {
-          this.copySamplesMono();
+        if (finished) {
+          // no frame left
+          this.fillEmpty(outSize);
+          this.stop();
+          return;
+        }
+
+        // refresh just in case they are not using one fixed buffer..
+        this.sourceBuffer = this.lib.getAudioBuffer();
+        this.sourceBufferLen = this.lib.getAudioBufferLength();
+
+        this.numberOfSamplesToRender = this.getResampledAudio();
+        this.applyExciter(this.resampleBuffer, this.numberOfSamplesToRender);
+        this.sourceBufferIdx = 0;
+
+        if (this.isFadingOut) {
+          const current = this.currentPlaytime - duration;
+          const ratio = Math.max((fadeOutMs - current) / fadeOutMs, 0);
+          this.resampleBuffer = this.resampleBuffer.map((value) => {
+            return value * ratio
+          });
         }
       }
-    });
+
+      if (this.isStereo) {
+        this.copySamplesStereo();
+      } else {
+        this.copySamplesMono();
+      }
+    }
+
+    // EQ pass over the rendered block (replaces the old BiquadFilterNode chain).
+    this.applyEQ(channels);
+  }
+
+  applyEQ(channels) {
+    if (!this.eqActive) return;
+    for (let ch = 0; ch < channels.length; ch++) {
+      const pf = this.eqPresence[ch];
+      const tf = this.eqTreble[ch];
+      const buf = channels[ch];
+      for (let i = 0; i < buf.length; i++) {
+        buf[i] = tf.process(pf.process(buf[i]));
+      }
+    }
   }
 
   getResampledAudio(input, len) {
@@ -452,6 +511,9 @@ export default class GBAPlayer extends Player {
     // HPF state for harmonic exciter (Approach 2), one per channel
     this.hpfPrev = [0, 0];
     this.hpfState = [0, 0];
+    // Clear EQ filter memory so the previous song's tail does not ring into the new one.
+    this.eqPresence.forEach(f => f.reset());
+    this.eqTreble.forEach(f => f.reset());
 
     this.metadata = this.createMetadata();
   }
@@ -462,7 +524,7 @@ export default class GBAPlayer extends Player {
     this.resume();
   }
 
-  loadData(data, filepath) {
+  loadData(data, filepath, persistedSettings = {}) {
     if (!this.lib.isClosed()) {
       this.lib.teardown();
     }
@@ -489,7 +551,6 @@ export default class GBAPlayer extends Player {
     if (this.lib.loadMusicData(this.sampleRate, path, filename) === 0) {
       this.voiceMask = Array(this.getNumVoices()).fill(true);
       this.init();
-      this.connect();
       this.resume();
 
       this.emit('playerStateUpdate', {
@@ -560,8 +621,11 @@ export default class GBAPlayer extends Player {
   _applyEnhancePreset(presetId) {
     const preset = SOUND_ENHANCE_PRESETS[presetId];
     if (!preset) return;
-    this.trebleFilter.gain.value = preset.treble;
-    this.presenceFilter.gain.value = preset.presence;
+    this.eqActive = preset.presence !== 0 || preset.treble !== 0;
+    for (let ch = 0; ch < 2; ch++) {
+      this.eqPresence[ch].setPeaking(this.sampleRate, 3000, 1.0, preset.presence);
+      this.eqTreble[ch].setHighShelf(this.sampleRate, 6000, preset.treble);
+    }
     // exciter intensity is read dynamically from params by applyExciter()
   }
 
@@ -616,12 +680,6 @@ export default class GBAPlayer extends Player {
     this.lib.seekPlaybackPosition(positionMs);
   }
 
-  connect() {
-    this.audioNode.connect(this.presenceFilter);
-    this.presenceFilter.connect(this.trebleFilter);
-    this.trebleFilter.connect(this.destinationNode);
-  }
-
   stop() {
     this.suspend();
     this.lib.teardown();
@@ -668,7 +726,6 @@ export default class GBAPlayer extends Player {
         this.lib.registerFileData(path, filename, buffer);
         if (this.lib.loadMusicData(this.sampleRate, path, this.lastLoadedFilename) === 0) {
           this.init();
-          this.connect();
 
           this.resume();
 

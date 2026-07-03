@@ -1,0 +1,14 @@
+{
+  "plugins": [],
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "useBuiltIns": "usage",
+        "modules": false,
+        "corejs": "3.49"
+      }
+    ],
+    "@babel/preset-react"
+  ]
+}

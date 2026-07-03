@@ -1,3 +1,4 @@
+import autoBind from 'auto-bind';
 import Player from "./Player.js";
 import {CATALOG_PREFIX} from "../config";
 
@@ -239,20 +240,20 @@ class FMPLibWrapper {
 }
 
 export default class FMPPlayer extends Player {
-  constructor(audioCtx, destNode, chipCore, bufferSize) {
-    super(audioCtx, destNode, chipCore, bufferSize);
-    this.setParameter = this.setParameter.bind(this);
-    this.getParameter = this.getParameter.bind(this);
-    this.getParamDefs = this.getParamDefs.bind(this);
+  constructor(...args) {
+    super(...args);
+    autoBind(this);
 
-    this.lib = new FMPLibWrapper(chipCore);
+    this.playerKey = 'fmp';
+    this.name = 'FMP Player';
+
+    this.lib = new FMPLibWrapper(this.core);
     this.fs = this.lib.fs;
-    this.sampleRate = audioCtx.sampleRate;
     this.inputSampleRate = this.lib.getSampleRate();
     this.channels = [];
 
     this.resampleBuffer = this.allocResampleBuffer(0);
-    this.isStereo = destNode.channelCount === 2;
+    this.isStereo = true; // updated per callback in processAudioInner
 
     this.paused = true;
     this.fileExtensions = fileExtensions;
@@ -270,65 +271,65 @@ export default class FMPPlayer extends Player {
 
     this.registerRhythmData();
 
-    this.setAudioProcess((e) => {
-      for (let i = 0; i < e.outputBuffer.numberOfChannels; i++) {
-        this.channels[i] = e.outputBuffer.getChannelData(i);
+  }
+
+  processAudioInner(channels) {
+    this.channels = channels;
+    this.isStereo = channels.length === 2;
+
+    if (this.paused) {
+      for (let i = 0; i < this.channels.length; i++) {
+        this.channels[i].fill(0);
       }
+      return;
+    }
 
-      if (this.paused) {
-        for (let i = 0; i < this.channels.length; i++) {
-          this.channels[i].fill(0);
-        }
-        return;
-      }
+    const outSize = this.channels[0].length;
+    const fadeoutTimeMs = 2000;
+    this.numberOfSamplesRendered = 0;
 
-      const outSize = this.channels[0].length;
-      const fadeoutTimeMs = 2000;
-      this.numberOfSamplesRendered = 0;
+    while (this.numberOfSamplesRendered < outSize) {
+      if (this.numberOfSamplesToRender === 0) {
 
-      while (this.numberOfSamplesRendered < outSize) {
-        if (this.numberOfSamplesToRender === 0) {
-
-          this.currentPlaytime = this.getPositionMs();
-          if (this.lib.hasLoop()) {
-            if (!this.isFadingOut && this.lib.hasLoop() && this.getDurationMs() < this.currentPlaytime) {
-              this.setFadeout(this.currentPlaytime);
-            }
-          }
-
-          if (this.currentPlaytime > this.getDurationMs() + (fadeoutTimeMs * (this.lib.hasLoop()? 1 : 0))) {
-            // no frame left
-            this.fillEmpty(outSize);
-            this.stop();
-            return;
-          }
-          this.lib.computeAudioSamples();
-
-          // refresh just in case they are not using one fixed buffer..
-          this.sourceBuffer = this.lib.getAudioBuffer();
-          this.sourceBufferLen = this.lib.getAudioBufferLength();
-
-          this.numberOfSamplesToRender = this.getResampledAudio();
-          this.sourceBufferIdx = 0;
-
-          // Fading out
-          if (this.isFadingOut) {
-            const current = this.currentPlaytime - this.getDurationMs();
-            const ratio = Math.max((fadeoutTimeMs - current) / fadeoutTimeMs, 0);
-            this.resampleBuffer = this.resampleBuffer.map((value) => {
-              return value * ratio
-            });
+        this.currentPlaytime = this.getPositionMs();
+        if (this.lib.hasLoop()) {
+          if (!this.isFadingOut && this.lib.hasLoop() && this.getDurationMs() < this.currentPlaytime) {
+            this.setFadeout(this.currentPlaytime);
           }
         }
-        if (this.getPositionMs() < 20)
-          this.resampleBuffer = this.resampleBuffer.map((value) => { return 0; }); //workaround to avoid noise...
-        if (this.isStereo) {
-          this.copySamplesStereo();
-        } else {
-          this.copySamplesMono();
+
+        if (this.currentPlaytime > this.getDurationMs() + (fadeoutTimeMs * (this.lib.hasLoop()? 1 : 0))) {
+          // no frame left
+          this.fillEmpty(outSize);
+          this.stop();
+          return;
+        }
+        this.lib.computeAudioSamples();
+
+        // refresh just in case they are not using one fixed buffer..
+        this.sourceBuffer = this.lib.getAudioBuffer();
+        this.sourceBufferLen = this.lib.getAudioBufferLength();
+
+        this.numberOfSamplesToRender = this.getResampledAudio();
+        this.sourceBufferIdx = 0;
+
+        // Fading out
+        if (this.isFadingOut) {
+          const current = this.currentPlaytime - this.getDurationMs();
+          const ratio = Math.max((fadeoutTimeMs - current) / fadeoutTimeMs, 0);
+          this.resampleBuffer = this.resampleBuffer.map((value) => {
+            return value * ratio
+          });
         }
       }
-    });
+      if (this.getPositionMs() < 20)
+        this.resampleBuffer = this.resampleBuffer.map((value) => { return 0; }); //workaround to avoid noise...
+      if (this.isStereo) {
+        this.copySamplesStereo();
+      } else {
+        this.copySamplesMono();
+      }
+    }
   }
 
   registerRhythmData() {
@@ -520,7 +521,7 @@ export default class FMPPlayer extends Player {
     this.resume();
   }
 
-  loadData(data, filepath) {
+  loadData(data, filepath, persistedSettings = {}) {
     this.suspend();
     if (!this.lib.isClosed()) {
       this.lib.teardown();
@@ -533,7 +534,6 @@ export default class FMPPlayer extends Player {
           return;
         }
         this.init(filepath, data);
-        this.connect();
         this.resume();
         this.emit('playerStateUpdate', {
           ...this.getBasePlayerState(),

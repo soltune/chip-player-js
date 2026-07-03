@@ -14,7 +14,7 @@
 //#define HAVE_ZLIB_H
 
 // Support only listed music types. Remove a line to disable that type.
-// NOTE: listed for enabling necessary types only (this is for overriding GME_TYPE_LIST in gme.cpp)
+// Fork note: hes/kss kept enabled (this fork's catalog uses PC Engine / MSX formats)
 #define GME_TYPE_LIST \
 	gme_ay_type,\
 	gme_gbs_type,\
@@ -23,7 +23,12 @@
 	gme_nsf_type,\
 	gme_nsfe_type,\
 	gme_sap_type,\
+	gme_sgc_type,\
 	gme_spc_type
+//  gme_sfm_type,\
+//	gme_gym_type,\
+//	gme_vgm_type,\
+//	gme_vgz_type
 
 // Enable platform-specific optimizations.
 //#define BLARGG_NONPORTABLE 1

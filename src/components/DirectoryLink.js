@@ -1,26 +1,46 @@
-import {Link} from "react-router-dom";
-import folder from "../images/folder.png";
+import { Link, useHistory } from "react-router-dom";
 import * as PropTypes from "prop-types";
-import React from "react";
-import queryString from 'querystring';
+import React, { memo } from "react";
 
-export default function DirectoryLink(props) {
+function getSearch() {
+  const urlParams = new URLSearchParams(window.location.search);
+  urlParams.delete('q');
+  return urlParams.toString();
+}
+
+export default memo(DirectoryLink);
+
+function DirectoryLink(props) {
+  const history = useHistory();
   const linkClassName = props.dim ? 'DirectoryLink-dim' : null;
-  const folderClassName = props.dim ? 'DirectoryLink-folderIconDim' : 'DirectoryLink-folderIcon';
-  const urlParams = queryString.parse(window.location.search.substr(1));
-  delete urlParams.q;
+  const folderClassName = props.dim ? 'inline-icon dim-icon icon-folder' : 'inline-icon icon-folder';
   // Double encode % because react-router will decode this into history.
   // See https://github.com/ReactTraining/history/issues/505
   // The fix https://github.com/ReactTraining/history/pull/656
   // ...is not released in react-router-dom 5.2.0 which uses history 4.10
   const to = props.to.replace('%25', '%2525');
-  const search = queryString.stringify(urlParams);
-  return <Link to={{ pathname: to, search: search }} className={linkClassName}>
-    <img alt='folder' className={folderClassName} src={folder}/>{props.children}
-  </Link>;
+  const search = props.search || getSearch();
+
+  let toObj = { pathname: to, search: search, state: { prevPathname: window.location.pathname } };
+  let onClick = null;
+
+  if (props.isBackLink) {
+    onClick = function goBack(e) {
+      e.preventDefault();
+      history.goBack();
+    }
+  }
+
+  return (
+    <Link to={toObj} className={linkClassName} onClick={onClick} tabIndex="-1">
+      <span className={folderClassName}/>{props.children}
+    </Link>
+  );
 }
 
 DirectoryLink.propTypes = {
   to: PropTypes.string.isRequired,
   dim: PropTypes.bool,
+  search: PropTypes.string,
+  isBackLink: PropTypes.bool,
 };

@@ -52,6 +52,8 @@ const chipModules = [
       '_tp_set_channel_mute',
       '_tp_set_bank',
       '_tp_set_synth_engine',
+      '_tp_set_ch10_melodic',
+      '_tp_get_fluid_synth',
       // ---- MIDI synth functions: ----
       '_tp_note_on',
       '_tp_note_off',
@@ -70,128 +72,10 @@ const chipModules = [
     name: 'gme',
     enabled: true,
     sourceFiles: [
-      'Ay_Apu.cpp',
-      'Ay_Core.cpp',
-      'Ay_Cpu.cpp',
-      'Ay_Emu.cpp',
-      'blargg_common.cpp',
-      'blargg_errors.cpp',
-      'Blip_Buffer.cpp',
-      'Bml_Parser.cpp',
-      // 'c140.c',
-      // 'C140_Emu.cpp',
-      'Classic_Emu.cpp',
-      // 'dac_control.c',
-      'Data_Reader.cpp',
-      // 'dbopl.cpp', // Currently using later version of dbopl.cpp from libADLMIDI
-      'Downsampler.cpp',
-      'Dual_Resampler.cpp',
-      'Effects_Buffer.cpp',
-      'Fir_Resampler.cpp',
-      // 'fm.c',
-      // 'fm2612.c',
-      'fmopl.cpp',
-      'Gb_Apu.cpp',
-      'Gb_Cpu.cpp',
-      'Gb_Oscs.cpp',
-      'Gbs_Core.cpp',
-      'Gbs_Cpu.cpp',
-      'Gbs_Emu.cpp',
-      'gme.cpp',
-      'Gme_File.cpp',
-      'Gme_Loader.cpp',
-      'Gym_Emu.cpp',
-      'Hes_Apu.cpp',
-      'Hes_Apu_Adpcm.cpp',
-      'Hes_Core.cpp',
-      'Hes_Cpu.cpp',
-      'Hes_Emu.cpp',
-      // 'higan/dsp/dsp.cpp',
-      // 'higan/dsp/SPC_DSP.cpp',
-      // 'higan/processor/spc700/spc700.cpp',
-      // 'higan/smp/memory.cpp',
-      // 'higan/smp/smp.cpp',
-      // 'higan/smp/timing.cpp',
-      // 'k051649.c',
-      // 'K051649_Emu.cpp',
-      // 'k053260.c',
-      // 'K053260_Emu.cpp',
-      // 'k054539.c',
-      // 'K054539_Emu.cpp',
-      'Kss_Core.cpp',
-      'Kss_Cpu.cpp',
-      'Kss_Emu.cpp',
-      'Kss_Scc_Apu.cpp',
-      'M3u_Playlist.cpp',
-      'Multi_Buffer.cpp',
-      'Music_Emu.cpp',
-      'Nes_Apu.cpp',
-      'Nes_Cpu.cpp',
-      'Nes_Fds_Apu.cpp',
-      'Nes_Fme7_Apu.cpp',
-      'Nes_Namco_Apu.cpp',
-      'Nes_Oscs.cpp',
-      'Nes_Vrc6_Apu.cpp',
-      'Nes_Vrc7_Apu.cpp',
-      'Nsf_Core.cpp',
-      'Nsf_Cpu.cpp',
-      'Nsf_Emu.cpp',
-      'Nsf_Impl.cpp',
-      'Nsfe_Emu.cpp',
-      // 'okim6258.c',
-      // 'Okim6258_Emu.cpp',
-      // 'okim6295.c',
-      // 'Okim6295_Emu.cpp',
-      'Opl_Apu.cpp',
-      // 'pwm.c',
-      // 'Pwm_Emu.cpp',
-      // 'qmix.c',
-      // 'Qsound_Apu.cpp',
-      'Resampler.cpp',
-      // 'Rf5C164_Emu.cpp',
-      // 'rf5c68.c',
-      // 'Rf5C68_Emu.cpp',
-      'Rom_Data.cpp',
-      'Sap_Apu.cpp',
-      'Sap_Core.cpp',
-      'Sap_Cpu.cpp',
-      'Sap_Emu.cpp',
-      // 'scd_pcm.c',
-      // 'segapcm.c',
-      // 'SegaPcm_Emu.cpp',
-      // 'Sgc_Core.cpp',
-      // 'Sgc_Cpu.cpp',
-      // 'Sgc_Emu.cpp',
-      // 'Sgc_Impl.cpp',
-      'Sms_Apu.cpp',
-      // 'Sms_Fm_Apu.cpp',
-      'Snes_Spc.cpp',
-      'Spc_Cpu.cpp',
-      'Spc_Dsp.cpp',
-      'Spc_Emu.cpp',
-      'Spc_Filter.cpp',
-      // 'Spc_Sfm.cpp',
-      'Track_Filter.cpp',
-      'Upsampler.cpp',
-      // 'Vgm_Core.cpp',
-      // 'Vgm_Emu.cpp',
-      // 'ym2151.c',
-      // 'Ym2151_Emu.cpp',
-      // 'Ym2203_Emu.cpp',
-      'ym2413.c',
-      'Ym2413_Emu.cpp',
-      // 'Ym2608_Emu.cpp',
-      // 'Ym2610b_Emu.cpp',
-      // 'Ym2612_Emu.cpp',
-      // 'Ym2612_Emu_MAME.cpp',
-      // 'Ym2612_Emu_Gens.cpp',
-      // 'Ym3812_Emu.cpp',
-      'ymdeltat.cpp',
-      // 'Ymf262_Emu.cpp',
-      // 'ymz280b.c',
-      // 'Ymz280b_Emu.cpp',
-      'Z80_Cpu.cpp',
-    ].map(file => 'game-music-emu/gme/' + file),
+      // Fork: built from the in-repo subtree (keeps our blargg_config.h, e.g. hes/kss),
+      // not a side-by-side clone. See CLAUDE.md build notes.
+      'game-music-emu/build/gme/libgme.a',
+    ],
     exportedFunctions: [
       '_gme_open_data',
       '_gme_play',
@@ -205,16 +89,16 @@ const chipModules = [
       '_gme_open_data',
       '_gme_ignore_silence',
       '_gme_set_tempo',
-      '_gme_seek_scaled',
-      '_gme_tell_scaled',
+      '_gme_seek_scaled', // seek_scaled and tell_scaled exist in
+      '_gme_tell_scaled', // github.com/mmontag/game-music-emu fork
       '_gme_set_fade',
       '_gme_voice_name',
+      '_gme_set_stereo_depth',
+      '_gme_disable_echo',
+      '_gme_enable_accuracy',
     ],
     flags: [
-      '-DVGM_YM2612_MAME=1',     // fast and accurate, but suffers on some GYM files
-      // '-DVGM_YM2612_NUKED=1', // slow but very accurate
-      // '-DVGM_YM2612_GENS=1',  // very fast but inaccurate
-      '-DHAVE_ZLIB_H',           // used by game_music_emu for vgz and lazyusf2 for psf
+      '-DHAVE_ZLIB_H',    // used by game_music_emu for vgz and lazyusf2 for psf
       '-DHAVE_STDINT_H',
     ],
   },
@@ -223,7 +107,9 @@ const chipModules = [
     enabled: true,
     sourceFiles: [
       // 'libxmp/lib/libxmp.a', // full libxmp build
-      'libxmp/libxmp-lite-stagedir/lib/libxmp-lite.a',
+      // 'libxmp/libxmp-lite-stagedir/lib/libxmp-lite.a',
+      // Fork: built from the in-repo subtree, not a side-by-side clone.
+      'libxmp/build/libxmp-lite.a',
     ],
     exportedFunctions: [
       '_xmp_create_context',
@@ -237,33 +123,57 @@ const chipModules = [
       '_xmp_stop_module',
       '_xmp_restart_module',
       '_xmp_seek_time',
+      '_xmp_seek_time_frame', // accurate seeking introduced in libxmp 4.7.0
       '_xmp_channel_mute',
       '_xmp_get_player',
       '_xmp_load_module_from_memory',
+      '_xmp_set_player',
+      '_xmp_set_tempo_factor',
     ],
     flags: [],
   },
   {
-    /*
-    TODO: implement libvgm.
-    Wait for libvgm player to get a C interface.
-    https://github.com/ValleyBell/libvgm/blob/master/player/playera.hpp
-    Or, use WebIDL Binder or Embind to interact with libvgm C++ player class.
-    https://emscripten.org/docs/porting/connecting_cpp_and_javascript/WebIDL-Binder.html#a-quick-example
-    https://emscripten.org/docs/porting/connecting_cpp_and_javascript/WebIDL-Binder.html#webidl-binder-type-name
-    */
     name: 'libvgm',
-    enabled: false,
+    enabled: true,
     sourceFiles: [
-      '../libvgm/build2/bin/libvgm-emu.a',
+      // Fork: built from the in-repo subtree, not a side-by-side clone.
+      'libvgm/build/bin/libvgm-emu.a',
+      'libvgm/build/bin/libvgm-utils.a',
+      'libvgm/build/bin/libvgm-player.a',
+      'src/bindings/libvgm-wrapper.cpp',
     ],
-    exportedFunctions: [],
-    flags: [],
+    exportedFunctions: [
+      '_lvgm_init',
+      '_lvgm_load_data',
+      '_lvgm_start',
+      '_lvgm_stop',
+      '_lvgm_render',
+      '_lvgm_get_position_ms',
+      '_lvgm_get_duration_ms',
+      '_lvgm_get_metadata',
+      '_lvgm_get_voice_count',
+      '_lvgm_get_voice_name',
+      '_lvgm_get_voice_chip_name',
+      '_lvgm_get_voice_mask',
+      '_lvgm_set_voice_mask',
+      '_lvgm_seek_ms',
+      '_lvgm_set_playback_speed',
+      '_lvgm_get_playback_speed',
+      '_lvgm_set_yrw801_rom_path',
+      '_lvgm_set_enhanced_stereo',
+      '_lvgm_set_indefinite_playback',
+      '_lvgm_get_indefinite_playback',
+      '_lvgm_reset',
+    ],
+    flags: [
+      '-Ilibvgm',
+    ],
   },
   {
     name: 'fluidlite',
     enabled: true,
     sourceFiles: [
+      // Fork: built from the in-repo subtree, not a side-by-side clone.
       'fluidlite/build/libfluidlite.a',
     ],
     exportedFunctions: [
@@ -272,6 +182,7 @@ const chipModules = [
       '_fluid_settings_setint',
       '_fluid_settings_setnum',
       '_fluid_settings_setstr',
+      '_fluid_synth_set_interp_method',
       '_fluid_synth_sfload',
       '_fluid_synth_noteon',
       '_fluid_synth_noteoff',
@@ -279,8 +190,13 @@ const chipModules = [
       '_fluid_synth_all_sounds_off',
       '_fluid_synth_write_float',
       '_fluid_synth_set_reverb',
+      '_fluid_synth_set_reverb_on',
+      '_fluid_synth_set_chorus',
+      '_fluid_synth_set_chorus_on',
       '_fluid_synth_get_polyphony',
       '_fluid_synth_set_polyphony',
+      '_fluid_synth_bank_select',
+      '_fluid_synth_get_active_voice_count',
     ],
     flags: [],
   },
@@ -349,7 +265,6 @@ const chipModules = [
       '_v2m_close',
     ],
     flags: [
-      '-flto',
       '-fno-asynchronous-unwind-tables',
       '-fno-stack-protector',
       '-ffunction-sections',
@@ -363,17 +278,17 @@ const chipModules = [
     enabled: true,
     sourceFiles: [
       'psflib/libpsflib.a',
-      'lazyusf2/liblazyusf.a',
-      'lazyusf2/_wothke/n64plug.cpp',
+      'lazyusf2/build/liblazyusf2.a',
+      'src/bindings/lazyusf2-wrapper.cpp',
     ],
     exportedFunctions: [
-      '_psf_load',
-      '_usf_clear',
       '_n64_load_file',
       '_n64_get_duration_ms',
       '_n64_get_position_ms',
       '_n64_seek_ms',
       '_n64_render_audio',
+      '_n64_set_indefinite_playback',
+      '_n64_get_indefinite_playback',
       '_n64_shutdown',
     ],
     flags: [
@@ -483,7 +398,7 @@ const chipModules = [
       '-DHAVE_ZLIB_H',
       '-DEMSCRIPTEN',
       '-IwebS98/src/device/fmgen',
-      '-IwebMDX/mdxmini/src/ ',
+      '-IwebMDX/mdxmini/src/',
     ],
   },
   {
@@ -622,118 +537,6 @@ const chipModules = [
     ],
   },
   {
-    name: 'vgm',
-    enabled: true,
-    sourceFiles: [
-      'src/chips/x1_010.c',
-      'src/chips/ws_audio.c',
-      'src/chips/vsu.c',
-      'src/chips/saa1099.c',
-      'src/chips/iremga20.c',
-      'src/chips/es5506.c',
-      'src/chips/es5503.c',
-      'src/chips/c352.c',
-      'src/chips/262intf.c',
-      'src/chips/2151intf.c',
-      'src/chips/2203intf.c',
-      'src/chips/2413intf.c',
-      'src/chips/2608intf.c',
-      'src/chips/2610intf.c',
-      'src/chips/2612intf.c',
-      'src/chips/3526intf.c',
-      'src/chips/3812intf.c',
-      'src/chips/8950intf.c',
-      'src/chips/adlibemu_opl2.c',
-      'src/chips/adlibemu_opl3.c',
-      'src/chips/ay8910.c',
-      'src/chips/ay_intf.c',
-      'src/chips/c140.c',
-      'src/chips/c6280.c',
-      'src/chips/c6280intf.c',
-      'src/chips/dac_control.c',
-      'src/chips/emu2149.c',
-      'src/chips/emu2413.c',
-      'src/chips/es5506.c',
-      'src/chips/fm2612.c',
-      'src/chips/fm.c',
-      'src/chips/fmopl.c',
-      'src/chips/gb.c',
-      'src/chips/k051649.c',
-      'src/chips/k053260.c',
-      'src/chips/k054539.c',
-      'src/chips/multipcm.c',
-      'src/chips/nes_apu.c',
-      'src/chips/nes_intf.c',
-      'src/chips/np_nes_apu.c',
-      'src/chips/np_nes_dmc.c',
-      'src/chips/np_nes_fds.c',
-      'src/chips/okim6258.c',
-      'src/chips/okim6295.c',
-      'src/chips/Ootake_PSG.c',
-      'src/chips/panning.c',
-      'src/chips/pokey.c',
-      'src/chips/pwm.c',
-      'src/chips/qsound_mame.c',
-      'src/chips/qsound_intf.c',
-      'src/chips/qsound_ctr.c',
-      'src/chips/rf5c68.c',
-      'src/chips/segapcm.c',
-      'src/chips/scd_pcm.c',
-      'src/chips/scsp.c',
-      'src/chips/scspdsp.c',
-      'src/chips/sn76489.c',
-      'src/chips/sn76496.c',
-      'src/chips/sn764intf.c',
-      'src/chips/upd7759.c',
-      'src/chips/ym2151.c',
-      'src/chips/ym2413.c',
-      'src/chips/ym2612.c',
-      'src/chips/ymdeltat.c',
-      'src/chips/ymf262.c',
-      'src/chips/ymf271.c',
-      'src/chips/ymf278b.c',
-      'src/chips/ymz280b.c',
-      'src/chips/ay8910_opl.c',
-      'src/chips/sn76496_opl.c',
-      'src/chips/ym3438.c ',
-      'src/chips/ym2413hd.c',
-      'src/chips/ym2413_opl.c ',
-      'src/ChipMapper.c',
-      'src/VGMPlay.c',
-      'src/VGMPlayUI.c',
-      'src/VGMPlay_AddFmts.c',  // for Creative Music Files (.cmf) and DosBox RAW OPL Log Files (.dro)
-      'emscripten/adapter.c',
-    ].map(file => 'vgmplay/' + file),
-    exportedFunctions: [
-      '_vgm_init',
-      '_vgm_get_sample_rate',
-      '_vgm_get_position',
-      '_vgm_get_max_position',
-      '_vgm_seek_position',
-      '_vgm_teardown',
-      '_vgm_set_subsong',
-      '_vgm_get_track_info',
-      '_vgm_get_audio_buffer',
-      '_vgm_get_audio_buffer_length',
-      '_vgm_compute_audio_samples',
-      '_vgm_get_chip_type',
-      '_vgm_set_channel_mask',
-      '_vgm_set_surround',
-    ],
-    flags: [
-      '-DHAVE_ZLIB_H',
-      '-DENABLE_ALL_CORES',
-      '-DFM_EMU',
-      '-DADDITIONAL_FORMATS',
-      '-DSET_CONSOLE_TITLE',
-      '-DDISABLE_HW_SUPPORT',
-      '-DNO_DEBUG_LOGS',
-      '-Ivgmplay/src',
-      '-Ivgmplay/src/chips',
-      '-s', "BINARYEN_TRAP_MODE='clamp'",
-    ],
-  },
-  {
     name: 'gba',
     enabled: true,
     sourceFiles: [
@@ -806,6 +609,33 @@ const chipModules = [
     ],
     flags: [],
   },
+  {
+    name: 'libsidplayfp',
+    enabled: true,
+    sourceFiles: [
+      '../libsidplayfp/src/.libs/libsidplayfp.a',
+      'src/bindings/libsidplayfp-wrapper.cpp',
+    ],
+    exportedFunctions: [
+      '_sid_init',
+      '_sid_load_data',
+      '_sid_get_song_md5',
+      '_sid_render',
+      '_sid_get_duration_ms',
+      '_sid_get_position_ms',
+      '_sid_set_position_ms',
+      '_sid_set_voice_mask',
+      '_sid_get_num_subtunes',
+      '_sid_get_subtune',
+      '_sid_set_subtune',
+      '_sid_stop',
+      // 'sidGetVoiceGroups' through Embind
+    ],
+    flags: [
+      '-I../libsidplayfp/src',
+      '-lembind',
+    ],
+  },
 ];
 
 const compiler = process.env.EMPP_BIN || 'em++';
@@ -818,51 +648,56 @@ const runtimeMethods = [
   'ALLOC_NORMAL',
   'FS',
   'UTF8ToString',
-  'allocate',
+  'HEAPU8',
+  'HEAPF32',
+  'stringToNewUTF8',
   'ccall',
   'getValue',
   'setValue',
 ];
-const exportedFns = [].concat(...chipModules.filter(m => m.enabled).map(m => m.exportedFunctions));
+const exportedFns = [
+  '_malloc',
+  '_free',
+].concat(...chipModules.filter(m => m.enabled).map(m => m.exportedFunctions));
 const sourceFiles = [].concat(...chipModules.filter(m => m.enabled).map(m => m.sourceFiles));
 const moduleFlags = [].concat(...chipModules.filter(m => m.enabled).map(m => m.flags));
 
 const flags = [
-  /*
-  Build flags for Emscripten 1.39.11. Last updated March 22, 2020
-  */
-  // '--closure', '1',       // causes TypeError: lib.FS.mkdir is not a function
+  /**
+   * Build flags for Emscripten 5. Last updated Apr 11, 2026.
+   */
+  // '--closure', '1',          // causes TypeError: lib.FS.mkdir is not a function
   // '--llvm-lto', '3',
   // '--clear-cache',        // sometimes Emscripten cache gets "poisoned"
-  '--no-heap-copy',
+  // '--no-heap-copy',
   '-s', 'EXPORTED_FUNCTIONS=[' + exportedFns.join(',') + ']',
   '-s', 'EXPORTED_RUNTIME_METHODS=[' + runtimeMethods.join(',') + ']',
   '-s', 'ALLOW_MEMORY_GROWTH=1',
   '-s', 'ASSERTIONS=0',      // assertions increase runtime size about 100K
+  '-flto',                   // Add Link-Time Optimization
+  '-msimd128',
+  // '-s', 'NO_DISABLE_EXCEPTION_CATCHING',
+  '-s', 'MALLOC="emmalloc"', // Use the smaller allocator
+  '-s', 'STACK_OVERFLOW_CHECK=0', // Disable runtime stack checks for size
   '-s', 'MODULARIZE=1',
   '-s', 'EXPORT_NAME=CHIP_CORE',
   '-s', 'ENVIRONMENT=web',
   '-s', 'USE_ZLIB=1',
   '-s', 'EXPORT_ES6=1',
-  '-s', 'USE_ES6_IMPORT_META=0',
+  // '-s', 'LEGACY_VM_SUPPORT=1',
+  // '-s', 'INITIAL_MEMORY=33554432', // 32MB initial memory; can grow with ALLOW_MEMORY_GROWTH
+  '-s', 'INITIAL_MEMORY=65536000', // 64MB initial memory
+  '-s', 'WASM_BIGINT',       // support passing 64 bit integers to/from JS
   '-lidbfs.js',
-  '-Os',                     // set to O0 for fast compile during development
+  '-Oz',                     // set to O0 for fast compile during development
   '-o', jsOutFile,
-
-  /*
-   WASM Source Maps
-
-   These source maps require local fileserver running at chip-player-js root
-   to expose C/C++ source files to browser; i.e. $ python -m http.server 9000
-   Subproject static libraries must also be compiled with the emcc flags:
-    `-g4 --source-map-base http://localhost:9000`.
-   See lazyusf2/Makefile (for liblazyusf.a).
-  */
-  // '-g4',                     // include debug information
-  // '--source-map-base', 'http://localhost:9000/',
-
-  /*
-  Warnings/misc.
+  /**
+   * WASM Source Maps
+   */
+  // '-g',                      // include DWARF debug symbols. Increases size ~2.5x
+  // '-gsource-map=inline',
+  /**
+   * Warnings/misc.
    */
   '-Qunused-arguments',
   '-Wno-deprecated',
@@ -870,7 +705,7 @@ const flags = [
   '-Wno-c++11-extensions',
   '-Wno-inconsistent-missing-override',
   '-Wno-c++11-narrowing',
-  '-std=c++11',
+  '-std=c++17',
 
   ...moduleFlags,
 ];
@@ -882,16 +717,9 @@ const args = [].concat(flags, sourceFiles);
 const build_proc = spawn(compiler, args, {stdio: 'inherit'});
 build_proc.on('exit', function (code) {
   if (code === 0) {
-    console.log('Moving %s to %s.', wasmOutFile, wasmDir);
-    execSync(`mv ${wasmOutFile} ${wasmDir}`);
-
-    if (fs.existsSync(wasmMapOutFile)) {
-      console.log('Moving %s to %s.', wasmMapOutFile, wasmMapDir);
-      execSync(`mv ${wasmMapOutFile} ${wasmMapDir}`);
-    }
-
+    console.log(`Built ${wasmOutFile}.`);
     // Don't use --pre-js because it can get stripped out by closure.
-    console.log('Prepending %s: \n%s\n', jsOutFile, preJs.trim());
+    console.log('Prepending %s: %s', jsOutFile, preJs.trim());
     execSync(`cat <<EOF > ${jsOutFile}\n${preJs}\n$(cat ${jsOutFile})\nEOF`);
   }
 });

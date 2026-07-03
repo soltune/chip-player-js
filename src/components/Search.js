@@ -1,52 +1,66 @@
 /* eslint import/no-webpack-loader-syntax: off */
 import React, { Fragment, PureComponent } from 'react';
-import queryString from 'querystring';
+import axios from 'redaxios';
+import autoBindReact from 'auto-bind/react';
 import debounce from 'lodash/debounce';
-import { API_BASE, CATALOG_PREFIX } from '../config';
-import promisify from '../promisify-xhr';
-import { updateQueryString } from '../util';
+
+import { API_BASE } from '../config';
+import { getUrlFromFilepath, pathJoin } from '../util';
 import DirectoryLink from './DirectoryLink';
 import FavoriteButton from './FavoriteButton';
+import VirtualizedList from './VirtualizedList';
 
-const MAX_RESULTS = 100;
+const MAX_RESULTS = 400;
 const searchResultsCache = {};
-
-function getTotal() {
-  return fetch(`${API_BASE}/total`)
-    .then(response => response.json());
-}
 
 export default class Search extends PureComponent {
   constructor(props) {
     super(props);
+    autoBindReact(this);
 
-    this.doSearch = this.doSearch.bind(this);
     this.debouncedDoSearch = debounce(this.doSearch, 150);
-    this.onChange = this.onChange.bind(this);
-    this.onSearchInputChange = this.onSearchInputChange.bind(this);
-    this.handleClear = this.handleClear.bind(this);
-    this.renderResultItem = this.renderResultItem.bind(this);
 
     this.textInput = React.createRef();
 
     this.state = {
-      searching: false,
-      results: {},
-      resultsCount: 0,
-      totalSongs: 0,
+      totalSongs: 300000,
       query: null,
+      searching: false,
+
+      results: [],
+      resultsContext: [],
+      resultsCount: 0,
     };
 
-    getTotal()
-      .then(json => this.setState({ totalSongs: json.total }))
-      .catch(_ => this.setState({ totalSongs: 99999 }));
+    axios.get(`${API_BASE}/total`)
+      .then(response => response.data)
+      .then(json => this.setState({ totalSongs: json.total }));
   }
 
   componentDidMount() {
-    const {q} = queryString.parse(window.location.search.substr(1));
+    const q = new URLSearchParams(this.props.location?.search || '').get('q');
     if (q) {
-      this.setState({query: q});
+      this.setState({ query: q });
       this.doSearch(q);
+    }
+  }
+
+  // NOTE: This is not fully vetted
+  componentDidUpdate(prevProps) {
+    // If the route's query string changed (back/forward navigation), sync the input and trigger search.
+    const prevSearch = prevProps.location?.search || '';
+    const currSearch = this.props.location?.search || '';
+    if (prevSearch !== currSearch) {
+      const q = new URLSearchParams(currSearch).get('q');
+      if (q) {
+        if (q !== this.state.query) {
+          this.setState({ query: q });
+          this.doSearch(q);
+        }
+      } else if (this.state.query) {
+        // param removed -> clear
+        this.setState({ query: null, searching: false, results: [], resultsContext: [], resultsCount: 0 });
+      }
     }
   }
 
@@ -55,8 +69,22 @@ export default class Search extends PureComponent {
   }
 
   onSearchInputChange(val, immediate = false) {
-    this.setState({query: val});
-    updateQueryString({ q: val ? val.trim() : undefined });
+    this.setState({ query: val });
+    // updateQueryString({ q: val ? val.trim() : undefined });
+
+    const params = new URLSearchParams(this.props.location?.search || '');
+    if (val) {
+      params.set('q', val);
+    } else {
+      params.delete('q');
+    }
+    const stateUrl = '?' + params.toString().replace(/%20/g, '+');
+    // Update address bar URL via react-router history
+    this.props.history.replace({
+      pathname: (this.props.location?.pathname) || '/',
+      search: stateUrl
+    });
+
     if (val.length) {
       if (immediate) {
         this.doSearch(val);
@@ -78,23 +106,49 @@ export default class Search extends PureComponent {
       const q = encodeURIComponent(val);
       const url = `${API_BASE}/search?query=${q}&limit=${MAX_RESULTS}`;
       if (this.searchRequest) this.searchRequest.abort();
-      this.searchRequest = promisify(new XMLHttpRequest());
-      this.searchRequest.open('GET', url);
-      this.searchRequest.send()
-        .then(response => {
-          this.searchRequest = null;
-          return JSON.parse(response.responseText);
+      this.searchRequest = new AbortController();
+      axios.get(url, {
+          signal: this.searchRequest.signal
         })
-        .then((payload) => {
-          const { items, total } = payload;
-          const results = items
-            .map(item => item.file)
-            .map(result => result.replace('%', '%25').replace('#', '%23'))
-            .sort();
+        .then(response => {
+          const { items, total } = response.data;
+          // Decorate file items with idx (to match up with song context) and other properties.
+          const resultFiles = items
+            // Sort by full file path to group directories together
+            .sort((a, b) => a.file.localeCompare(b.file))
+            .map((item, i) => {
+              const path = item.file;
+              return {
+                idx: i,
+                path: path,
+                name: path.substring(path.lastIndexOf('/') + 1),
+                href: getUrlFromFilepath(path),
+                type: 'file',
+                songId: item.song_id,
+              };
+            });
+          const resultsContext = resultFiles.map(item => item.path);
+          // Build the results list with interleaved directory headings.
+          const resultsWithHeadings = [];
+          let currHeading = null;
+          resultFiles.forEach((item) => {
+            const { path } = item;
+            const heading = path.substring(0, path.lastIndexOf('/') + 1);
+            if (heading !== currHeading) {
+              currHeading = heading;
+              resultsWithHeadings.push({
+                type: 'directory',
+                href: pathJoin('/browse', heading),
+                name: heading,
+              });
+            }
+            resultsWithHeadings.push(item);
+          });
+          // Cache the computed results for this query.
           searchResultsCache[val] = {
             resultsCount: total,
-            resultsHeadings: this.extractHeadings(results),
-            results: results,
+            resultsContext: resultsContext,
+            results: resultsWithHeadings,
           };
           this.setState({
             searching: true,
@@ -105,76 +159,57 @@ export default class Search extends PureComponent {
   }
 
   handleClear() {
-    const urlParams = queryString.parse(window.location.search.substr(1));
-    delete urlParams.q;
-    const search = queryString.stringify(urlParams);
-    window.history.replaceState(null, '', search ? `?${search}` : './');
+    const urlParams = new URLSearchParams(this.props.location?.search || '');
+    urlParams.delete('q');
+    const search = urlParams.toString();
+    this.props.history.replace({
+      pathname: (this.props.location?.pathname) || '/',
+      search: search ? `?${search}` : ''
+    });
     this.setState({
       query: null,
       searching: false,
+      results: [],
+      resultsContext: [],
       resultsCount: 0,
-      results: {}
     });
     this.textInput.current.focus();
   }
 
   showEmptyState() {
-    this.setState({searching: false, results: {}})
+    this.setState({ searching: false, results: [] })
   }
 
-  extractHeadings(sortedResults) {
-    // Results input must be sorted. Returns a map of indexes to headings.
-    // {
-    //   0: 'Nintendo/A Boy And His Blob',
-    //   12: 'Sega Genesis/A Boy And His Blob',
-    // }
-    const headings = {};
-    let currHeading = null;
-    sortedResults.forEach((result, i) => {
-      const heading = result.substring(0, result.lastIndexOf('/') + 1);
-      if (heading !== currHeading) {
-        currHeading = heading;
-        headings[i] = currHeading;
-      }
-    });
-    return headings;
-  }
-
-  renderResultItem(result, i) {
-    let headingFragment = null;
-    if (this.state.resultsHeadings[i]) {
-      const href = this.state.resultsHeadings[i];
-      headingFragment = (
-        <DirectoryLink dim to={'/browse/' + href}>{decodeURI(href)}</DirectoryLink>
+  renderResultItem(props) {
+    const { item, onPlay } = props;
+    if (item.type === 'directory') {
+      return (
+        <DirectoryLink dim to={item.href}>{item.name}</DirectoryLink>
+      );
+    } else {
+      return (
+        <>
+          <FavoriteButton item={item}/>
+          <a onClick={onPlay} href={item.href} tabIndex="-1">{item.name}</a>
+        </>
       );
     }
-    const { favorites, toggleFavorite, currContext, currIdx, onSongClick } = this.props;
-    const href = CATALOG_PREFIX + result;
-    const resultTitle = decodeURI(result.substring(result.lastIndexOf('/') + 1));
-    const isPlaying = currContext === this.state.results && currIdx === i;
-    return (
-      <Fragment key={i}>
-        {headingFragment}
-        <div className={isPlaying ? 'Song-now-playing' : '' }>
-          {favorites &&
-          <FavoriteButton isFavorite={favorites.includes(result)}
-                          toggleFavorite={toggleFavorite}
-                          href={result}/>}
-          <a onClick={onSongClick(href, this.state.results, i)}
-             href={href}>
-            {resultTitle}
-          </a>
-        </div>
-      </Fragment>
-    );
   }
 
   render() {
-    const placeholder = this.state.totalSongs ?
-      `${this.state.totalSongs} tunes` : 'Loading catalog...';
+    const placeholder = `${this.state.totalSongs} tunes`;
+
+    const {
+      onSongClick,
+      currContext,
+      currIdx,
+      scrollContainerRef,
+      listRef,
+    } = this.props;
+
     return (
-      <Fragment>
-        <div>
+      <>
+        <h3 className="Browse-topRow">
           <label className="Search-label">Search:{' '}
             <input type="text"
                    placeholder={placeholder}
@@ -182,6 +217,7 @@ export default class Search extends PureComponent {
                    autoComplete="off"
                    autoCorrect="false"
                    autoCapitalize="none"
+                   autoFocus
                    ref={this.textInput}
                    className="Search-input"
                    value={this.state.totalSongs ? this.state.query || '' : ''}
@@ -192,21 +228,26 @@ export default class Search extends PureComponent {
                 <button className="Search-clearButton" onClick={this.handleClear}/>
                 {' '}
                 <span className="Search-resultsLabel">
-                  {this.state.resultsCount} result{this.state.resultsCount !== 1 && 's'}
-                </span>
+                      {this.state.resultsCount} result{this.state.resultsCount !== 1 && 's'}
+                    </span>
               </Fragment>
             }
           </label>
-        </div>
-        {
-          this.state.searching ?
-            <div className="Search-results">
-              {this.state.results.map(this.renderResultItem)}
-            </div>
-            :
-            this.props.children
-        }
-      </Fragment>
+        </h3>
+        <VirtualizedList
+          currContext={currContext}
+          currIdx={currIdx}
+          onSongClick={onSongClick}
+          itemList={this.state.results}
+          songContext={this.state.resultsContext}
+          rowRenderer={this.renderResultItem}
+          isSorted={false}
+          scrollContainerRef={scrollContainerRef}
+          listRef={listRef}
+        >
+        </VirtualizedList>
+        {this.state.searching || this.props.children}
+      </>
     );
   }
 }
