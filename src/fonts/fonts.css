@@ -1,0 +1,28 @@
+@font-face {
+    font-family: PxPlusChipPlayer;
+    src: url(pxplus_chipplayer.ttf) format('truetype');
+}
+
+/* Fork: kanji fallback (PxPlusChipPlayer covers kana but not full kanji) */
+@font-face {
+    font-family: x68k;
+    src: url(KH-Dot-Kodenmachou-16_chipplayerjs.ttf) format('truetype');
+    font-weight: 100;
+    font-style: normal;
+}
+
+:root { --fontPxPlusChipPlayer: 24px/19px PxPlusChipPlayer, x68k; }
+
+@font-face {
+    src: url(mm-tahoma-8px.ttf) format('truetype');
+    font-family: TahomaPixel;
+}
+
+:root { --fontTahomaPixel: 16px/16px TahomaPixel, Tahoma; }
+
+@font-face {
+    src: url(Tahoma.woff) format('woff');
+    font-family: Tahoma;
+}
+
+:root { --fontTahoma: 11px/16px Tahoma, Arial, sans-serif; }

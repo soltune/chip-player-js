@@ -1,3 +1,4 @@
+import autoBind from 'auto-bind';
 import Player from "./Player.js";
 
 const fileExtensions = [
@@ -126,20 +127,20 @@ class S98LibWrapper {
 }
 
 export default class S98Player extends Player {
-  constructor(audioCtx, destNode, chipCore, bufferSize) {
-    super(audioCtx, destNode, chipCore, bufferSize);
-    this.setParameter = this.setParameter.bind(this);
-    this.getParameter = this.getParameter.bind(this);
-    this.getParamDefs = this.getParamDefs.bind(this);
+  constructor(...args) {
+    super(...args);
+    autoBind(this);
 
-    this.s98lib = new S98LibWrapper(chipCore);
+    this.playerKey = 's98';
+    this.name = 'S98 Player';
+
+    this.s98lib = new S98LibWrapper(this.core);
     this.fs = this.s98lib.fs;
-    this.sampleRate = audioCtx.sampleRate;
     this.inputSampleRate = this.s98lib.getSampleRate();
     this.channels = [];
 
     this.resampleBuffer = this.allocResampleBuffer(0);
-    this.isStereo = destNode.channelCount === 2;
+    this.isStereo = true; // updated per callback in processAudioInner
 
     this.paused = true;
     this.fileExtensions = fileExtensions;
@@ -159,63 +160,62 @@ export default class S98Player extends Player {
 
     // register rhythm data for OPNA
     this.registerRhythmData();
+  }
 
-    this.setAudioProcess((e) => {
-      for (let i = 0; i < e.outputBuffer.numberOfChannels; i++) {
-        this.channels[i] = e.outputBuffer.getChannelData(i);
+  processAudioInner(channels) {
+    this.channels = channels;
+    this.isStereo = channels.length === 2;
+
+    if (this.paused) {
+      for (let i = 0; i < this.channels.length; i++) {
+        this.channels[i].fill(0);
       }
+      return;
+    }
 
-      if (this.paused) {
-        for (let i = 0; i < this.channels.length; i++) {
-          this.channels[i].fill(0);
-        }
-        return;
-      }
+    const outSize = this.channels[0].length;
+    const fadeoutTimeMs = 2000;
+    this.numberOfSamplesRendered = 0;
 
-      const outSize = this.channels[0].length;
-      const fadeoutTimeMs = 2000;
-      this.numberOfSamplesRendered = 0;
+    while (this.numberOfSamplesRendered < outSize) {
+      if (this.numberOfSamplesToRender === 0) {
 
-      while (this.numberOfSamplesRendered < outSize) {
-        if (this.numberOfSamplesToRender === 0) {
-
-          this.currentPlaytime = this.getPositionMs();
-          const detectLoop = this.s98lib.computeAudioSamples();
-          if (!this.isFadingOut && detectLoop > 0 && this.getDurationMs() <= this.currentPlaytime) {
-            this.setFadeout(this.currentPlaytime);
-          }
-
-          if ((detectLoop === -1 && this.currentPlaytime >= this.getDurationMs() )  // without loop
-             || this.currentPlaytime >= (this.getDurationMs() + fadeoutTimeMs) ) {  // with loop
-            this.fillEmpty(outSize);
-            this.stop();
-            return;
-          }
-
-          // refresh just in case they are not using one fixed buffer..
-          this.sourceBuffer = this.s98lib.getAudioBuffer();
-          this.sourceBufferLen = this.s98lib.getAudioBufferLength();
-
-          this.numberOfSamplesToRender = this.getResampledAudio();
-          this.sourceBufferIdx = 0;
-
-          // Fading out
-          if (this.isFadingOut && this.currentPlaytime >= this.fadeOutStartMs) {
-            const current = this.currentPlaytime - this.getDurationMs();
-            const ratio = Math.max((fadeoutTimeMs - current) / fadeoutTimeMs, 0);
-            this.resampleBuffer = this.resampleBuffer.map((value) => {
-              return value * ratio
-            });
-          }
+        this.currentPlaytime = this.getPositionMs();
+        const detectLoop = this.s98lib.computeAudioSamples();
+        if (!this.isFadingOut && detectLoop > 0 && this.getDurationMs() <= this.currentPlaytime) {
+          this.setFadeout(this.currentPlaytime);
         }
 
-        if (this.isStereo) {
-          this.copySamplesStereo();
-        } else {
-          this.copySamplesMono();
+        if ((detectLoop === -1 && this.currentPlaytime >= this.getDurationMs() )  // without loop
+           || this.currentPlaytime >= (this.getDurationMs() + fadeoutTimeMs) ) {  // with loop
+          this.fillEmpty(outSize);
+          this.stop();
+          return;
+        }
+
+        // refresh just in case they are not using one fixed buffer..
+        this.sourceBuffer = this.s98lib.getAudioBuffer();
+        this.sourceBufferLen = this.s98lib.getAudioBufferLength();
+
+        this.numberOfSamplesToRender = this.getResampledAudio();
+        this.sourceBufferIdx = 0;
+
+        // Fading out
+        if (this.isFadingOut && this.currentPlaytime >= this.fadeOutStartMs) {
+          const current = this.currentPlaytime - this.getDurationMs();
+          const ratio = Math.max((fadeoutTimeMs - current) / fadeoutTimeMs, 0);
+          this.resampleBuffer = this.resampleBuffer.map((value) => {
+            return value * ratio
+          });
         }
       }
-    });
+
+      if (this.isStereo) {
+        this.copySamplesStereo();
+      } else {
+        this.copySamplesMono();
+      }
+    }
   }
 
 
@@ -460,6 +460,8 @@ export default class S98Player extends Player {
     } else {
       this.isPC98System = false;
     }
+    // Keep the UI checkbox in sync with the applied state.
+    this.params.pc98fix = this.isPC98System;
   }
 
   setVolumeFix(isPc9801Fix) {
@@ -477,23 +479,23 @@ export default class S98Player extends Player {
     this.resume();
   }
 
-  loadData(data, filepath) {
+  loadData(data, filepath, persistedSettings = {}) {
     if (this.s98lib.currentFile) {
       this.s98lib.close();
     }
 
     const status = this.s98lib.loadMusicData(this.sampleRate, filepath, data);
-    if (status === 0) {
-      this.voiceMask = Array(this.getNumVoices()).fill(true);
-      this.init(filepath, data);
-      this.connect();
-      this.resume();
-
-      this.emit('playerStateUpdate', {
-        ...this.getBasePlayerState(),
-        isStopped: false,
-      });
+    if (status !== 0) {
+      throw Error('s98_load_file failed');
     }
+    this.voiceMask = Array(this.getNumVoices()).fill(true);
+    this.init(filepath, data);
+    this.resume();
+
+    this.emit('playerStateUpdate', {
+      ...this.getBasePlayerState(),
+      isStopped: false,
+    });
   }
 
   createMetadata(fullFilename) {

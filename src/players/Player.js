@@ -15,29 +15,47 @@ import EventEmitter from 'events';
 //                (pause) ╰>│ paused │–╯ (unpause)
 //                          └────────┘
 //
-// In the "open" transition, the audioNode is connected.
-// In the "stop" transition, it is disconnected.
 // "stopped" is synonymous with closed/empty.
 //
 export default class Player extends EventEmitter {
-  constructor(audioCtx, destNode, chipCore, bufferSize) {
+  /**
+   * @param {object} core - Emscripten module
+   * @param {number} sampleRate - Audio sample rate
+   * @param {number} [bufferSize=2048] - Audio buffer size
+   * @param {boolean} [debug=false] - Enable debug logging
+   */
+  constructor(core, sampleRate, bufferSize=2048, debug=false) {
     super();
 
-    this._outerAudioProcess = this._outerAudioProcess.bind(this);
-
+    this.playerKey = null; // Should be overridden by subclasses
+    this.core = core;
     this.paused = true;
+    this.stopped = true;
     this.fileExtensions = [];
     this.metadata = null;
-    this.audioCtx = audioCtx;
-    this.destinationNode = destNode;
+    this.sampleRate = sampleRate;
     this.bufferSize = bufferSize;
-    this._innerAudioProcess = null;
-    this.audioNode = this.audioCtx.createScriptProcessor(this.bufferSize, 2, 2);
-    this.audioNode.onaudioprocess = this._outerAudioProcess;
-    this.debug = window.location.search.indexOf('debug=true') !== -1;
+    this.debug = debug;
     this.timeCount = 0;
     this.renderTime = 0;
     this.perfLoggingInterval = 100;
+    this.paramDefs = [];
+    this.params = {};
+    this.infoTexts = [];
+    this.looping = false; // infinite looping mode (vs. normal mode where it stops at end of song)
+  }
+
+  /**
+   * Copies data to the Emscripten heap.
+   * Useful for loading files.
+   *
+   * @param {ArrayBuffer} data
+   * @return {number} - A pointer to the allocated memory.
+   */
+  copyToHeap(data) {
+    const dataPtr = this.core._malloc(data.byteLength);
+    this.core.HEAPU8.set(data, dataPtr);
+    return dataPtr;
   }
 
   togglePause() {
@@ -50,6 +68,7 @@ export default class Player extends EventEmitter {
   }
 
   resume() {
+    this.stopped = false;
     this.paused = false;
   }
 
@@ -57,6 +76,10 @@ export default class Player extends EventEmitter {
     return this.fileExtensions.indexOf(fileExtension.toLowerCase()) !== -1;
   }
 
+  /**
+   * @param {ArrayBuffer} data - File contents
+   * @param {string} filename - Filename for metadata fallback
+   */
   loadData(data, filename) {
     throw Error('Player.loadData() must be implemented.');
   }
@@ -70,47 +93,88 @@ export default class Player extends EventEmitter {
   }
 
   getTempo() { // TODO: rename all tempo to speed
-    console.warn('Player.getTempo() not implemented for this player.');
+    console.debug(`Player.getTempo() not implemented for ${this.constructor.name}.`);
     return 1;
   }
 
   setTempo() {
-    console.warn('Player.setTempo() not implemented for this player.');
+    console.debug(`Player.setTempo() not implemented for ${this.constructor.name}.`);
   }
 
   setFadeout(startMs) {
-    console.warn('Player.setFadeout() not implemented for this player.');
+    console.debug(`Player.setFadeout() not implemented for ${this.constructor.name}.`);
   }
 
   getDurationMs() {
-    console.warn('Player.getDurationMs() not implemented for this player.');
+    console.debug(`Player.getDurationMs() not implemented for ${this.constructor.name}.`);
     return 5000;
   }
 
   getPositionMs() {
-    console.warn('Player.getPositionMs() not implemented for this player.');
+    console.debug(`Player.getPositionMs() not implemented for ${this.constructor.name}.`);
     return 0;
   }
 
   seekMs(ms) {
-    console.warn('Player.seekMs() not implemented for this player.');
+    console.debug(`Player.seekMs() not implemented for ${this.constructor.name}.`);
   }
 
+  // Deprecated in favor of getVoiceGroups
   getVoiceName(index) {
-    console.warn('Player.getVoiceName() not implemented for this player.');
+    return 'Voice ' + (index + 1);
+  }
+
+  // Deprecated in favor of getVoiceGroups
+  getVoiceNames() {
+    const names = [];
+    for (let i = 0; i < this.getVoiceMask().length; i++) {
+      names.push(this.getVoiceName(i));
+    }
+    return names;
   }
 
   getVoiceMask() {
-    console.warn('Player.getVoiceMask() not implemented for this player.');
+    console.debug(`Player.getVoiceMask() not implemented for ${this.constructor.name}.`);
     return [];
   }
 
   setVoiceMask() {
-    console.warn('Player.setVoiceMask() not implemented for this player.');
+    console.debug(`Player.setVoiceMask() not implemented for ${this.constructor.name}.`);
   }
 
-  getNumVoices() {
-    return 0;
+  /*
+  [
+    {
+      name: 'Sega PSG',
+      voices: [
+        {
+          idx: 0,
+          name: 'Pulse 1',
+        },
+        {
+          idx: 1,
+          name: 'Pulse 2'
+        },
+      ],
+    },
+    {
+      name: 'YM2612',
+      voices: [
+        {
+          idx: 2,
+          name: 'FM 1',
+        },
+        {
+          idx: 3,
+          name: 'FM 2'
+        },
+      ],
+    },
+  ]
+   */
+  // a nice replacement for getNumVoices and getVoiceName.
+  getVoiceGroups() {
+    return [];
   }
 
   getNumSubtunes() {
@@ -121,6 +185,8 @@ export default class Player extends EventEmitter {
     return 0;
   }
 
+  playSubtune() {}
+
   getMetadata() {
     return {
       title: null,
@@ -128,8 +194,63 @@ export default class Player extends EventEmitter {
     }
   }
 
+  getInfoTexts() {
+    return this.infoTexts;
+  }
+
   getParamDefs() {
-    return [];
+    return this.paramDefs;
+  }
+
+  getParamDefault(paramId) {
+    const paramDef = this.paramDefs.find(p => p.id === paramId);
+    return paramDef?.defaultValue;
+  }
+
+  getParameter(paramId) {
+    return this.params[paramId];
+  }
+
+  setParameter(paramId, value) {
+    this.params[paramId] = value;
+  }
+
+  resolveParamValue(paramId, transientValue, persistedSettings) {
+    // Priority 1: Transient value discovered by the player during load.
+    if (transientValue !== undefined && transientValue !== null) {
+      return transientValue;
+    }
+
+    // Priority 2: User's persisted ("pinned") setting.
+    const persistedKey = `${this.playerKey}.${paramId}`;
+    if (persistedSettings?.hasOwnProperty(persistedKey)) {
+      return persistedSettings[persistedKey];
+    }
+
+    // Priority 3: Player's hard-coded default.
+    return this.getParamDefault(paramId);
+  }
+
+  resolveParamValues(persistedSettings) {
+    for (const paramDef of this.paramDefs) {
+      const paramId = paramDef.id;
+      const resolvedValue = this.resolveParamValue(paramId, undefined, persistedSettings);
+      // Reloading the soundfont is expensive.
+      if (paramId === 'soundfont' && this.getParameter(paramId) === resolvedValue) continue;
+      if (resolvedValue !== undefined) {
+        this.setParameter(paramId, resolvedValue);
+      }
+    }
+  }
+
+  getParamValues() {
+    const paramValues = {};
+    if (this.getParameter) {
+      for (const def of this.paramDefs) {
+        paramValues[def.id] = this.getParameter(def.id);
+      }
+    }
+    return paramValues;
   }
 
   getBasePlayerState() {
@@ -137,23 +258,22 @@ export default class Player extends EventEmitter {
       metadata: this.getMetadata(),
       durationMs: this.getDurationMs(),
       positionMs: this.getPositionMs(),
-      numVoices: this.getNumVoices(),
       numSubtunes: this.getNumSubtunes(),
       subtune: this.getSubtune(),
       paramDefs: this.getParamDefs(),
+      paramValues: this.getParamValues(),
       tempo: this.getTempo(),
       voiceMask: this.getVoiceMask(),
-      voiceNames: [...Array(this.getNumVoices())].map((_, i) => this.getVoiceName(i)),
-      infoTexts: [],
-      isStopped: false,
+      voiceNames: this.getVoiceNames(),
+      voiceGroups: this.getVoiceGroups(),
+      infoTexts: this.getInfoTexts(),
+      isStopped: this.stopped,
+      isPaused: this.paused,
     };
   }
 
-  connect() {
-    if (!this._innerAudioProcess) {
-      throw Error('Player.setAudioProcess has not been called.');
-    }
-    this.audioNode.connect(this.destinationNode);
+  setLooping(looping) {
+    this.looping = looping;
   }
 
   suspend() {
@@ -161,16 +281,9 @@ export default class Player extends EventEmitter {
     this.paused = true;
   }
 
-  setAudioProcess(fn) {
-    if (typeof fn !== 'function') {
-      throw Error('AudioProcess must be a function.');
-    }
-    this._innerAudioProcess = fn;
-  }
-
-  _outerAudioProcess(event) {
+  processAudio(output) {
     const start = performance.now();
-    this._innerAudioProcess(event);
+    this.processAudioInner(output);
     const end = performance.now();
 
     if (this.debug) {
@@ -178,7 +291,7 @@ export default class Player extends EventEmitter {
       this.timeCount++;
       if (this.timeCount >= this.perfLoggingInterval) {
         const cost = this.renderTime / this.timeCount;
-        const budget = 1000 * this.bufferSize / this.audioCtx.sampleRate;
+        const budget = 1000 * this.bufferSize / this.sampleRate;
         console.log(
           '[%s] %s ms to render %d frames (%s ms) (%s% utilization)',
           this.constructor.name,
@@ -193,19 +306,17 @@ export default class Player extends EventEmitter {
     }
   }
 
-  muteAudioDuringCall(audioNode, fn) {
-    if (audioNode && audioNode.context.state === 'running' && this.paused === false) {
-      const audioprocess = audioNode.onaudioprocess;
-      // Workaround to eliminate stuttering:
-      // Temporarily swap the audio process callback, and do the
-      // expensive operation only after buffer is filled with silence
-      audioNode.onaudioprocess = function (e) {
-        for (let i = 0; i < e.outputBuffer.numberOfChannels; i++) {
-          e.outputBuffer.getChannelData(i).fill(0);
-        }
-        fn();
-        audioNode.onaudioprocess = audioprocess;
-      };
+  processAudioInner() {
+    throw Error('Player.processAudioInner() must be implemented.');
+  }
+
+  async muteAudioDuringCall(audioNode, fn) {
+    // Workaround to eliminate stuttering.
+    if (audioNode.context.state === 'running') {
+      console.debug('Suspending audio context during expensive operation...');
+      await audioNode.context.suspend();
+      fn();
+      await audioNode.context.resume();
     } else {
       fn();
     }
@@ -216,6 +327,7 @@ export default class Player extends EventEmitter {
   isStreaming() {
     return false;
   }
+
 
   static metadataFromFilepath(filepath) {
     // Guess metadata from path/filename for MIDI files.
@@ -233,3 +345,26 @@ export default class Player extends EventEmitter {
     return meta;
   }
 }
+
+/**
+ * Polyfill requestIdleCallback, which is used by doIncrementalSeek.
+ * Still not supported in Safari as of March 2025.
+ * @see https://developers.google.com/web/updates/2015/08/using-requestidlecallback
+ */
+window.requestIdleCallback = window.requestIdleCallback ||
+  function (cb) {
+    return setTimeout(function () {
+      var start = Date.now();
+      cb({
+        didTimeout: false,
+        timeRemaining: function () {
+          return Math.max(0, 50 - (Date.now() - start));
+        }
+      });
+    }, 1);
+  };
+
+window.cancelIdleCallback = window.cancelIdleCallback ||
+  function (id) {
+    clearTimeout(id);
+  };

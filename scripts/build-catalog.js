@@ -15,8 +15,38 @@ const outputPath = 'server/catalog.json';
 const dirDictOutputPath = 'server/directories.json';
 const formatsRegex = new RegExp(`\\.(${FORMATS.join('|')})$`);
 const romanNumeralNineRegex = /\bix\b/i;
-const romanNumeralRegex = /\b([IVXLC]+|[ivxlc]+)[-.,)]/; // All upper case or all lower case
+const romanNumeralRegex = /\b([IVXLC]+|[ivxlc]+)([-.,) ]|$)/; // All upper case or all lower case
 const NUMERIC_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+/*
+
+Sample catalog.json output:
+
+[
+  "Classical MIDI/Balakirev/Islamey – Fantaisie Orientale (G. Giulimondi).mid",
+  "Classical MIDI/Balakirev/Islamey – Fantaisie Orientale (W. Pepperdine).mid"
+]
+
+Sample directories.json output:
+
+{
+  "/Classical MIDI/Balakirev": [
+    {
+      "path": "/Classical MIDI/Balakirev/Islamey – Fantaisie Orientale (G. Giulimondi).mid",
+      "size": 54602,
+      "type": "file",
+      "idx": 0
+    },
+    {
+      "path": "/Classical MIDI/Balakirev/Islamey – Fantaisie Orientale (W. Pepperdine).mid",
+      "size": 213866,
+      "type": "file",
+      "idx": 1
+    }
+  ]
+}
+
+*/
 
 function replaceRomanWithArabic(str) {
   // Works up to 399 (CCCXCIX)
@@ -41,7 +71,11 @@ fs.writeSync(fs.openSync(outputPath, 'w+'), data);
 console.log('Wrote %d entries in %s (%d bytes).', files.length, outputPath, data.length);
 
 const dirDict = {};
-directoryTree(catalogPath, { extensions: formatsRegex, attributes: ['mtimeMs'] }, null, item => {
+const dirOptions = {
+  extensions: formatsRegex,
+  attributes: [ 'mtimeMs' ],
+};
+directoryTree(catalogPath, dirOptions, null, item => {
   if (item.children) {
     item.path = item.path.replace(catalogPath, '/');
 
@@ -51,8 +85,10 @@ directoryTree(catalogPath, { extensions: formatsRegex, attributes: ['mtimeMs'] }
         child.numChildren = child.children.length;
         delete child.children;
       }
+      child.mtime = Math.floor(child.mtimeMs / 1000);
       delete child.name;
       delete child.extension;
+      delete child.mtimeMs;
       return child;
     });
 

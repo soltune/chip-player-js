@@ -1,0 +1,38 @@
+diff --git a/src/builders/resid-builder/resid b/src/builders/resid-builder/resid
+index 1a0cca72..3bf8eff2 160000
+--- a/src/builders/resid-builder/resid
++++ b/src/builders/resid-builder/resid
+@@ -1 +1 @@
+-Subproject commit 1a0cca72ca4d27470479c43a3526a6ae24e9bd4e
++Subproject commit 3bf8eff22bc81743d2d5fa089eaf2414bf3ed6e4
+diff --git a/src/builders/resid-builder/resid-emu.cpp b/src/builders/resid-builder/resid-emu.cpp
+index 7d9b0c5a..391fcdb2 100644
+--- a/src/builders/resid-builder/resid-emu.cpp
++++ b/src/builders/resid-builder/resid-emu.cpp
+@@ -107,7 +107,10 @@ void ReSID::clock()
+       consumeDeltaCycles(cycles);
+       return;
+     }
+-    m_bufferpos += m_sid.clock(cycles, m_muted ? nullptr : (short *) m_buffer + m_bufferpos, m_buffersize - m_bufferpos, 1);
++    // chip-player-js: upstream resid (unlike the unpublished pinned fork) does not
++    // accept a null buffer; when muted, render into the buffer without advancing.
++    int produced = m_sid.clock(cycles, (short *) m_buffer + m_bufferpos, m_buffersize - m_bufferpos, 1);
++    if (!m_muted) m_bufferpos += produced;
+     consumeDeltaCycles(cycles);
+ }
+ 
+@@ -115,11 +118,9 @@ void ReSID::setSeeking(bool seeking)
+ {
+     if (m_isSeeking && !seeking)
+     {
+-//        reSID::cycle_count cycles = getDeltaCycles();
+-//        m_sid.clock(cycles, nullptr, 0);
+-      // Tell the SID to instantly align its internal counters
+-      // to the current 6502 cycle count without iterating.
+-      m_sid.sync_silently(getDeltaCycles());
++      // chip-player-js: sync_silently() only exists in an unpublished resid fork.
++      // Equivalent bookkeeping: drop the residual delta without emulating it.
++      consumeDeltaCycles(getDeltaCycles());
+     }
+     m_isSeeking = seeking;
+ }

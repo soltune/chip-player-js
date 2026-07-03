@@ -1,4 +1,47 @@
-const chroma = require('chroma-js');
+import autoBind from 'auto-bind';
+
+/**
+ * Compact Catmull-Rom Spline RGB Interpolator
+ * Provides C1 continuity (smooth transitions at anchors).
+ */
+const createSplineScale = (hexColors, domain = [0, 255]) => {
+  // Parse hex to [r, g, b]
+  const points = hexColors.map(hex => [
+    parseInt(hex.slice(1, 3), 16),
+    parseInt(hex.slice(3, 5), 16),
+    parseInt(hex.slice(5, 7), 16)
+  ]);
+
+  // Catmull-Rom basis function
+  const interpolate = (t, p0, p1, p2, p3) => {
+    const v0 = (p2 - p0) * 0.5;
+    const v1 = (p3 - p1) * 0.5;
+    const t2 = t * t, t3 = t2 * t;
+    return (2 * p1 - 2 * p2 + v0 + v1) * t3 + (-3 * p1 + 3 * p2 - 2 * v0 - v1) * t2 + v0 * t + p1;
+  };
+
+  return (val) => {
+    // Normalize input to [0, 1] then scale to array range
+    let t = Math.max(0, Math.min(1, (val - domain[0]) / (domain[1] - domain[0])));
+    t *= (points.length - 1);
+
+    const i = Math.floor(t);
+    const localT = t - i;
+
+    // Boundary clamping for tangents
+    const p0 = points[Math.max(0, i - 1)];
+    const p1 = points[i];
+    const p2 = points[Math.min(points.length - 1, i + 1)];
+    const p3 = points[Math.min(points.length - 1, i + 2)];
+
+    const rgb = [0, 1, 2].map(channel => {
+      const v = interpolate(localT, p0[channel], p1[channel], p2[channel], p3[channel]);
+      return Math.round(Math.max(0, Math.min(255, v)));
+    });
+
+    return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+  };
+};
 
 const MODE_LINEAR = 0;
 const MODE_LOG = 1;
@@ -6,7 +49,7 @@ const MODE_CONSTANT_Q = 2;
 
 const WEIGHTING_NONE = 0;
 const WEIGHTING_A = 1;
-const colorMap = new chroma.scale([
+const colorMap = createSplineScale([
   '#000000',
   '#0000a0',
   '#6000a0',
@@ -15,7 +58,7 @@ const colorMap = new chroma.scale([
   '#f0b000',
   '#ffffa0',
   '#ffffff',
-]).domain([0, 255]);
+], [0, 255]);
 const _debug = window.location.search.indexOf('debug=true') !== -1;
 let _aWeightingLUT;
 let _calcTime = 0;
@@ -31,12 +74,10 @@ function _getAWeighting(f) {
 
 export default class Spectrogram {
   constructor(chipCore, audioCtx, sourceNode, freqCanvas, specCanvas, pianoKeysImage, minDb = -90, maxDb = -30) {
-    this.updateFrame = this.updateFrame.bind(this);
-    this.setPaused = this.setPaused.bind(this);
-    this.setSpeed = this.setSpeed.bind(this);
+    autoBind(this);
 
     // Constant Q setup
-    this.lib = chipCore;
+    this.core = chipCore;
     const db = 32;
     const supersample = 0;
     const cqtBins = freqCanvas.width;
@@ -46,15 +87,15 @@ export default class Spectrogram {
     //                MIDI note 127 == 12543.8 hz
     const fMin = 25.95;
     const fMax = 4504.0;
-    const cqtSize = this.lib._cqt_init(audioCtx.sampleRate, cqtBins, db, fMin, fMax, supersample);
+    const cqtSize = this.core._cqt_init(audioCtx.sampleRate, cqtBins, db, fMin, fMax, supersample);
     if (!cqtSize) {
       console.error('Error initializing constant Q transform. Constant Q will be disabled.');
     } else {
-      this.cqtFreqs = Array(cqtBins).fill().map((_, i) => this.lib._cqt_bin_to_freq(i));
+      this.cqtFreqs = Array(cqtBins).fill().map((_, i) => this.core._cqt_bin_to_freq(i));
       _aWeightingLUT = this.cqtFreqs.map(f => 0.5 + 0.5 * _getAWeighting(f));
     }
     this.cqtSize = cqtSize;
-    this.dataPtr = this.lib._malloc(cqtSize * 4);
+    this.dataPtr = this.core._malloc(cqtSize * 4);
 
     this.paused = true;
     this.mode = MODE_LINEAR;
@@ -107,18 +148,6 @@ export default class Spectrogram {
     this.analyserNode.fftSize = size;
   }
 
-  isRepeatedFrequencyData(data) {
-    // Jitter correction: ignore repeated frequency data in spectrogram
-    let isRepeated = true;
-    for (let bin = 0; bin < 40; bin += 2) {
-      if (data[bin] !== this.lastData[bin]) {
-        isRepeated = false;
-      }
-      this.lastData[bin] = data[bin];
-    }
-    return isRepeated;
-  }
-
   setWeighting(mode) {
     this.weighting = mode;
   }
@@ -145,15 +174,13 @@ export default class Spectrogram {
     tempCtx.fillStyle = '#000033';
     tempCtx.fillRect(0, 0, this.tempCanvas.width, specSpeed);
     const _start = performance.now();
-    const dataHeap = new Float32Array(this.lib.HEAPF32.buffer, this.dataPtr, this.cqtSize);
+    const dataHeap = new Float32Array(this.core.HEAPF32.buffer, this.dataPtr, this.cqtSize);
     const bins = this.fftSize / 2;
-    let isRepeated = false;
 
     if (this.mode === MODE_LINEAR) {
       analyserNode.getByteFrequencyData(data);
-      isRepeated = this.isRepeatedFrequencyData(data);
       for (let x = 0; x < bins && x < canvasWidth; ++x) {
-        const style = colorMap(data[x]).hex();
+        const style = colorMap(data[x]);
         const h =     data[x] * hCoeff | 0;
         freqCtx.fillStyle = style;
         freqCtx.fillRect(x, fqHeight - h, 1, h);
@@ -162,13 +189,12 @@ export default class Spectrogram {
       }
     } else if (this.mode === MODE_LOG) {
       analyserNode.getByteFrequencyData(data);
-      isRepeated = this.isRepeatedFrequencyData(data);
       const logmax = Math.log(bins);
       for (let i = 0; i < bins; i++) {
         const x =        (Math.log(i + 1) / logmax) * canvasWidth | 0;
         const binWidth = (Math.log(i + 2) / logmax) * canvasWidth - x | 0;
         const h =        (data[i] * hCoeff) | 0;
-        const style =    colorMap(data[i] || 0).hex();
+        const style =    colorMap(data[i] || 0);
         freqCtx.fillStyle = style;
         freqCtx.fillRect(x, fqHeight - h, binWidth, h);
         tempCtx.fillStyle = style;
@@ -177,14 +203,14 @@ export default class Spectrogram {
     } else if (this.mode === MODE_CONSTANT_Q) {
       analyserNode.getFloatTimeDomainData(dataHeap);
       if (!dataHeap.every(n => n === 0)) {
-        this.lib._cqt_calc(this.dataPtr, this.dataPtr);
-        this.lib._cqt_render_line(this.dataPtr);
+        this.core._cqt_calc(this.dataPtr, this.dataPtr);
+        this.core._cqt_render_line(this.dataPtr);
         // copy output to canvas
         for (let x = 0; x < canvasWidth; x++) {
           const weighting = this.weighting === WEIGHTING_A ? _aWeightingLUT[x] : 1;
-          const val = 255 * weighting * dataHeap[x] | 0; //this.lib.getValue(this.cqtOutput + x * 4, 'float') | 0;
+          const val = 255 * weighting * dataHeap[x] | 0; //this.core.getValue(this.cqtOutput + x * 4, 'float') | 0;
           const h = val * hCoeff | 0;
-          const style = colorMap(val).hex();
+          const style = colorMap(val);
           freqCtx.fillStyle = style;
           freqCtx.fillRect(x, fqHeight - h, 1, h);
           tempCtx.fillStyle = style;
@@ -195,21 +221,13 @@ export default class Spectrogram {
 
     const _middle = performance.now();
 
-    if (!isRepeated) {
-      // tempCtx.drawImage(this.specCanvas, 0, 0);
-      // translate the transformation matrix. subsequent draws happen in this frame
-      tempCtx.translate(0, specSpeed);
-      // draw the copied image
-      tempCtx.drawImage(this.tempCanvas, 0, 0);
-      // reset the transformation matrix
-      tempCtx.setTransform(1, 0, 0, 1, 0, 0);
-
-      this.specCtx.drawImage(this.tempCanvas, 0, 0);
-      // Disabled because this is rendered as plain HTML IMG element
-      // if (this.mode === MODE_CONSTANT_Q) {
-      //   this.specCtx.drawImage(this.pianoKeysImage, 0, 0);
-      // }
-    }
+    // translate the transformation matrix. subsequent draws happen in this frame
+    tempCtx.translate(0, specSpeed);
+    // draw the copied image
+    tempCtx.drawImage(this.tempCanvas, 0, 0);
+    // reset the transformation matrix
+    tempCtx.setTransform(1, 0, 0, 1, 0, 0);
+    this.specCtx.drawImage(this.tempCanvas, 0, 0);
 
     const _end = performance.now();
 

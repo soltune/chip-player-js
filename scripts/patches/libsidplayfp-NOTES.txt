@@ -1,0 +1,7 @@
+# libsidplayfp build note (fork)
+# branch: montag-dev-2.14 @ d1ae5add
+# resid submodule: pinned commit 1a0cca72 is not published; use resid master instead:
+#   resid @ 3bf8eff
+# Apply libsidplayfp-resid-emu.patch, regenerate src/psiddrv.bin and
+# src/sidtune/sidplayer{1,2}.bin with BSD-compatible od (no -w8), then
+# emconfigure/emmake per README.

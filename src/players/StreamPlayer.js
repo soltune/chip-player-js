@@ -4,32 +4,42 @@ import { parseID3 } from "./id3Parser.js";
 const fileExtensions = ['mp3', 'ogg'];
 
 export default class StreamPlayer extends Player {
-  constructor(audioCtx, destNode, chipCore, bufferSize) {
-    super(audioCtx, destNode, chipCore, bufferSize);
+  constructor(...args) {
+    super(...args);
     this.initializeProperties();
-    
-    if (!audioCtx) {
-      throw new Error('AudioContext is required');
-    }
 
-    // this.mediaSource = new MediaSource();
+    this.playerKey = 'stream';
+    this.name = 'Stream Player';
+
     this.audioElement = new Audio();
     this.audioElement.crossOrigin = "anonymous";
     this.audioElement.src = '';
-    
-    try {
-      this.sourceNode = this.audioCtx.createMediaElementSource(this.audioElement);
-      if (destNode) {
-        this.sourceNode.connect(destNode);
-      } else {
-        this.sourceNode.connect(this.audioCtx.destination);
-      }
-    } catch (error) {
-      console.error('Failed to create MediaElementAudioSourceNode:', error);
-      throw error;
-    }
+
+    // Created lazily in _ensureSourceNode(): the AudioContext is only reachable
+    // after App assigns this.audioNode (players no longer receive audioCtx).
+    this.sourceNode = null;
 
     this.setupBufferingListeners();
+  }
+
+  // The shared AudioContext, reachable once App assigns this.audioNode.
+  get audioCtx() {
+    return this.audioNode ? this.audioNode.context : null;
+  }
+
+  _ensureSourceNode() {
+    if (this.sourceNode) return;
+    if (!this.audioNode) {
+      throw new Error('StreamPlayer requires audioNode to be assigned before loading');
+    }
+    this.sourceNode = this.audioCtx.createMediaElementSource(this.audioElement);
+    // destinationNode (assigned by App) keeps streams subject to master volume/effects.
+    this.sourceNode.connect(this.destinationNode || this.audioCtx.destination);
+  }
+
+  processAudioInner(channels) {
+    // Intentionally empty: stream audio flows through the MediaElementSource,
+    // not the shared ScriptProcessorNode.
   }
 
   setupBufferingListeners() {
@@ -71,7 +81,6 @@ export default class StreamPlayer extends Player {
   }
 
   initializeProperties() {
-    this.sampleRate = this.audioCtx.sampleRate;
     this.paused = true;
     this._intentionalPause = false;
     this.fileExtensions = fileExtensions;
@@ -82,7 +91,8 @@ export default class StreamPlayer extends Player {
     this.params = {};
   }
 
-  loadData(data, filepath) {
+  loadData(data, filepath, persistedSettings = {}) {
+    this._ensureSourceNode();
     this.init();
     this.loadStream(data, filepath);
   }
@@ -112,6 +122,7 @@ export default class StreamPlayer extends Player {
       // this.metadata is already initialized above; don't overwrite it here
       // so that ID3 tags fetched in parallel are not lost.
       this.paused = false;
+      this.stopped = false;
       this._intentionalPause = false; // new song is ready; allow canplay to play
 
       if (this.audioElement.readyState >= 2) { // HAVE_CURRENT_DATA
@@ -129,12 +140,12 @@ export default class StreamPlayer extends Player {
     };
 
     const playHandler = () => {
-      this.isStopped = false;
+      this.stopped = false;
     };
 
     const endedHandler = () => {
-      this.isPaused = true;
-      this.isStopped = true;
+      this.paused = true;
+      this.stopped = true;
 
       this.audioElement.pause();
       this.audioElement.currentTime = 0;
@@ -289,6 +300,7 @@ export default class StreamPlayer extends Player {
       this.audioElement.pause();
       this.audioElement.currentTime = 0;
       this.paused = true;
+      this.stopped = true;
     }
     
     this.emit('playerStateUpdate', {

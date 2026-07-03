@@ -1,7 +1,8 @@
-import promisify from "./promisify-xhr";
-import {CATALOG_PREFIX} from "./config";
-import shuffle from 'lodash/shuffle';
+import axios from 'redaxios';
+import autoBind from 'auto-bind';
 import EventEmitter from 'events';
+import shuffle from 'lodash/shuffle';
+import { getUrlFromFilepath } from './util';
 
 export const REPEAT_OFF = 0;
 export const REPEAT_ALL = 1;
@@ -12,43 +13,29 @@ export const REPEAT_LABELS = ['Off', 'All', 'One'];
 export const SHUFFLE_OFF = 0;
 export const SHUFFLE_ON = 1;
 export const NUM_SHUFFLE_MODES = 2;
-export const SHUFFLE_LABELS = ['Off', 'On'];
+export const SHUFFLE_LABELS = ['Off', 'On '];
+const ERROR_DELAY_MS = 1000;
 
 export default class Sequencer extends EventEmitter {
-  constructor(players) {
+  constructor(players, localFilesManager, getSettings) {
     super();
-
-    this.playCurrentSong = this.playCurrentSong.bind(this);
-    this.playSong = this.playSong.bind(this);
-    this.playSongBuffer = this.playSongBuffer.bind(this);
-    this.playSongFile = this.playSongFile.bind(this);
-    this.getPlayer = this.getPlayer.bind(this);
-    this.handlePlayerStateUpdate = this.handlePlayerStateUpdate.bind(this);
-    this.handlePlayerError = this.handlePlayerError.bind(this);
-    this.playContext = this.playContext.bind(this);
-    this.advanceSong = this.advanceSong.bind(this);
-    this.nextSong = this.nextSong.bind(this);
-    this.prevSong = this.prevSong.bind(this);
-    this.prevSubtune = this.prevSubtune.bind(this);
-    this.nextSubtune = this.nextSubtune.bind(this);
-    this.toggleShuffle = this.toggleShuffle.bind(this);
-    this.getCurrUrl = this.getCurrUrl.bind(this);
-    this.getCurrContext = this.getCurrContext.bind(this);
-    this.getCurrIdx = this.getCurrIdx.bind(this);
-    this.setShuffle = this.setShuffle.bind(this);
+    autoBind(this);
 
     this.player = null;
     this.players = players;
+    this.localFilesManager = localFilesManager;
+    this.getSettings = getSettings;
     // this.onSequencerStateUpdate = onSequencerStateUpdate;
     // this.onPlayerError = onError;
 
     this.currIdx = 0;
     this.context = null;
-    this.currUrl = null;
+    this.currSongPath = null;
     this.shuffle = SHUFFLE_OFF;
     this.shuffleOrder = [];
     this.songRequest = null;
     this.repeat = REPEAT_OFF;
+    this.playerErrorAdvanceTimer = null;
 
     this.players.forEach(player => {
       player.on('playerStateUpdate', this.handlePlayerStateUpdate);
@@ -58,8 +45,9 @@ export default class Sequencer extends EventEmitter {
 
   handlePlayerError(e) {
     this.emit('playerError', e);
-    if (this.context) {
-      this.nextSong();
+    if (this.context && this.player) {
+      clearTimeout(this.playerErrorAdvanceTimer);
+      this.playerErrorAdvanceTimer = setTimeout(this.nextSong, ERROR_DELAY_MS);
     } else {
       this.emit('sequencerStateUpdate', { isEjected: true });
     }
@@ -68,40 +56,44 @@ export default class Sequencer extends EventEmitter {
   handlePlayerStateUpdate(playerState) {
     const { isStopped } = playerState;
     console.debug('Sequencer.handlePlayerStateUpdate(isStopped=%s)', isStopped);
+    if (this.playerErrorAdvanceTimer) {
+      console.debug('Cancelling auto-advance due to playerState update.');
+      clearTimeout(this.playerErrorAdvanceTimer);
+      this.playerErrorAdvanceTimer = null;
+    }
 
     if (isStopped) {
-      this.currUrl = null;
+      this.currSongPath = null;
       if (this.context) {
         this.nextSong();
       }
     } else {
       this.emit('sequencerStateUpdate', {
-        ...playerState,
-        url: this.currUrl,
-        isPaused: false,
+        songPath: this.currSongPath,
         hasPlayer: true,
         // TODO: combine isEjected and hasPlayer
         isEjected: false,
+        ...playerState,
       });
     }
   }
 
-  playContext(context, index = 0) {
+  playContext(context, index = 0, subtune = 0) {
     this.currIdx = index;
     this.context = context;
     if (this.shuffle === SHUFFLE_ON) {
       this.setShuffle(this.shuffle);
     }
-    this.playCurrentSong();
+    this.playCurrentSong(subtune);
   }
 
-  playCurrentSong() {
+  playCurrentSong(subtune = 0) {
     let idx = this.currIdx;
     if (this.shuffle === SHUFFLE_ON) {
       idx = this.shuffleOrder[idx];
       console.log('Shuffle (%s): %s', this.currIdx, idx);
     }
-    this.playSong(this.context[idx]);
+    this.playSong(this.context[idx], subtune);
   }
 
   playSonglist(urls) {
@@ -129,6 +121,7 @@ export default class Sequencer extends EventEmitter {
 
   setRepeat(repeat) {
     this.repeat = repeat;
+    if (this.player) this.player.setLooping(repeat === REPEAT_ONE);
   }
 
   advanceSong(direction) {
@@ -202,84 +195,73 @@ export default class Sequencer extends EventEmitter {
     return this.shuffle ? this.shuffleOrder[this.currIdx] : this.currIdx;
   }
 
-  getCurrUrl() {
-    return this.currUrl;
+  getCurrSongPath() {
+    return this.currSongPath;
   }
 
-  playSong(url) {
+  getSubtune() {
+    return this.player.getSubtune();
+  }
+
+  playSong(filepath, subtune = 0) {
     if (this.player !== null) {
       this.player.suspend();
     }
 
-    // Normalize url - paths are assumed to live under CATALOG_PREFIX
-    url = url.startsWith('http') ? url : CATALOG_PREFIX + url;
-
     // Find a player that can play this filetype
-    const ext = url.split('.').pop().toLowerCase();
-    for (let i = 0; i < this.players.length; i++) {
-      if (this.players[i].canPlay(ext)) {
-        this.player = this.players[i];
-        break;
-      }
-    }
-    if (this.player === null) {
-      this.emit('playerError', `The file format ".${ext}" was not recognized.`);
-      return;
-    }
-
-    this.currUrl = url;
-    const filepath = url.replace(CATALOG_PREFIX, '');
-
-    if (this.player.isStreaming()) {
-      this.player.loadData(url, filepath);
-      return;
-    }
-
-    if (this.songRequest) this.songRequest.abort();
-    this.songRequest = promisify(new XMLHttpRequest());
-    this.songRequest.responseType = 'arraybuffer';
-    this.songRequest.open('GET', url);
-    this.songRequest.send()
-      .then(xhr => xhr.response)
-      .then(buffer => {
-        this.playSongBuffer(filepath, buffer)
-      })
-      .catch(e => {
-        this.handlePlayerError(e.message || `HTTP ${e.status} ${e.statusText} ${url}`);
-      });
-  }
-
-  playSongFile(filepath, songData) {
-    if (this.player !== null) {
-      this.player.suspend();
-    }
-
-    const ext = filepath.split('.').pop().toLowerCase();
-
-    // Find a player that can play this filetype
-    const player = this.players.find(player => player.canPlay(ext));
+    const ext = filepath.slice(filepath.lastIndexOf('.') + 1).toLowerCase();
+    let player = this.players.find(p => p.canPlay(ext));
     if (player == null) {
       this.emit('playerError', `The file format ".${ext}" was not recognized.`);
       return;
-    } else {
-      this.player = player;
     }
+    this.player = player;
+    this.player.setLooping(this.repeat === REPEAT_ONE);
 
-    this.context = [];
-    this.currUrl = null;
-    this.playSongBuffer(filepath, songData);
+    if (this.player.isStreaming()) {
+      // Fork: StreamPlayer consumes the URL directly instead of a fetched buffer.
+      const url = filepath.startsWith('http') ? filepath : getUrlFromFilepath(filepath);
+      this.currSongPath = filepath;
+      this.player.loadData(url, filepath);
+    } else if (filepath.startsWith('local/')) {
+      const buffer = this.localFilesManager.read(filepath);
+      this.currSongPath = filepath;
+      this.playSongBuffer(player, filepath, buffer, subtune);
+    } else {
+      // Normalize url - paths are assumed to live under CATALOG_PREFIX
+      const url = filepath.startsWith('http') ? filepath : getUrlFromFilepath(filepath);
+
+      // Fetch the song file (cancelable request)
+      // Cancel any outstanding request so that playback doesn't happen out of order
+      if (this.songRequest) this.songRequest.abort();
+      this.songRequest = new AbortController();
+      axios.get(url, {
+          responseType: 'arrayBuffer',
+          signal: this.songRequest.signal,
+        })
+        .then(res => {
+          this.currSongPath = filepath;
+          this.playSongBuffer(player, filepath, res.data, subtune);
+        })
+        .catch(e => {
+          if (e.name === 'AbortError') return;
+          console.error(e);
+          this.handlePlayerError(`${e.message}: ${filepath}`);
+        });
+    }
   }
 
-  async playSongBuffer(filepath, buffer) {
+  async playSongBuffer(player, filepath, buffer, subtune = 0) {
     let uint8Array;
     uint8Array = new Uint8Array(buffer);
-    this.player.setTempo(1);
+    const persistedSettings = this.getSettings();
     try {
-      await this.player.loadData(uint8Array, filepath);
+      await player.loadData(uint8Array, filepath, persistedSettings, subtune);
     } catch (e) {
+      console.error(`Unable to play ${filepath}.`, e);
       this.handlePlayerError(`Unable to play ${filepath} (${e.message}).`);
+      return;
     }
-    const numVoices = this.player.getNumVoices();
-    this.player.setVoiceMask([...Array(numVoices)].fill(true));
+    player.getVoiceMask().fill(true);
   }
 }

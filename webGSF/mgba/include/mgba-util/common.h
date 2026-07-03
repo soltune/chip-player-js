@@ -52,8 +52,11 @@ typedef intptr_t ssize_t;
 typedef intptr_t ssize_t;
 #else
 #ifdef EMSCRIPTEN
-#include <libc/limits.h>
+/* Emscripten >= 4 dropped the libc/ include prefix; plain limits.h works. */
+#include <limits.h>
+#ifndef PATH_MAX
 #define PATH_MAX 4096
+#endif
 #define MAX_PATH PATH_MAX
 #endif
 #include <strings.h>

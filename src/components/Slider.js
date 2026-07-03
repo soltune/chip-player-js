@@ -1,14 +1,13 @@
 import React, {PureComponent} from 'react';
+import autoBindReact from 'auto-bind/react';
 
 export default class Slider extends PureComponent {
   constructor(props) {
     super(props);
-
-    this.onMouseDown = this.onMouseDown.bind(this);
-    this.onMouseMove = this.onMouseMove.bind(this);
-    this.onMouseUp = this.onMouseUp.bind(this);
+    autoBindReact(this);
 
     this.node = React.createRef();
+    this.knob = React.createRef();
     this.state = {
       dragging: false,
       draggedPos: null,
@@ -18,7 +17,9 @@ export default class Slider extends PureComponent {
   onMouseMove(event) {
     if (this.state.dragging) {
       const node = this.node.current;
-      const pos = Math.max(Math.min((event.clientX - node.offsetLeft) / node.offsetWidth, 1), 0);
+      const knob = this.knob.current;
+      const frac = (event.clientX - node.offsetLeft - knob.offsetWidth / 2) / node.offsetWidth;
+      const pos = Math.max(Math.min(frac, 1), 0);
       this.setState({
         draggedPos: pos,
       });
@@ -52,6 +53,7 @@ export default class Slider extends PureComponent {
            onMouseDown={this.onMouseDown}>
         <div className="Slider-rail"/>
         <div className="Slider-knob"
+             ref={this.knob}
              style={{left: pos}}/>
       </div>
     );
