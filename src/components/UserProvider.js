@@ -84,18 +84,21 @@ const UserProvider = ({ children }) => {
   useEffect(() => {
     if (!user) return;
 
-    try {
-      getWithAuth(user, `${API_BASE}/user/favorites`).then(favesRes => {
-        setFaves(favesRes.favorites);
-      });
+    // Note: .catch() is required here; a try/catch around these calls would
+    // not see the async rejections, and unhandled rejections trigger the CRA
+    // dev error overlay when the API server is unreachable.
+    getWithAuth(user, `${API_BASE}/user/favorites`).then(favesRes => {
+      setFaves(favesRes.favorites);
+    }).catch(e => {
+      console.error('Could not fetch favorites from server.', e);
+    });
 
-      getWithAuth(user, `${API_BASE}/user/settings`).then(settingsRes => {
-        // Merge server settings with defaults to ensure all keys exist
-        setSettings(prev => ({ ...prev, ...settingsRes }));
-      });
-    } catch (e) {
-      console.error('Error fetching user data:', e);
-    }
+    getWithAuth(user, `${API_BASE}/user/settings`).then(settingsRes => {
+      // Merge server settings with defaults to ensure all keys exist
+      setSettings(prev => ({ ...prev, ...settingsRes }));
+    }).catch(e => {
+      console.error('Could not fetch settings from server.', e);
+    });
   }, [user]);
 
 

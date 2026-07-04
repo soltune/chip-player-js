@@ -144,6 +144,12 @@ if (!isDev) {
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
+  // Authenticated requests (Authorization header) and JSON POSTs trigger a
+  // CORS preflight when the app runs cross-origin (e.g. CRA dev server on
+  // :3000 against this server on :8080).
+  res.header('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
 
