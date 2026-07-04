@@ -39,6 +39,7 @@ struct VoiceInfo {
 const std::map<int, VoiceInfo> deviceToVoiceInfo = {
   {DEVID_32X_PWM,  {1,  0, "", {"PWM"}}},
   {DEVID_AY8910,   {3,  0}},
+  {DEVID_BSMT2000, {13, 0, "", {"PCM 1", "PCM 2", "PCM 3", "PCM 4", "PCM 5", "PCM 6", "PCM 7", "PCM 8", "PCM 9", "PCM 10", "PCM 11", "PCM 12", "ADPCM"}}},
   {DEVID_C140,     {24, 0, "PCM"}},
   {DEVID_C219,     {16, 0, "PCM"}},
   {DEVID_C352,     {32, 0, "PCM"}},
@@ -47,11 +48,16 @@ const std::map<int, VoiceInfo> deviceToVoiceInfo = {
   {DEVID_ES5506,   {32, 0}},
   {DEVID_GA20,     {4,  0, "PCM"}},
   {DEVID_GB_DMG,   {4,  0, "", {"Pulse 1", "Pulse 2", "Wave",     "Noise"}}},
+  {DEVID_ICS2115,  {32, 0, "PCM"}},
+  {DEVID_K005289,  {2,  0, "Wave"}},
+  {DEVID_K007232,  {2,  0, "PCM"}},
   {DEVID_K051649,  {5,  0, "Wave"}},
   {DEVID_K053260,  {4,  0, "PCM"}},
   {DEVID_K054539,  {8,  0, "PCM"}},
   {DEVID_MIKEY,    {4,  0, "Wave"}},
   {DEVID_NES_APU,  {5,  0, "", {"Pulse 1", "Pulse 2", "Triangle", "Noise",  "DMC"}}},
+  {DEVID_MSM5205,  {1,  0, "", {"ADPCM"}}},
+  {DEVID_MSM5232,  {11, 0}},
   {DEVID_MSM6258,  {1,  0, "PCM"}},
   {DEVID_MSM6295,  {4,  0, "PCM"}},
   {DEVID_POKEY,    {4,  0, "PSG"}},
@@ -228,9 +234,23 @@ std::string getNiceChipName(UINT8 type, const char* devName) {
     case DEVID_C352:      return "Namco C352";
     case DEVID_C140:      return "Namco C140";
     case DEVID_C219:      return "Namco C219";
+    case DEVID_K005289:   return "Konami K005289";
+    case DEVID_K007232:   return "Konami K007232";
     case DEVID_K051649:   return "Konami K051649";
     case DEVID_K053260:   return "Konami K053260";
     case DEVID_K054539:   return "Konami K054539";
+    case DEVID_MSM5205:   return (devName && strcmp(devName, "MSM6585") == 0) ? "OKI MSM6585" : "OKI MSM5205";
+    case DEVID_MSM5232:   return "OKI MSM5232";
+    case DEVID_MSM6258:   return "OKI MSM6258";
+    case DEVID_MSM6295:   return "OKI MSM6295";
+    case DEVID_BSMT2000:  return "Data East BSMT2000";
+    case DEVID_ICS2115:   return "ICS2115 (WaveFront)";
+    case DEVID_RF5C68:    return (devName && strcmp(devName, "RF5C68") == 0) ? "Ricoh RF5C68" : devName;
+    case DEVID_SCSP:      return "Yamaha YMF292 (SCSP)";
+    case DEVID_YMZ280B:   return "Yamaha YMZ280B (PCMD8)";
+    case DEVID_POKEY:     return "Atari POKEY";
+    case DEVID_MIKEY:     return "Atari MIKEY";
+    case DEVID_GA20:      return "Irem GA20";
     default:              return devName;
   }
 }
