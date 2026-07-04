@@ -437,17 +437,21 @@ export default class NDSPlayer extends Player {
     this.lib.registerFileData(path, filename,  data);
     this.lastLoadedFilename = filename;
 
-    if (this.lib.loadMusicData(this.sampleRate, path, filename) === 0) {
-      this.voiceMask = Array(this.getNumVoices()).fill(true);
-      this.init();
+    // nds_init blocks the main thread for a long time on heavy 2sf data;
+    // suspend the audio context so the output doesn't glitch meanwhile.
+    return this.muteAudioDuringCall(this.audioNode, () => {
+      if (this.lib.loadMusicData(this.sampleRate, path, filename) === 0) {
+        this.voiceMask = Array(this.getNumVoices()).fill(true);
+        this.init();
 
-      this.resume();
+        this.resume();
 
-      this.emit('playerStateUpdate', {
-        ...this.getBasePlayerState(),
-        isStopped: false,
-      });
-    }
+        this.emit('playerStateUpdate', {
+          ...this.getBasePlayerState(),
+          isStopped: false,
+        });
+      }
+    });
   }
 
   createMetadata() {
@@ -597,16 +601,18 @@ export default class NDSPlayer extends Player {
         }
 
         this.lib.registerFileData(path, filename, buffer);
-        if (this.lib.loadMusicData(this.sampleRate, path, this.lastLoadedFilename) === 0) {
-          this.init();
+        return this.muteAudioDuringCall(this.audioNode, () => {
+          if (this.lib.loadMusicData(this.sampleRate, path, this.lastLoadedFilename) === 0) {
+            this.init();
 
-          this.resume();
+            this.resume();
 
-          this.emit('playerStateUpdate', {
-            ...this.getBasePlayerState(),
-            isStopped: false,
-          });
-        }
+            this.emit('playerStateUpdate', {
+              ...this.getBasePlayerState(),
+              isStopped: false,
+            });
+          }
+        });
       })
       .catch(e => {});
 

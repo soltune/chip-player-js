@@ -68,24 +68,28 @@ export default class N64Player extends Player {
 
     return Promise.all(filePromises)
       .then(() => {
-        err = this.core.ccall(
-          'n64_load_file', 'number',
-          ['string', 'number', 'number', 'number'],
-          [fsFilename, this.buffer, this.bufferSize, this.sampleRate],
-        );
+        // Heavy synchronous init blocks the main thread; suspend the audio
+        // context so the output doesn't glitch meanwhile.
+        return this.muteAudioDuringCall(this.audioNode, () => {
+          err = this.core.ccall(
+            'n64_load_file', 'number',
+            ['string', 'number', 'number', 'number'],
+            [fsFilename, this.buffer, this.bufferSize, this.sampleRate],
+          );
 
-        if (err !== 0) {
-          console.error('n64_load_file failed. error code: %d', err);
-          throw Error('n64_load_file failed');
-        }
+          if (err !== 0) {
+            console.error('n64_load_file failed. error code: %d', err);
+            throw Error('n64_load_file failed');
+          }
 
-        this.resolveParamValues(persistedSettings);
-        this.metadata = { title: pathe.basename(filename) };
+          this.resolveParamValues(persistedSettings);
+          this.metadata = { title: pathe.basename(filename) };
 
-        this.resume();
-        this.emit('playerStateUpdate', {
-          ...this.getBasePlayerState(),
-          isStopped: false,
+          this.resume();
+          this.emit('playerStateUpdate', {
+            ...this.getBasePlayerState(),
+            isStopped: false,
+          });
         });
       });
   }

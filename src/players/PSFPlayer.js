@@ -449,16 +449,20 @@ export default class PSFPlayer extends Player {
     this.lib.registerFileData(path, filename,  data);
     this.lastLoadedFilename = filename;
 
-    if (this.lib.loadMusicData(this.sampleRate, path, filename) === 0) {
-      this.voiceMask = Array(this.getNumVoices()).fill(true);
-      this.init();
-      this.resume();
+    // Heavy synchronous init blocks the main thread; suspend the audio
+    // context so the output doesn't glitch meanwhile.
+    return this.muteAudioDuringCall(this.audioNode, () => {
+      if (this.lib.loadMusicData(this.sampleRate, path, filename) === 0) {
+        this.voiceMask = Array(this.getNumVoices()).fill(true);
+        this.init();
+        this.resume();
 
-      this.emit('playerStateUpdate', {
-        ...this.getBasePlayerState(),
-        isStopped: false,
-      });
-    }
+        this.emit('playerStateUpdate', {
+          ...this.getBasePlayerState(),
+          isStopped: false,
+        });
+      }
+    });
   }
 
   createMetadata() {
@@ -610,15 +614,17 @@ export default class PSFPlayer extends Player {
       return 0;
     }
     Promise.all(fetchTasks).then(() => {
-      if (this.lib.loadMusicData(this.sampleRate, basePath, this.lastLoadedFilename) === 0) {
-        this.init();
-        this.resume();
+      return this.muteAudioDuringCall(this.audioNode, () => {
+        if (this.lib.loadMusicData(this.sampleRate, basePath, this.lastLoadedFilename) === 0) {
+          this.init();
+          this.resume();
 
-        this.emit('playerStateUpdate', {
-          ...this.getBasePlayerState(),
-          isStopped: false,
-        });
-      }
+          this.emit('playerStateUpdate', {
+            ...this.getBasePlayerState(),
+            isStopped: false,
+          });
+        }
+      });
     });
     return -1;
   }

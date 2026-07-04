@@ -215,9 +215,19 @@ class App extends React.Component {
       for (let i = 0; i < e.outputBuffer.numberOfChannels; i++) {
         channels.push(e.outputBuffer.getChannelData(i));
       }
+      let rendered = false;
       for (let player of players) {
         if (player.stopped) continue;
         player.processAudio(channels);
+        rendered = true;
+      }
+      // Chrome recycles ScriptProcessorNode output buffers without zeroing
+      // them, so if no player renders (e.g. while the next song is being
+      // fetched/initialized), stale audio from the previous song loops.
+      if (!rendered) {
+        for (const channel of channels) {
+          channel.fill(0);
+        }
       }
     }
 

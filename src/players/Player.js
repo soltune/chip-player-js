@@ -315,8 +315,11 @@ export default class Player extends EventEmitter {
     if (audioNode.context.state === 'running') {
       console.debug('Suspending audio context during expensive operation...');
       await audioNode.context.suspend();
-      fn();
-      await audioNode.context.resume();
+      try {
+        fn();
+      } finally {
+        await audioNode.context.resume();
+      }
     } else {
       fn();
     }
