@@ -148,6 +148,7 @@ export default class S98Player extends Player {
     this.isFadingOut = false;
     this.fadeOutStartMs = 0;
     this.currentPlaytime = 0;
+    this.hasLoop = false;
 
     this.numberOfSamplesToRender = 0;
     this.sourceBufferIdx = 0;
@@ -182,12 +183,14 @@ export default class S98Player extends Player {
 
         this.currentPlaytime = this.getPositionMs();
         const detectLoop = this.s98lib.computeAudioSamples();
-        if (!this.isFadingOut && detectLoop > 0 && this.getDurationMs() <= this.currentPlaytime) {
+        this.hasLoop = detectLoop !== -1;
+        const indefinite = this.params.indefinitePlayback && this.hasLoop;
+        if (!this.isFadingOut && !indefinite && detectLoop > 0 && this.getDurationMs() <= this.currentPlaytime) {
           this.setFadeout(this.currentPlaytime);
         }
 
-        if ((detectLoop === -1 && this.currentPlaytime >= this.getDurationMs() )  // without loop
-           || this.currentPlaytime >= (this.getDurationMs() + fadeoutTimeMs) ) {  // with loop
+        if ((detectLoop === -1 && this.currentPlaytime >= this.getDurationMs() )                // without loop
+           || (!indefinite && this.currentPlaytime >= (this.getDurationMs() + fadeoutTimeMs)) ) {  // with loop
           this.fillEmpty(outSize);
           this.stop();
           return;
@@ -444,15 +447,17 @@ export default class S98Player extends Player {
     }
   }
 
-  init(fullFilename, data) {
+  init(fullFilename, data, persistedSettings = {}) {
     this.resetSampleRate(this.sampleRate, this.s98lib.getSampleRate());
     this.currentPlaytime = 0;
     this.isFadingOut = false;
     this.fadeOutStartMs = 0;
+    this.hasLoop = false;
     this.params = {};
+    this.params.indefinitePlayback =
+      this.resolveParamValue('indefinitePlayback', undefined, persistedSettings) ?? false;
 
-    const pathTokens = fullFilename.split('/');
-    this.metadata = this.createMetadata(pathTokens[pathTokens.length - 1]);
+    this.metadata = this.createMetadata(data);
     if (this.metadata.system.indexOf('9801') > -1 || this.metadata.system.indexOf('9821') > -1) {
       // we need a tweak for the volume balance, as default setting seems to be referenced by PC-8801.
       this.setVolumeFix(true);
@@ -467,7 +472,7 @@ export default class S98Player extends Player {
   setVolumeFix(isPc9801Fix) {
     const volPsg = isPc9801Fix? -14 : 0;
     for (let i = 0; i < this.s98lib.getDeviceCount(); i++) {
-      if (['OPN', 'OPNA'].indexOf(this.s98lib.getDeviceName(i) > -1)) {
+      if (['OPN', 'OPNA'].indexOf(this.s98lib.getDeviceName(i)) > -1) {
         this.s98lib.setVolumes(i, volPsg, 0, 0, 0);
       }
     }
@@ -489,7 +494,7 @@ export default class S98Player extends Player {
       throw Error('s98_load_file failed');
     }
     this.voiceMask = Array(this.getNumVoices()).fill(true);
-    this.init(filepath, data);
+    this.init(filepath, data, persistedSettings);
     this.resume();
 
     this.emit('playerStateUpdate', {
@@ -498,7 +503,14 @@ export default class S98Player extends Player {
     });
   }
 
-  createMetadata(fullFilename) {
+  createMetadata(data) {
+    const parsed = this.parseS98Tags(data);
+    if (parsed) {
+      return parsed;
+    }
+
+    // Fallback: read the tags extracted by the wasm core. Covers inputs the JS
+    // parser cannot handle (gzip/tar-wrapped and VGM/MYM files converted by m_s98).
     const module = this.s98lib.getDelegate();
     const numOfInfo = 9;
     const trackInfo = module.ccall('s98_get_track_info', 'number');
@@ -515,6 +527,58 @@ export default class S98Player extends Player {
       s98by: module.UTF8ToString(info[7]),
       system: module.UTF8ToString(info[8]),
     };
+  }
+
+  parseS98Tags(data) {
+    const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+    if (bytes.length < 0x20 ||
+        bytes[0] !== 0x53 || bytes[1] !== 0x39 || bytes[2] !== 0x38) { // "S98"
+      return null;
+    }
+    const tags = {
+      title: '', artist: '', game: '', year: '', genre: '',
+      comment: '', copyright: '', s98by: '', system: '',
+    };
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const tagOfs = view.getUint32(0x10, true);
+    if (tagOfs === 0 || tagOfs >= bytes.length) {
+      return tags;
+    }
+    let end = bytes.indexOf(0, tagOfs);
+    if (end === -1) end = bytes.length;
+
+    // TextDecoder's shift_jis is Windows-31J (CP932), so NEC/IBM extended
+    // characters common in PC-98 era tags decode correctly.
+    const version = String.fromCharCode(bytes[3]);
+    if (version !== '3') {
+      // v1/v2: the tag offset points at a bare SJIS title string
+      tags.title = new TextDecoder('shift_jis').decode(bytes.subarray(tagOfs, end)).trim();
+      return tags;
+    }
+
+    // v3: "[S98]" signature, optional UTF-8 BOM, then key=value lines
+    const signature = String.fromCharCode(...bytes.subarray(tagOfs, tagOfs + 5));
+    if (signature.toUpperCase() !== '[S98]') {
+      return null;
+    }
+    let textStart = tagOfs + 5;
+    let decoder;
+    if (bytes[textStart] === 0xEF && bytes[textStart + 1] === 0xBB && bytes[textStart + 2] === 0xBF) {
+      decoder = new TextDecoder('utf-8');
+      textStart += 3;
+    } else {
+      decoder = new TextDecoder('shift_jis');
+    }
+    const text = decoder.decode(bytes.subarray(textStart, end));
+    for (const line of text.split(/\r?\n/)) {
+      const eq = line.indexOf('=');
+      if (eq <= 0) continue;
+      const key = line.slice(0, eq).trim().toLowerCase();
+      if (tags.hasOwnProperty(key)) {
+        tags[key] = line.slice(eq + 1).trim();
+      }
+    }
+    return tags;
   }
 
   getNumSubtunes() {
@@ -554,6 +618,13 @@ export default class S98Player extends Player {
     }
     return [
       px98fix,
+      {
+        id: 'indefinitePlayback',
+        label: 'Indefinite Playback',
+        hint: 'Ignore track length metadata for looping tracks and loop indefinitely.',
+        type: 'toggle',
+        defaultValue: false,
+      },
     ];
   }
 
@@ -562,6 +633,11 @@ export default class S98Player extends Player {
       case 'pc98fix':
         this.setVolumeFix(value);
         break;
+      case 'indefinitePlayback':
+        if (value) {
+          this.isFadingOut = false; // cancel a fade-out already in progress
+        }
+        break; // otherwise handled in processAudioInner via this.params
       default:
         console.warn('S98Player has no parameter with id "%s".', id);
     }
@@ -569,7 +645,13 @@ export default class S98Player extends Player {
   }
 
   isPlaying() {
-    return !this.isPaused() && this.s98lib.getPlaybackPosition() < this.s98lib.getMaxPlaybackPosition();
+    if (this.isPaused()) {
+      return false;
+    }
+    if (this.params.indefinitePlayback && this.hasLoop) {
+      return true;
+    }
+    return this.s98lib.getPlaybackPosition() < this.s98lib.getMaxPlaybackPosition();
   }
 
   setTempo(val) {
