@@ -101,6 +101,10 @@ export default class StreamPlayer extends Player {
     this.removeAllEventListeners();
 
     this.currentUrl = url;
+    // Loading counts as "not stopped": anything emitted before loadedmetadata
+    // (e.g. the parallel ID3 fetch) must not carry isStopped=true, or the
+    // Sequencer treats the song as ended and advances through the whole context.
+    this.stopped = false;
     // Set filename-based metadata immediately as a fallback.
     // _fetchID3Metadata will overwrite this with tag data when the fetch completes.
     this.metadata = { title: filepath.split('/').pop() };
@@ -117,6 +121,10 @@ export default class StreamPlayer extends Player {
         this.emit('playerError', 'Invalid audio duration');
         return;
       }
+
+      // The user stopped playback while this song was still loading;
+      // don't resurrect it when the (now stale) metadata arrives.
+      if (this._intentionalPause && this.stopped) return;
 
       this.durationMs = this.audioElement.duration * 1000;
       // this.metadata is already initialized above; don't overwrite it here
@@ -189,6 +197,14 @@ export default class StreamPlayer extends Player {
         album:  tags.album  || undefined,
         track:  tags.track  || undefined,
       };
+
+      // Metadata-only update: never emit while stopped. getBasePlayerState()
+      // reports isStopped from this.stopped, and this fetch usually finishes
+      // before loadedmetadata — emitting isStopped=true here makes the
+      // Sequencer skip to the next song (and chain through entire directories
+      // of streamed files). The merged tags are still delivered by the
+      // loadedmetadata emit or the next state update.
+      if (this.stopped) return;
 
       this.emit('playerStateUpdate', {
         ...this.getBasePlayerState(),
@@ -297,6 +313,7 @@ export default class StreamPlayer extends Player {
 
   stop() {
     if (this.audioElement) {
+      this._intentionalPause = true; // block stale canplay/loadedmetadata from restarting audio
       this.audioElement.pause();
       this.audioElement.currentTime = 0;
       this.paused = true;

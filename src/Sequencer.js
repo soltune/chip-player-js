@@ -56,6 +56,9 @@ export default class Sequencer extends EventEmitter {
   handlePlayerStateUpdate(playerState) {
     const { isStopped } = playerState;
     console.debug('Sequencer.handlePlayerStateUpdate(isStopped=%s)', isStopped);
+    // Fork: ignore late events (e.g. async loads resolving) after ejecting;
+    // App would otherwise act on a state update with no active player.
+    if (this.player === null) return;
     if (this.playerErrorAdvanceTimer) {
       console.debug('Cancelling auto-advance due to playerState update.');
       clearTimeout(this.playerErrorAdvanceTimer);
