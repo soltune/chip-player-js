@@ -120,6 +120,11 @@ class App extends React.Component {
     this.reverb.gain = 0.7;
     const playerNode = this.playerNode = audioCtx.createScriptProcessor(bufferSize, 0, 2);
     playerNode.connect(gainNode);
+    // Fork: vizNode mixes playerNode output with StreamPlayer's MediaElementSource
+    // (which bypasses playerNode), so the Visualizer's analyser sees both. Tapped
+    // pre-gain so the spectrogram is unaffected by the volume slider.
+    const vizNode = this.vizNode = audioCtx.createGain();
+    playerNode.connect(vizNode);
 
     unlockAudioContext(audioCtx);
     console.log('Sample rate: %d hz. Base latency: %d. Buffer size: %d.',
@@ -206,6 +211,9 @@ class App extends React.Component {
       // Fork: StreamPlayer connects its MediaElementSource here so streams pass
       // through the master gain / effects chain.
       p.destinationNode = this.gainNode;
+      // Fork: StreamPlayer also feeds the visualizer mix here, since its audio
+      // bypasses playerNode.
+      p.vizNode = this.vizNode;
     });
     this.midiPlayer = players[0];
 
@@ -1034,7 +1042,7 @@ class App extends React.Component {
             </div>
             {!isMobile.phone && !this.state.loading && !!this.chipCore &&
               <Visualizer audioCtx={this.audioCtx}
-                          sourceNode={this.playerNode}
+                          sourceNode={this.vizNode}
                           chipCore={this.chipCore}
                           paused={this.state.ejected || this.state.paused}/>}
           </div>

@@ -35,6 +35,11 @@ export default class StreamPlayer extends Player {
     this.sourceNode = this.audioCtx.createMediaElementSource(this.audioElement);
     // destinationNode (assigned by App) keeps streams subject to master volume/effects.
     this.sourceNode.connect(this.destinationNode || this.audioCtx.destination);
+    // vizNode (assigned by App) feeds the Visualizer's analyser, which otherwise
+    // only sees the ScriptProcessorNode that stream audio bypasses.
+    if (this.vizNode) {
+      this.sourceNode.connect(this.vizNode);
+    }
   }
 
   processAudioInner(channels) {
