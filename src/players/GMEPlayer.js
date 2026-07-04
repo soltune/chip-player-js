@@ -221,10 +221,16 @@ export default class GMEPlayer extends Player {
     this.fadingOut = false;
     this.fadeStartMs = null;
     this.fadeFinished = false;
-    this.seekTargetMs = null;
-    this.seekRequestId = null;
+    this._cancelPendingSeek();
     this.currentFileExt = pathe.extname(filepath);
     this.filepathMeta = Player.metadataFromFilepath(filepath);
+
+    // Fork: Sequencer only suspends (never stops) the outgoing player on song
+    // switch, so the previous emulator must be deleted here or it leaks.
+    if (this.gmeCtx) {
+      core._gme_delete(this.gmeCtx);
+      this.gmeCtx = null;
+    }
 
     const dataPtr = this.copyToHeap(data);
     const err = core._gme_open_data(dataPtr, data.length, this.emuPtr, this.sampleRate);
@@ -249,9 +255,19 @@ export default class GMEPlayer extends Player {
 
   _parseMetadata(subtune) {
     const metadataPtr = core._malloc(4); // i32
-    if (core._gme_track_info(this.gmeCtx, metadataPtr, subtune) !== 0)
-      console.error("could not load metadata");
+    core.setValue(metadataPtr, 0, 'i32');
+    const err = core._gme_track_info(this.gmeCtx, metadataPtr, subtune);
     const ref = core.getValue(metadataPtr, "*");
+    core._free(metadataPtr);
+    if (err !== 0 || !ref) {
+      console.error("could not load metadata");
+      return {
+        formatted: {
+          title: this.filepathMeta.title,
+          subtitle: this.filepathMeta.artist,
+        },
+      };
+    }
 
     let offset = 0;
 
@@ -304,6 +320,8 @@ export default class GMEPlayer extends Player {
       subtitle: [meta.artist, meta.system].filter(x => x).join(' - ') +
         allOrNone(' (', meta.copyright, ')'),
     };
+
+    core._gme_free_info(ref);
 
     return meta;
   }
@@ -416,9 +434,20 @@ export default class GMEPlayer extends Player {
     }
   }
 
+  _cancelPendingSeek() {
+    if (this.seekRequestId !== null) {
+      cancelIdleCallback(this.seekRequestId);
+      this.seekRequestId = null;
+    }
+    this.seekTargetMs = null;
+  }
+
   doIncrementalSeek(seekMsIncrement) {
     // console.log('Scheduling incremental seek of %s ms...', seekMsIncrement);
     this.seekRequestId = requestIdleCallback(() => {
+      // Fork: the emulator may have been deleted (stop/loadData) while this
+      // callback was pending; touching it then is a use-after-free.
+      if (!this.gmeCtx || this.seekTargetMs === null) return;
       const seekIntermediateMs = Math.min(this.getPositionMs() + seekMsIncrement, this.seekTargetMs);
       core._gme_seek_scaled(this.gmeCtx, seekIntermediateMs);
       if (seekIntermediateMs < this.seekTargetMs) {
@@ -438,7 +467,7 @@ export default class GMEPlayer extends Player {
       this.fadeStartMs = null;
       this.fadeFinished = false;
       if (TIMESLICED_SEEK_MS_MAP[this.currentFileExt]) {
-        cancelIdleCallback(this.seekRequestId);
+        this._cancelPendingSeek();
         this.seekTargetMs = positionMs;
         const seekMsIncrement = TIMESLICED_SEEK_MS_MAP[this.currentFileExt];
         if (positionMs < this.getPositionMs()) {
@@ -456,6 +485,7 @@ export default class GMEPlayer extends Player {
 
   stop() {
     this.suspend();
+    this._cancelPendingSeek();
     if (this.gmeCtx) core._gme_delete(this.gmeCtx);
     this.gmeCtx = null;
     console.debug('GMEPlayer.stop()');

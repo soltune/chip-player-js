@@ -86,6 +86,7 @@ const chipModules = [
       '_gme_track_ended',
       '_gme_voice_count',
       '_gme_track_info',
+      '_gme_free_info',
       '_gme_start_track',
       '_gme_open_data',
       '_gme_ignore_silence',
