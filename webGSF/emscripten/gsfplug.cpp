@@ -38,6 +38,8 @@
 #include <stdexcept>
 #include <set>
 
+#include <emscripten.h>
+
 #include <codecvt>
 #include <locale>
 #include <string>
@@ -109,8 +111,12 @@ extern "C" void mappedMemoryFree(void* memory, size_t size) {
 	free (memory);
 }
 
-// implemented on JavaScript side (also see callback.js) for "on-demand" file load:
-extern "C" int gsf_request_file(const char *filename);
+// "on-demand" file load: delegates to the player (GBAPlayer.js) via the Module object.
+// returns 0 if the file is ready; -1 if it is not yet available
+EM_JS(int, gsf_request_file, (const char *filename), {
+	var cb = Module['gbaFileRequestCallback'];
+	return cb ? cb(filename) : -1;
+});
 
 // just some fillers to change kode54's below code as little as possible
 class exception_io_data: public std::runtime_error {

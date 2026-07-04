@@ -492,7 +492,6 @@ const chipModules = [
       '-DEMU_COMPILE',
       '-DEMU_LITTLE_ENDIAN',
       '-DBUILTIN_HEBIOS', // build-in bios enabled
-      '--js-library', 'webpsx/psf_callback.js',
     ],
   },
   {
@@ -539,7 +538,6 @@ const chipModules = [
       '-DEMSCRIPTEN',
       '-DHAVE_ZLIB_H',
       '-Wno-register', // vio2sf C sources are compiled as C++17 by the single em++ invocation
-      '--js-library', 'webDS/nds_callback.js',
       '-IwebDS/vio2sf/desmume/',
       // '-IwebDS/psflib',
     ],
@@ -576,7 +574,6 @@ const chipModules = [
       '-DM_CORE_GBA',
       '-IwebGSF/mgba/include',
       '-Ipsflib',
-      '--js-library', 'webGSF/emscripten/gba_callback.js',
     ],
   },
   {

@@ -181,7 +181,7 @@ export default class PSFPlayer extends Player {
 
     this.playerKey = 'psf';
     this.name = 'PSF Player';
-    window.psx_fileRequestCallback　= this.fileRequestCallback.bind(this);
+    this.core.psxFileRequestCallback = this.fileRequestCallback.bind(this);
 
     this.lib = new PSFLibWrapper(this.core);
     this.fs = this.lib.fs;
@@ -579,7 +579,7 @@ export default class PSFPlayer extends Player {
     this.emit('playerStateUpdate', { isStopped: true });
   }
 
-  // callback in psx_request_file(heplug.c) -> psx_request_file(psf_callback.js)
+  // called from psx_request_file (webpsx/emscripten/heplug.c, EM_JS) via core.psxFileRequestCallback
   fileRequestCallback(p_filenames, count) {
     const psflib = this.lib.getDelegate();
     const pathStrings = psflib.HEAP32.subarray(p_filenames >> 2, (p_filenames >> 2) + count);

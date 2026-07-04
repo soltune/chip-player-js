@@ -221,7 +221,7 @@ export default class GBAPlayer extends Player {
   constructor(...args) {
     super(...args);
     autoBind(this);
-    window.gba_fileRequestCallback = this.fileRequestCallback;
+    this.core.gbaFileRequestCallback = this.fileRequestCallback;
 
     this.playerKey = 'gba';
     this.name = 'GBA Player';
@@ -692,7 +692,7 @@ export default class GBAPlayer extends Player {
     this.emit('playerStateUpdate', { isStopped: true });
   }
 
-  // callback in gsf_request_file(gsfplug.cpp) -> gba_fileRequestCallback(gba_callback.js)
+  // called from gsf_request_file (webGSF/emscripten/gsfplug.cpp, EM_JS) via core.gbaFileRequestCallback
   fileRequestCallback(p_filename) {
     const fullFilename = this.lib.getDelegate().UTF8ToString(p_filename);
     const [path, filename] = this.lib.getPathAndFilename(fullFilename);

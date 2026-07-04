@@ -43,6 +43,7 @@
 
 #include <psflib.h>
 #include <zlib.h>
+#include <emscripten.h>
 
 #include "../vio2sf/desmume/state.h"
 
@@ -58,8 +59,12 @@ void print_message(void * context, const char * message) {
 }
 
 
-// implemented on JavaScript side (also see callback.js) for "on-demand" file load:
-extern "C" int twosf_request_file(const char *filename);
+// "on-demand" file load: delegates to the player (NDSPlayer.js) via the Module object.
+// returns 0 if the file is ready; -1 if it is not yet available
+EM_JS(int, twosf_request_file, (const char *filename), {
+	var cb = Module['ndsFileRequestCallback'];
+	return cb ? cb(filename) : -1;
+});
 
 // just some fillers to change kode54's below code as little as possible
 class exception_io_data: public std::runtime_error {

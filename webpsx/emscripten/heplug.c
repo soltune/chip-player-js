@@ -40,6 +40,7 @@
 #include "zlib.h"
 
 #include "zhebios.h"
+#include <emscripten.h>
 
 #include <psx.h>
 #include <iop.h>
@@ -65,9 +66,12 @@
 #define trace(...) { fprintf(stderr, __VA_ARGS__); }
 //#define trace(fmt,...)
 
-// implemented on JavaScript side (also see callback.js) for "on-demand" file load:
-//extern "C" int psx_request_file(const char *filename);
-extern "C" int psx_request_file(const char **filenames, int count);
+// "on-demand" file load: delegates to the player (PSFPlayer.js) via the Module object.
+// returns 0 if all files are ready; -1 if any is not yet available
+EM_JS(int, psx_request_file, (const char **filenames, int count), {
+	var cb = Module['psxFileRequestCallback'];
+	return cb ? cb(filenames, count) : -1;
+});
 
 size_t em_fgetlength( FILE * f) {
 	int fd= fileno(f);

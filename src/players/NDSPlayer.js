@@ -173,7 +173,7 @@ export default class NDSPlayer extends Player {
 
     this.playerKey = 'nds';
     this.name = 'NDS Player';
-    window.nds_fileRequestCallback　= this.fileRequestCallback.bind(this);
+    this.core.ndsFileRequestCallback = this.fileRequestCallback.bind(this);
 
     this.lib = new DSLibWrapper(this.core);
     this.fs = this.lib.fs;
@@ -565,7 +565,7 @@ export default class NDSPlayer extends Player {
     this.emit('playerStateUpdate', { isStopped: true });
   }
 
-  // callback in psx_request_file(heplug.c) -> psx_request_file(nds_callback.js)
+  // called from twosf_request_file (webDS/emscripten/twosfplug.cpp, EM_JS) via core.ndsFileRequestCallback
   fileRequestCallback(p_filename) {
     const fullFilename = this.lib.getDelegate().UTF8ToString(p_filename);
     const [path, filename] = this.lib.getPathAndFilename(fullFilename);
