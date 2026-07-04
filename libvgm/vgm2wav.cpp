@@ -11,6 +11,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#endif
 
 #include "player/playerbase.hpp"
 #include "player/vgmplayer.hpp"
@@ -35,8 +39,8 @@
 #define BUFFER_LEN 2048
 
 /* fade length, in seconds */
-static unsigned int
-fade_len = 8;
+static double
+fade_len = 8.0;
 
 static unsigned int
 sample_rate = 44100;
@@ -60,18 +64,15 @@ set_core(PlayerBase *player, UINT8 devId, UINT32 coreId);
 static void
 dump_info(PlayerBase *player);
 
-/* generic utility/wave functions */
-static void
-pack_int16le(UINT8 *d, INT16 n);
-
 static void
 pack_uint16le(UINT8 *d, UINT16 n);
 
 static void
-pack_int24le(UINT8 *d, INT32 n);
-
-static void
 pack_uint32le(UINT8 *d, UINT32 n);
+
+static inline void repack_int16le(UINT8 *d, const UINT8 *src);
+static inline void repack_int24le(UINT8 *d, const UINT8 *src);
+static inline void repack_int32le(UINT8 *d, const UINT8 *src);
 
 static int
 write_wav_header(FILE *f, unsigned int totalFrames);
@@ -87,6 +88,9 @@ scan_uint(const char *str);
 
 static const char *
 fmt_time(double ts);
+
+static DATA_LOADER*
+request_file_callback(void* userParam, PlayerBase* player, const char* fileName);
 
 static const char *
 extensible_guid_trailer= "\x00\x00\x00\x00\x10\x00\x80\x00\x00\xAA\x00\x38\x9B\x71";
@@ -169,7 +173,7 @@ int main(int argc, const char *argv[]) {
                 argc--;
                 s = *argv;
             }
-            fade_len = scan_uint(s);
+            fade_len = strtod(s, NULL);
             argv++;
             argc--;
         }
@@ -189,16 +193,18 @@ int main(int argc, const char *argv[]) {
     switch(bit_depth) {
         case 16: break;
         case 24: break;
+        case 32: break;
         default: bit_depth = 16;
     }
 
     if(argc < 2) {
         fprintf(stderr,"Usage: %s [options] /path/to/vgm-file /path/to/out.wav\n",self);
         fprintf(stderr,"Available options:\n");
-        fprintf(stderr,"    --samplerate\n");
-        fprintf(stderr,"    --bps\n");
-        fprintf(stderr,"    --fade\n");
-        fprintf(stderr,"    --loops\n");
+        fprintf(stderr,"    --samplerate n - sample rate (default: %d)\n", 44100);
+        fprintf(stderr,"    --bps n        - bits per sample (default: %d)\n", 16);
+        fprintf(stderr,"    --fade x       - fade out length in seconds (default: %.1f)\n", 8.0);
+        fprintf(stderr,"    --loops n      - numbers of loops before fade out (default: %d)\n", 2);
+        fprintf(stderr,"Specify \"-\" as output file to write to stdout.\n");
         return 1;
     }
 
@@ -226,6 +232,7 @@ int main(int argc, const char *argv[]) {
     player.RegisterPlayerEngine(new S98Player);
     player.RegisterPlayerEngine(new DROPlayer);
     player.RegisterPlayerEngine(new GYMPlayer);
+    player.SetFileReqCallback(request_file_callback, NULL);
 
     /* setup the player's output parameters and allocate internal buffers */
     if (player.SetOutputSettings(sample_rate, 2, bit_depth, BUFFER_LEN)) {
@@ -238,13 +245,21 @@ int main(int argc, const char *argv[]) {
         PlayerA::Config pCfg = player.GetConfiguration();
         pCfg.masterVol = 0x10000;	// == 1.0 == 100%
         pCfg.loopCount = loops;
-        pCfg.fadeSmpls = sample_rate * fade_len;
+        pCfg.fadeSmpls = (UINT32)(sample_rate * fade_len);
         pCfg.endSilenceSmpls = 0;
         pCfg.pbSpeed = 1.0;
         player.SetConfiguration(pCfg);
     }
 
-    f = fopen(argv[1],"wb");
+    if (!strcmp(argv[1], "-")) {
+        f = stdout;
+#ifdef _WIN32
+        _setmode(_fileno(f), _O_BINARY);	// force binary output mode
+#endif
+    }
+    else {
+        f = fopen(argv[1],"wb");
+    }
     if(f == NULL) {
         fprintf(stderr,"unable to open output file\n");
         return 1;
@@ -318,9 +333,8 @@ int main(int argc, const char *argv[]) {
 
     /* we only want to fade if there's a looping section. Assumption is
      * if the VGM doesn't specify a loop, it's a song with an actual ending */
-    if(plrEngine->GetLoopTicks()) {
-        fadeFrames = sample_rate * fade_len;
-        totalFrames += fadeFrames;
+    if(plrEngine->GetLoopTicks() > 0) {
+        totalFrames += player.GetFadeSamples();
     }
 
     /* Let's tell the user what we're doing */
@@ -398,7 +412,7 @@ static void set_core(PlayerBase *player, UINT8 devId, UINT32 coreId) {
 static void dump_info(PlayerBase *player) {
     std::vector<PLR_DEV_INFO> devInfList;
     PLR_SONG_INFO songInfo;
-    const DEV_DEF **devDefList;
+    const DEV_DEF* const* devDefList;
     UINT32 i;
     char str[5];
 
@@ -456,7 +470,7 @@ fmt_time(double sec) {
     i_min = i_min % 60;
 
     if(i_hour > 0) {
-        snprintf(ts,4,"%02u:",i_hour);
+        snprintf(ts,4,"%02u:",i_hour % 100);
     }
     if(i_min > 0) {
         snprintf(&ts[strlen(ts)],4,"%02u:",i_min);
@@ -464,6 +478,22 @@ fmt_time(double sec) {
     snprintf(&ts[strlen(ts)],7,"%02u.%03u",i_sec, (unsigned int)((sec - (unsigned int)sec) * 1000));
 
     return (const char *)ts;
+}
+
+static DATA_LOADER*
+request_file_callback(void* userParam, PlayerBase* player, const char* fileName) {
+    DATA_LOADER* loader = FileLoader_Init(fileName);
+    UINT8 retVal;
+
+    if (loader == NULL) {
+        return NULL;
+    }
+    retVal = DataLoader_Load(loader);
+    if (! retVal) {
+        return loader;
+    }
+    DataLoader_Deinit(loader);
+    return NULL;
 }
 
 static void FCC2STR(char *str, UINT32 fcc) {
@@ -483,20 +513,39 @@ static UINT32 STR2FCC(const char *str) {
     return fcc;
 }
 
-static void pack_int16le(UINT8 *d, INT16 n) {
-    d[0] = (UINT8)((UINT16) n      );
-    d[1] = (UINT8)((UINT16) n >> 8 );
+static inline void repack_int16le(UINT8 *d, const UINT8 *src) {
+#ifdef VGM_BIG_ENDIAN
+    UINT8 tmp[2];
+    memcpy(tmp,src,2);
+    d[0] = tmp[1];
+    d[1] = tmp[0];
+#endif
+}
+
+static inline void repack_int24le(UINT8 *d, const UINT8 *src) {
+#ifdef VGM_BIG_ENDIAN
+    UINT8 tmp[3];
+    memcpy(tmp,src,3);
+    d[0] = tmp[2];
+    d[1] = tmp[1];
+    d[2] = tmp[0];
+#endif
+}
+
+static inline void repack_int32le(UINT8 *d, const UINT8 *src) {
+#ifdef VGM_BIG_ENDIAN
+    UINT8 tmp[4];
+    memcpy(tmp,src,4);
+    d[0] = tmp[3];
+    d[1] = tmp[2];
+    d[2] = tmp[1];
+    d[3] = tmp[0];
+#endif
 }
 
 static void pack_uint16le(UINT8 *d, UINT16 n) {
     d[0] = (UINT8)((UINT16) n      );
     d[1] = (UINT8)((UINT16) n >> 8 );
-}
-
-static void pack_int24le(UINT8 *d, INT32 n) {
-    d[0] = (UINT8)((UINT32)n       );
-    d[1] = (UINT8)((UINT32)n >> 8  );
-    d[2] = (UINT8)((UINT32)n >> 16 );
 }
 
 static void pack_uint32le(UINT8 *d, UINT32 n) {
@@ -583,12 +632,23 @@ static int write_wav_header(FILE *f, unsigned int totalFrames) {
 static void frames_to_little_endian(UINT8 *data, unsigned int frame_count) {
     unsigned int i = 0;
     while(i<frame_count) {
-        if(bit_depth == 16) {
-            pack_int16le(&data[0], *(INT16*)&data[0]);
-            pack_int16le(&data[2], *(INT16*)&data[2]);
-        } else {
-            pack_int24le(&data[0], *(INT32*)&data[0] & 0x00FFFFFF);
-            pack_int24le(&data[3], *(INT32*)&data[3] & 0x00FFFFFF);
+        switch(bit_depth) {
+            case 32: {
+                repack_int32le(&data[0], &data[0]);
+                repack_int32le(&data[4], &data[4]);
+                break;
+            }
+            case 24: {
+                repack_int24le(&data[0], &data[0]);
+                repack_int24le(&data[3], &data[3]);
+                break;
+            }
+            default: /* 16 */ {
+                repack_int16le(&data[0], &data[0]);
+                repack_int16le(&data[2], &data[2]);
+                break;
+            }
+
         }
         i++;
         data += ((bit_depth / 8) * 2);

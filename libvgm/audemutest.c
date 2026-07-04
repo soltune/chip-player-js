@@ -45,7 +45,7 @@ static RESMPL_STATE snResmpl;
 static RESMPL_STATE okiResmpl;
 static RESMPL_STATE opllResmpl;
 static UINT32 smplAlloc;
-static DEV_SMPL* smplData[2];
+static DEV_SMPL* smplData;
 static volatile bool canRender;
 
 static void OPLL_Write(DEVFUNC_WRITE_A8D8 write, void* info, UINT8 addr, UINT8 data)
@@ -131,7 +131,7 @@ int main(int argc, char* argv[])
 	devCfg.srMode = DEVRI_SRMODE_NATIVE;
 	devCfg.flags = 0x00;
 	devCfg.clock = 0x101D00;
-	retVal = SndEmu_Start(DEVID_OKIM6295, &devCfg, &okiDefInf);
+	retVal = SndEmu_Start(DEVID_MSM6295, &devCfg, &okiDefInf);
 	{
 		FILE* hFile = fopen("122a05.bin", "rb");	// load Hexion sample ROM
 		if (hFile != NULL)
@@ -186,22 +186,21 @@ int main(int argc, char* argv[])
 	
 	// setup resampler
 	smplAlloc = AudioDrv_GetBufferSize(audDrv) / smplSize;
-	smplData[0] = (DEV_SMPL*)malloc(smplAlloc * sizeof(DEV_SMPL) * 2);
-	smplData[1] = &smplData[0][smplAlloc];
+	smplData = (DEV_SMPL*)malloc(smplAlloc * sizeof(DEV_SMPL) * 2);
 	
 	snDefInf.devDef->Reset(snDefInf.dataPtr);
 	okiDefInf.devDef->Reset(okiDefInf.dataPtr);
 	opllDefInf.devDef->Reset(opllDefInf.dataPtr);
 	
-	Resmpl_SetVals(&snResmpl, 0xFF, 0xC0, opts->sampleRate);
+	Resmpl_SetVals(&snResmpl, RSMODE_LINEAR, 0xC0, opts->sampleRate);
 	Resmpl_DevConnect(&snResmpl, &snDefInf);
 	Resmpl_Init(&snResmpl);
 	
-	Resmpl_SetVals(&okiResmpl, 0xFF, 0x100, opts->sampleRate);
+	Resmpl_SetVals(&okiResmpl, RSMODE_LINEAR, 0x100, opts->sampleRate);
 	Resmpl_DevConnect(&okiResmpl, &okiDefInf);
 	Resmpl_Init(&okiResmpl);
 	
-	Resmpl_SetVals(&opllResmpl, 0xFF, 0x100, opts->sampleRate);
+	Resmpl_SetVals(&opllResmpl, RSMODE_LINEAR, 0x100, opts->sampleRate);
 	Resmpl_DevConnect(&opllResmpl, &opllDefInf);
 	Resmpl_Init(&opllResmpl);
 	canRender = true;
@@ -234,8 +233,8 @@ int main(int argc, char* argv[])
 	Resmpl_Deinit(&snResmpl);
 	Resmpl_Deinit(&okiResmpl);
 	Resmpl_Deinit(&opllResmpl);
-	free(smplData[0]);
-	smplData[0] = NULL;	smplData[1] = NULL;
+	free(smplData);
+	smplData = NULL;
 	
 Exit_SndDrvDeinit:
 	SndEmu_Stop(&snDefInf);
@@ -260,7 +259,7 @@ static UINT32 FillBuffer(void* drvStruct, void* userParam, UINT32 bufSize, void*
 	UINT32 smplCount;
 	INT16* SmplPtr16;
 	UINT32 curSmpl;
-	WAVE_32BS* smplDataW = (WAVE_32BS*)smplData[0];
+	WAVE_32BS* smplDataW = (WAVE_32BS*)smplData;
 	
 	if (! canRender)
 	{
@@ -269,8 +268,9 @@ static UINT32 FillBuffer(void* drvStruct, void* userParam, UINT32 bufSize, void*
 	}
 	
 	smplCount = bufSize / smplSize;
-	memset(smplData[0], 0, bufSize);
-	memset(smplData[1], 0, bufSize);
+	if (smplCount > smplAlloc)
+		smplCount = smplAlloc;
+	memset(smplDataW, 0, smplCount * sizeof(WAVE_32BS));
 	// emulate the sound chips
 	// The resampler requests samples when needed and mixes everything into the smplDataW buffer.
 	Resmpl_Execute(&snResmpl, smplCount, smplDataW);

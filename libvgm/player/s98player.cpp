@@ -43,7 +43,7 @@ enum S98_DEVTYPES
 	S98DEV_DCSG = 16,	// SN76489
 	S98DEV_END
 };
-static const UINT8 S98_DEV_LIST[S98DEV_END] = {
+static const DEV_ID S98_DEV_LIST[S98DEV_END] = {
 	0xFF,
 	DEVID_AY8910, DEVID_YM2203, DEVID_YM2612, DEVID_YM2608,
 	DEVID_YM2151, DEVID_YM2413, DEVID_YM3526, DEVID_YM3812,
@@ -65,7 +65,7 @@ static const char* const S98_TAG_MAPPING[] =
 	NULL,
 };
 
-/*static*/ const UINT8 S98Player::_OPT_DEV_LIST[_OPT_DEV_COUNT] =
+/*static*/ const DEV_ID S98Player::_OPT_DEV_LIST[_OPT_DEV_COUNT] =
 {
 	DEVID_AY8910, DEVID_YM2203, DEVID_YM2612, DEVID_YM2608,
 	DEVID_YM2151, DEVID_YM2413, DEVID_YM3526, DEVID_YM3812,
@@ -92,6 +92,7 @@ INLINE void SaveDeviceConfig(std::vector<UINT8>& dst, const void* srcData, size_
 }
 
 S98Player::S98Player() :
+	_fileHdr(),
 	_filePos(0),
 	_fileTick(0),
 	_playTick(0),
@@ -550,33 +551,98 @@ UINT8 S98Player::GetSongDeviceInfo(std::vector<PLR_DEV_INFO>& devInfList) const
 		return 0xFF;
 	
 	size_t curDev;
+	size_t diIdx;
 	
 	devInfList.clear();
-	devInfList.reserve(_devHdrs.size());
-	for (curDev = 0; curDev < _devHdrs.size(); curDev ++)
+	diIdx = _devHdrs.size();
+	for (curDev = 0; curDev < _devHdrs.size(); curDev++)
+	{
+		DEV_ID devType = S98_DEV_LIST[_devHdrs[curDev].devType];
+		if (! _devices.empty())
+		{
+			diIdx += _devices[curDev].base.defInf.linkDevCount;
+		}
+		else
+		{
+			const DEV_DECL* devDecl = SndEmu_GetDevDecl(devType, _userDevList, _devStartOpts);
+			const DEVLINK_IDS* dlIds = devDecl->linkDevIDs((const DEV_GEN_CFG*)&_devCfgs[curDev].data[0]);
+			if (dlIds != NULL && dlIds->devCount > 0)
+				diIdx += dlIds->devCount;
+		}
+	}
+	
+	devInfList.resize(diIdx);
+	for (curDev = 0, diIdx = 0; curDev < _devHdrs.size(); curDev ++)
 	{
 		const S98_DEVICE* devHdr = &_devHdrs[curDev];
-		PLR_DEV_INFO devInf;
-		memset(&devInf, 0x00, sizeof(PLR_DEV_INFO));
+		size_t diIdxParent = diIdx;
+		PLR_DEV_INFO& devInf = devInfList[diIdx];
+		diIdx ++;
 		
+		memset(&devInf, 0x00, sizeof(PLR_DEV_INFO));
 		devInf.id = (UINT32)curDev;
+		devInf.parentIdx = (UINT32)-1;
 		devInf.type = S98_DEV_LIST[devHdr->devType];
-		devInf.instance = GetDeviceInstance(curDev);
+		devInf.instance = (UINT16)GetDeviceInstance(curDev);
 		devInf.devCfg = (const DEV_GEN_CFG*)&_devCfgs[curDev].data[0];
 		if (! _devices.empty())
 		{
 			const VGM_BASEDEV& cDev = _devices[curDev].base;
+			const VGM_BASEDEV* clDev;
+			UINT32 curLDev;
+			
+			devInf.devDecl = cDev.defInf.devDecl;
 			devInf.core = (cDev.defInf.devDef != NULL) ? cDev.defInf.devDef->coreID : 0x00;
 			devInf.volume = (cDev.resmpl.volumeL + cDev.resmpl.volumeR) / 2;
 			devInf.smplRate = cDev.defInf.sampleRate;
+			
+			for (curLDev = 0, clDev = cDev.linkDev; curLDev < cDev.defInf.linkDevCount && clDev != NULL; curLDev ++, clDev = clDev->linkDev)
+			{
+				const DEVLINK_INFO* dLink = &cDev.defInf.linkDevs[curLDev];
+				PLR_DEV_INFO& lDevInf = devInfList[diIdx];
+				diIdx ++;
+				
+				memset(&lDevInf, 0x00, sizeof(PLR_DEV_INFO));
+				lDevInf.type = dLink->devID;
+				lDevInf.id = (UINT32)curDev;
+				lDevInf.parentIdx = diIdxParent;
+				lDevInf.instance = (UINT16)curLDev;
+				lDevInf.devCfg = dLink->cfg;
+				lDevInf.devDecl = clDev->defInf.devDecl;
+				lDevInf.core = (clDev->defInf.devDef != NULL) ? clDev->defInf.devDef->coreID : 0x00;
+				lDevInf.volume = (clDev->resmpl.volumeL + clDev->resmpl.volumeR) / 2;
+				lDevInf.smplRate = clDev->defInf.sampleRate;
+			}
 		}
 		else
 		{
+			devInf.devDecl = SndEmu_GetDevDecl(devInf.type, _userDevList, _devStartOpts);
 			devInf.core = 0x00;
 			devInf.volume = 0x100;
 			devInf.smplRate = 0;
+			
+			const DEVLINK_IDS* dlIds = devInf.devDecl->linkDevIDs(devInf.devCfg);
+			if (dlIds != NULL && dlIds->devCount > 0)
+			{
+				size_t curLDev;
+				for (curLDev = 0; curLDev < dlIds->devCount; curLDev ++)
+				{
+					PLR_DEV_INFO& lDevInf = devInfList[diIdx];
+					diIdx ++;
+					
+					memset(&lDevInf, 0x00, sizeof(PLR_DEV_INFO));
+					lDevInf.type = dlIds->devIDs[curLDev];
+					lDevInf.id = (UINT32)curDev;
+					lDevInf.parentIdx = diIdxParent;
+					lDevInf.instance = (UINT16)curLDev;
+					lDevInf.devDecl = SndEmu_GetDevDecl(lDevInf.type, _userDevList, _devStartOpts);
+					lDevInf.devCfg = NULL;
+					lDevInf.core = 0x00;
+					lDevInf.volume = 0xCD;
+					lDevInf.smplRate = 0;
+				}
+			}
 		}
-		devInfList.push_back(devInf);
 	}
 	if (! _devices.empty())
 		return 0x01;	// returned "live" data
@@ -584,17 +650,17 @@ UINT8 S98Player::GetSongDeviceInfo(std::vector<PLR_DEV_INFO>& devInfList) const
 		return 0x00;	// returned data based on file header
 }
 
-UINT8 S98Player::GetDeviceInstance(size_t id) const
+size_t S98Player::GetDeviceInstance(size_t id) const
 {
 	const S98_DEVICE* mainDHdr = &_devHdrs[id];
-	UINT8 mainDType = (mainDHdr->devType < S98DEV_END) ? S98_DEV_LIST[mainDHdr->devType] : 0xFF;
-	UINT8 instance = 0;
+	DEV_ID mainDType = (mainDHdr->devType < S98DEV_END) ? S98_DEV_LIST[mainDHdr->devType] : 0xFF;
+	size_t instance = 0;
 	size_t curDev;
 	
 	for (curDev = 0; curDev < id; curDev ++)
 	{
 		const S98_DEVICE* dHdr = &_devHdrs[curDev];
-		UINT8 dType = (dHdr->devType < S98DEV_END) ? S98_DEV_LIST[dHdr->devType] : 0xFF;
+		DEV_ID dType = (dHdr->devType < S98DEV_END) ? S98_DEV_LIST[dHdr->devType] : 0xFF;
 		if (dType == mainDType)
 			instance ++;
 	}
@@ -604,8 +670,8 @@ UINT8 S98Player::GetDeviceInstance(size_t id) const
 
 size_t S98Player::DeviceID2OptionID(UINT32 id) const
 {
-	UINT8 type;
-	UINT8 instance;
+	DEV_ID type;
+	size_t instance;
 	
 	if (id & 0x80000000)
 	{
@@ -738,6 +804,11 @@ UINT8 S98Player::SetSampleRate(UINT32 sampleRate)
 	return 0x00;
 }
 
+double S98Player::GetPlaybackSpeed(void) const
+{
+	return _playOpts.genOpts.pbSpeed / (double)0x10000;
+}
+
 UINT8 S98Player::SetPlaybackSpeed(double speed)
 {
 	_playOpts.genOpts.pbSpeed = (UINT32)(0x10000 * speed);
@@ -748,13 +819,14 @@ UINT8 S98Player::SetPlaybackSpeed(double speed)
 
 void S98Player::RefreshTSRates(void)
 {
-	_tsMult = _outSmplRate * _fileHdr.tickMult;
+	_ttMult = _fileHdr.tickMult;
 	_tsDiv = _fileHdr.tickDiv;
 	if (_playOpts.genOpts.pbSpeed != 0 && _playOpts.genOpts.pbSpeed != 0x10000)
 	{
-		_tsMult *= 0x10000;
+		_ttMult *= 0x10000;
 		_tsDiv *= _playOpts.genOpts.pbSpeed;
 	}
+	_tsMult = _ttMult * _outSmplRate;
 	if (_tsMult != _lastTsMult ||
 	    _tsDiv != _lastTsDiv)
 	{
@@ -784,7 +856,7 @@ double S98Player::Tick2Second(UINT32 ticks) const
 {
 	if (ticks == (UINT32)-1)
 		return -1.0;
-	return ticks * _fileHdr.tickMult / (double)_fileHdr.tickDiv;
+	return (INT64)(ticks * _ttMult) / (double)(INT64)_tsDiv;
 }
 
 UINT8 S98Player::GetState(void) const
@@ -960,8 +1032,8 @@ UINT8 S98Player::Start(void)
 		DEV_GEN_CFG* devCfg = (DEV_GEN_CFG*)&_devCfgs[curDev].data[0];
 		VGM_BASEDEV* clDev;
 		PLR_DEV_OPTS* devOpts;
-		UINT8 deviceID;
-		UINT8 instance;
+		DEV_ID deviceID;
+		size_t instance;
 		
 		cDev->base.defInf.dataPtr = NULL;
 		cDev->base.defInf.devDef = NULL;
@@ -988,7 +1060,7 @@ UINT8 S98Player::Start(void)
 		else
 			devCfg->smplRate = _outSmplRate;
 		
-		retVal = SndEmu_Start(deviceID, devCfg, &cDev->base.defInf);
+		retVal = SndEmu_Start2(deviceID, devCfg, &cDev->base.defInf, _userDevList, _devStartOpts);
 		if (retVal)
 		{
 			cDev->base.defInf.dataPtr = NULL;
@@ -1027,7 +1099,8 @@ UINT8 S98Player::Start(void)
 		
 		for (clDev = &cDev->base; clDev != NULL; clDev = clDev->linkDev)
 		{
-			Resmpl_SetVals(&clDev->resmpl, 0xFF, 0x100, _outSmplRate);
+			UINT8 resmplMode = (devOpts != NULL) ? devOpts->resmplMode : RSMODE_LINEAR;
+			Resmpl_SetVals(&clDev->resmpl, resmplMode, 0x100, _outSmplRate);
 			if (deviceID == DEVID_YM2203 || deviceID == DEVID_YM2608)
 			{
 				// set SSG volume

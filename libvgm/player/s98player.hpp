@@ -89,6 +89,7 @@ public:
 	
 	//UINT32 GetSampleRate(void) const;
 	UINT8 SetSampleRate(UINT32 sampleRate);
+	double GetPlaybackSpeed(void) const;
 	UINT8 SetPlaybackSpeed(double speed);
 	//void SetEventCallback(PLAYER_EVENT_CB cbFunc, void* cbParam);
 	UINT32 Tick2Sample(UINT32 ticks) const;
@@ -110,7 +111,7 @@ public:
 	UINT32 Render(UINT32 smplCnt, WAVE_32BS* data);
 	
 private:
-	UINT8 GetDeviceInstance(size_t id) const;
+	size_t GetDeviceInstance(size_t id) const;
 	size_t DeviceID2OptionID(UINT32 id) const;
 	void RefreshMuting(S98_CHIPDEV& chipDev, const PLR_MUTE_OPTS& muteOpts);
 	void RefreshPanning(S98_CHIPDEV& chipDev, const PLR_PAN_OPTS& panOpts);
@@ -158,11 +159,11 @@ private:
 	// tick/sample conversion rates
 	UINT64 _tsMult;
 	UINT64 _tsDiv;
-
+	UINT64 _ttMult;
 	UINT64 _lastTsMult;
 	UINT64 _lastTsDiv;
 	
-	static const UINT8 _OPT_DEV_LIST[_OPT_DEV_COUNT];	// list of configurable libvgm devices
+	static const DEV_ID _OPT_DEV_LIST[_OPT_DEV_COUNT];	// list of configurable libvgm devices
 	
 	S98_PLAY_OPTIONS _playOpts;
 	PLR_DEV_OPTS _devOpts[_OPT_DEV_COUNT * 2];	// space for 2 instances per chip

@@ -17,6 +17,8 @@
 
 #include "../../stdtype.h"
 #include "../snddef.h"
+#include "../EmuStructs.h"
+#include "../SoundDevs.h"
 #include "../EmuHelper.h"
 #include "../EmuCores.h"
 #include "../logging.h"
@@ -24,7 +26,7 @@
 
 
 static void okim6258_update(void *param, UINT32 samples, DEV_SMPL **outputs);
-static UINT8 device_start_okim6258(const OKIM6258_CFG* cfg, DEV_INFO* retDevInf);
+static UINT8 device_start_okim6258(const MSM6258_CFG* cfg, DEV_INFO* retDevInf);
 static void device_stop_okim6258(void *chip);
 static void device_reset_okim6258(void *chip);
 
@@ -71,10 +73,38 @@ static DEV_DEF devDef =
 	
 	devFunc,	// rwFuncs
 };
-const DEV_DEF* devDefList_OKIM6258[] =
+
+static const char* DeviceName(const DEV_GEN_CFG* devCfg)
 {
-	&devDef,
-	NULL
+	return "MSM6258";
+}
+
+static UINT16 DeviceChannels(const DEV_GEN_CFG* devCfg)
+{
+	return 1;
+}
+
+static const char** DeviceChannelNames(const DEV_GEN_CFG* devCfg)
+{
+	return NULL;
+}
+
+static const DEVLINK_IDS* DeviceLinkIDs(const DEV_GEN_CFG* devCfg)
+{
+	return NULL;
+}
+
+const DEV_DECL sndDev_MSM6258 =
+{
+	DEVID_MSM6258,
+	DeviceName,
+	DeviceChannels,
+	DeviceChannelNames,
+	DeviceLinkIDs,
+	{	// cores
+		&devDef,
+		NULL
+	}
 };
 
 
@@ -325,7 +355,7 @@ INLINE UINT32 get_vclk(okim6258_state* info)
 	return clk_rnd / info->divider;
 }
 
-static UINT8 device_start_okim6258(const OKIM6258_CFG* cfg, DEV_INFO* retDevInf)
+static UINT8 device_start_okim6258(const MSM6258_CFG* cfg, DEV_INFO* retDevInf)
 {
 	okim6258_state *info;
 

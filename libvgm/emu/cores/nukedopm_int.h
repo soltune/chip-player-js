@@ -1,5 +1,7 @@
+// license:LGPL-2.1+
+// copyright-holders:Nuke.YKT
 /* Nuked OPM
- * Copyright (C) 2020 Nuke.YKT
+ * Copyright (C) 2020, 2026 Nuke.YKT
  *
  * This file is part of Nuked OPM.
  *
@@ -18,13 +20,15 @@
  *
  *  Nuked OPM emulator.
  *  Thanks:
- *      siliconpr0n.org(digshadow, John McMaster):
+ *      John McMaster(siliconpr0n.org):
  *          YM2151 and other FM chip decaps and die shots.
+ *      gtr3qq (https://github.com/gtr3qq):
+ *          YM2164 decap
  *
- * version: 0.9 beta
+ * version: 1.0
  */
-#ifndef __NUKEDOPM_INT_H__
-#define __NUKEDOPM_INT_H__
+#ifndef NUKEDOPM_INT_H
+#define NUKEDOPM_INT_H
 
 #include "../../stdtype.h"
 #include "../snddef.h"
@@ -44,6 +48,11 @@ typedef struct {
     uint8_t data;
 } opm_writebuf;
 
+enum {
+    opm_flags_none = 0,
+    opm_flags_ym2164 = 1,   /* YM2164(OPP) */
+};
+
 typedef struct {
     DEV_DATA _devData;  // to alias DEV_DATA struct
     uint32_t clock;
@@ -52,6 +61,7 @@ typedef struct {
     uint32_t cycles;
     uint8_t ic;
     uint8_t ic2;
+    uint8_t opp;
     // IO
     uint8_t write_data;
     uint8_t write_a;
@@ -99,6 +109,7 @@ typedef struct {
     uint8_t eg_rate[2];
     uint8_t eg_sl[2];
     uint8_t eg_tl[3];
+    uint16_t eg_tl_opp;
     uint8_t eg_zr[2];
     uint8_t eg_timershift_lock;
     uint8_t eg_timer_lock;
@@ -115,7 +126,7 @@ typedef struct {
     uint8_t eg_mute;
     uint16_t eg_outtemp[2];
     uint16_t eg_out[2];
-    uint8_t eg_am;
+    uint16_t eg_am;
     uint8_t eg_ams[2];
     uint8_t eg_timercarry;
     uint32_t eg_timer;
@@ -134,6 +145,8 @@ typedef struct {
     uint8_t pg_reset[32];
     uint8_t pg_reset_latch[32];
     uint32_t pg_serial;
+    uint8_t pg_opp_pms;
+    uint8_t pg_opp_dt2[32];
 
     // Operator
     uint16_t op_phase_in;
@@ -157,6 +170,8 @@ typedef struct {
     int16_t op_fb[2];
     uint8_t op_mixl;
     uint8_t op_mixr;
+    uint8_t op_opp_rl;
+    uint8_t op_opp_fb[3];
 
     // Mixer
 
@@ -183,7 +198,7 @@ typedef struct {
     uint32_t noise_timer;
     uint8_t noise_timer_of;
     uint8_t noise_update;
-    uint8_t noise_temp;
+    uint8_t noise_bit;
 
     // Register set
     uint8_t mode_test[8];
@@ -218,6 +233,13 @@ typedef struct {
     uint8_t noise_en;
     uint8_t noise_freq;
 
+    // OPP
+    uint8_t ch_ramp_div[8];
+    uint8_t reg_20_delay;
+    uint8_t reg_28_delay;
+    uint8_t reg_30_delay;
+    uint8_t opp_tl_cnt[8];
+    uint16_t opp_tl[32];
 
     // Timer
     uint16_t timer_a_reg;
@@ -294,4 +316,4 @@ void NOPM_Reset(opm_t* chip, uint32_t rate, uint32_t clock);
 } // extern "C"
 #endif
 
-#endif	// __NUKEDOPM_INT_H__
+#endif // NUKEDOPM_INT_H

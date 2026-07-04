@@ -40,7 +40,6 @@ extern "C" int __cdecl _kbhit(void);
 #include "player/playera.hpp"
 #include "audio/AudioStream.h"
 #include "audio/AudioStream_SpcDrvFuns.h"
-#include "emu/Resampler.h"
 #include "emu/SoundDevs.h"	// for DEVID_*
 #include "emu/EmuCores.h"
 #include "utils/OSMutex.h"
@@ -95,6 +94,7 @@ static UINT32 masterVol = 0x10000;	// fixed point 16.16
 static UINT8 showTags = 1;
 static bool showFileInfo = false;
 static UINT8 logLevel = DEVLOG_INFO;
+static UINT8 pbTimeMode = PLAYTIME_LOOP_INCL | PLAYTIME_TIME_FILE;
 
 static PlayerA mainPlr;
 
@@ -323,8 +323,28 @@ int main(int argc, char* argv[])
 		for (curDev = 0; curDev < diList.size(); curDev ++)
 		{
 			const PLR_DEV_INFO& pdi = diList[curDev];
-			printf(" Dev %d: Type 0x%02X #%d, Core %s, Clock %u, Rate %u, Volume 0x%X\n",
-				(int)pdi.id, pdi.type, (INT8)pdi.instance, FCC2Str(pdi.core).c_str(), pdi.devCfg->clock, pdi.smplRate, pdi.volume);
+			const char* devName = "";
+			UINT16 chns = 0;
+			if (pdi.devDecl != NULL)
+			{
+				devName = pdi.devDecl->name(pdi.devCfg);
+				chns = pdi.devDecl->channelCount(pdi.devCfg);
+			}
+			if (pdi.parentIdx == (UINT32)-1)
+			{
+				// main device
+				printf(" Dev %d: Type 0x%02X %7s #%d, Core %-4s, Clk %u, Rate %u, Vol 0x%X, Chns %u\n",
+					(int)pdi.id, pdi.type, devName, (INT8)pdi.instance, FCC2Str(pdi.core).c_str(),
+					pdi.devCfg->clock, pdi.smplRate, pdi.volume, chns);
+			}
+			else
+			{
+				// linked device
+				UINT32 parentId = diList[pdi.parentIdx].id;
+				printf("  Dev %d-%d: Type 0x%02X %7s, Core %-4s, Clk %u, Rate %u, Vol 0x%X, Chns %u\n",
+					(int)parentId, (int)pdi.instance, pdi.type, devName, FCC2Str(pdi.core).c_str(),
+					pdi.devCfg->clock, pdi.smplRate, pdi.volume, chns);
+			}
 		}
 	}
 	const std::vector<VGMPlayer::DACSTRM_DEV>* vgmPcmStrms = NULL;
@@ -364,7 +384,7 @@ int main(int argc, char* argv[])
 				pState = "Playing";
 			if (vgmPcmStrms == NULL || vgmPcmStrms->empty())
 			{
-				printf("%s %.2f / %.2f ...   \r", pState, mainPlr.GetCurTime(1), mainPlr.GetTotalTime(1));
+				printf("%s %.2f / %.2f ...   \r", pState, mainPlr.GetCurTime(pbTimeMode), mainPlr.GetTotalTime(pbTimeMode));
 			}
 			else
 			{
@@ -377,7 +397,7 @@ int main(int argc, char* argv[])
 				if (pbMode.length() == 1)
 					pbMode = "";
 				printf("%s %.2f / %.2f [%02X / %02X at %4.1f KHz%s] ...     \r",
-					pState, mainPlr.GetCurTime(1), mainPlr.GetTotalTime(1),
+					pState, mainPlr.GetCurTime(pbTimeMode), mainPlr.GetTotalTime(pbTimeMode),
 					1 + strmDev->lastItem, strmDev->maxItems, strmDev->freq / 1000.0,
 					pbMode.c_str());
 			}
@@ -509,6 +529,7 @@ Sound Chip ID:
 		T param - show tags (0/D/OFF - off, 1/E/ON - on)
 		FI param - show file information (see above)
 		LL param - set log level (0..5 = off/error/warn/info/debug/trace, see emu/EmuStructs.h)
+		TD param - set time display mode (bit mask: 0/1 = exclude/include loops, 0/2 = file/playback time, 4 = with fade time)
 		Q - quit
 	P - player configuration
 		SPD param - set playback speed (1.0 = 100%)
@@ -525,7 +546,7 @@ Sound Chip ID:
 		O param - set sound core options (core-specific)
 		SRM param - set sample rate mode (0/1/2, see DEVRI_SRMODE_*)
 		SR param - set emulated sample rate (0 = use rate of output stream)
-		RSM param - set resampling mode [not working]
+		RSM param - set resampling mode
 		M param,param,... - set mute options
 			This is a list of channels to be toggled. (0 = first channel)
 			Additional valid letters:
@@ -558,7 +579,9 @@ static void DoChipControlMode(PlayerBase* player)
 			
 			// number (sound chip ID) / D (display) / P (player options)
 			printf("Sound Chip ID: ");
-			fgets(line, 0x80, stdin);
+			endPtr = fgets(line, 0x80, stdin);
+			if (endPtr == NULL)
+				return;
 			StripNewline(line);
 			if (line[0] == '\0')
 				return;
@@ -653,7 +676,9 @@ static void DoChipControlMode(PlayerBase* player)
 			
 			// Core / Linked Core / Opts / SRMode / SampleRate / ReSampleMode / Muting
 			printf("Command [C/LC/O/SRM/SR/RSM/M data]: ");
-			fgets(line, 0x80, stdin);
+			endPtr = fgets(line, 0x80, stdin);
+			if (endPtr == NULL)
+				return;
 			StripNewline(line);
 			
 			tokenStr = strtok(line, " ");
@@ -776,8 +801,10 @@ static void DoChipControlMode(PlayerBase* player)
 				
 				droplay->GetPlayerOptions(playOpts);
 				
-				printf("Command [OPL3 data]: ");
-				fgets(line, 0x80, stdin);
+				printf("Command [SPD/OPL3 data]: ");
+				endPtr = fgets(line, 0x80, stdin);
+				if (endPtr == NULL)
+					return;
 				StripNewline(line);
 				
 				tokenStr = strtok(line, " ");
@@ -812,7 +839,9 @@ static void DoChipControlMode(PlayerBase* player)
 				s98play->GetPlayerOptions(playOpts);
 				
 				printf("Command [SPD data]: ");
-				fgets(line, 0x80, stdin);
+				endPtr = fgets(line, 0x80, stdin);
+				if (endPtr == NULL)
+					return;
 				StripNewline(line);
 				
 				tokenStr = strtok(line, " ");
@@ -841,7 +870,9 @@ static void DoChipControlMode(PlayerBase* player)
 				vgmplay->GetPlayerOptions(playOpts);
 				
 				printf("Command [SPD/PHZ/HSO data]: ");
-				fgets(line, 0x80, stdin);
+				endPtr = fgets(line, 0x80, stdin);
+				if (endPtr == NULL)
+					return;
 				StripNewline(line);
 				
 				tokenStr = strtok(line, " ");
@@ -882,7 +913,9 @@ static void DoChipControlMode(PlayerBase* player)
 				gymplay->GetPlayerOptions(playOpts);
 				
 				printf("Command [SPD data]: ");
-				fgets(line, 0x80, stdin);
+				endPtr = fgets(line, 0x80, stdin);
+				if (endPtr == NULL)
+					return;
 				StripNewline(line);
 				
 				tokenStr = strtok(line, " ");
@@ -913,8 +946,10 @@ static void DoChipControlMode(PlayerBase* player)
 			char* tokenStr;
 			
 			// Tags / FileInfo
-			printf("Command [T/FI/LL data]: ");
-			fgets(line, 0x80, stdin);
+			printf("Command [T/FI/LL/TD data]: ");
+			endPtr = fgets(line, 0x80, stdin);
+			if (endPtr == NULL)
+				return;
 			StripNewline(line);
 			
 			tokenStr = strtok(line, " ");
@@ -951,6 +986,12 @@ static void DoChipControlMode(PlayerBase* player)
 				if (endPtr > tokenStr)
 					logLevel = newLevel;
 			}
+			else if (! strcmp(line, "TD"))
+			{
+				UINT8 newTimeMode = (UINT8)strtoul(tokenStr, &endPtr, 0);
+				if (endPtr > tokenStr)
+					pbTimeMode = newTimeMode;
+			}
 			else if (! strcmp(line, "Q"))
 				mode = -1;
 			else
@@ -978,12 +1019,13 @@ static void StripNewline(char* str)
 
 static std::string FCC2Str(UINT32 fcc)
 {
-	std::string result(4, '\0');
+	char result[5];
 	result[0] = (char)((fcc >> 24) & 0xFF);
 	result[1] = (char)((fcc >> 16) & 0xFF);
 	result[2] = (char)((fcc >>  8) & 0xFF);
 	result[3] = (char)((fcc >>  0) & 0xFF);
-	return result;
+	result[4] = '\0';
+	return std::string(result);
 }
 
 static UINT8 *SlurpFile(const char *fileName, UINT32 *fileSize)
@@ -1075,6 +1117,8 @@ static UINT8 FilePlayCallback(PlayerBase* player, void* userParam, UINT8 evtType
 static DATA_LOADER* RequestFileCallback(void* userParam, PlayerBase* player, const char* fileName)
 {
 	DATA_LOADER* dLoad = FileLoader_Init(fileName);
+	if (dLoad == NULL)
+		return NULL;
 	UINT8 retVal = DataLoader_Load(dLoad);
 	if (! retVal)
 		return dLoad;

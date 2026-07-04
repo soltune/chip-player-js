@@ -87,19 +87,93 @@ const char* GYMPlayer::GetPlayerName(void) const
 
 /*static*/ UINT8 GYMPlayer::PlayerCanLoadFile(DATA_LOADER *dataLoader)
 {
-	DataLoader_ReadUntil(dataLoader,0x04);
+	DataLoader_ReadUntil(dataLoader, 0x04);
 	if (DataLoader_GetSize(dataLoader) < 0x04)
 		return 0xF1;	// file too small
 	if (! memcmp(&DataLoader_GetData(dataLoader)[0x00], "GYMX", 4))
 		return 0x00;	// valid GYMX header
-	if (DataLoader_GetData(dataLoader)[0x00] <= 0x03)	// check for a valid command byte
-		return 0x00;
+	DataLoader_ReadUntil(dataLoader, 0x200);
+	if (CheckRawGYMFile(DataLoader_GetSize(dataLoader), DataLoader_GetData(dataLoader)))
+		return 0x00;	// the heuristic for detection raw GYM files found no issues
 	return 0xF0;	// invalid file
 }
 
 UINT8 GYMPlayer::CanLoadFile(DATA_LOADER *dataLoader) const
 {
 	return this->PlayerCanLoadFile(dataLoader);
+}
+
+/*static*/ bool GYMPlayer::CheckRawGYMFile(UINT32 dataLen, const UINT8* data)
+{
+	UINT32 filePos;
+	bool fileEnd;
+	UINT8 curCmd;
+	UINT8 curReg;
+	UINT8 doPSGFreq2nd;
+	
+	fileEnd = false;
+	filePos = 0x00;
+	
+	while(filePos < dataLen && data[filePos] == 0x00)
+		filePos ++;
+	if (filePos >= dataLen)
+		return false;	// only 00s - assume invalid file
+	
+	doPSGFreq2nd = false;
+	while(! fileEnd && filePos < dataLen)
+	{
+		curCmd = data[filePos];
+		filePos ++;
+		switch(curCmd)
+		{
+		case 0x00:	// wait 1 frame
+			doPSGFreq2nd = false;
+			break;
+		case 0x01:	// YM2612 port 0
+		case 0x02:	// YM2612 port 1
+			if (filePos + 0x02 > dataLen)
+				break;
+			curReg = data[filePos + 0x00];
+			// valid YM2612 registers are:
+			//	port 0: 21..B7
+			//	port 1: 30..B7
+			if (curReg >= 0xB8)
+				return false;
+			if (curCmd == 0x01 && curReg < 0x21)
+				return false;
+			if (curCmd == 0x02 && curReg < 0x30)
+				return false;
+			filePos += 0x02;
+			break;
+		case 0x03:	// SEGA PSG
+			if (filePos + 0x01 > dataLen)
+				break;
+			curReg = data[filePos];
+			if (curReg & 0x80)
+			{
+				// bit 7 set = command byte
+				if ((curReg & 0x10) == 0x00 && (curReg < 0xE0))
+					doPSGFreq2nd = true;	// frequency write - usually followed by a command 00..3F
+				else
+					doPSGFreq2nd = false;	// single command write (volume or noise type)
+			}
+			else if (doPSGFreq2nd && curReg < 0x40)
+			{
+				// this is valid
+				doPSGFreq2nd = false;	// expect no other byte
+			}
+			else
+			{
+				return false;	// invalid PSG values
+			}
+			filePos += 0x01;
+			break;
+		default:
+			return false;	// assume invalid file
+		}
+	}
+	
+	return true;
 }
 
 UINT8 GYMPlayer::LoadFile(DATA_LOADER *dataLoader)
@@ -212,7 +286,7 @@ void GYMPlayer::CalcSongLength(void)
 			filePos += 0x01;
 			break;
 		default:
-			fileEnd = true;
+			// just ignore unknown commands
 			break;
 		}
 	}
@@ -340,18 +414,21 @@ UINT8 GYMPlayer::GetSongDeviceInfo(std::vector<PLR_DEV_INFO>& devInfList) const
 		memset(&devInf, 0x00, sizeof(PLR_DEV_INFO));
 		
 		devInf.id = (UINT32)curDev;
+		devInf.parentIdx = (UINT32)-1;
 		devInf.type = _devCfgs[curDev].type;
 		devInf.instance = 0;
 		devInf.devCfg = devCfg;
 		if (! _devices.empty())
 		{
 			const VGM_BASEDEV& cDev = _devices[curDev].base;
+			devInf.devDecl = cDev.defInf.devDecl;
 			devInf.core = (cDev.defInf.devDef != NULL) ? cDev.defInf.devDef->coreID : 0x00;
 			devInf.volume = (cDev.resmpl.volumeL + cDev.resmpl.volumeR) / 2;
 			devInf.smplRate = cDev.defInf.sampleRate;
 		}
 		else
 		{
+			devInf.devDecl = SndEmu_GetDevDecl(devInf.type, _userDevList, _devStartOpts);
 			devInf.core = 0x00;
 			devInf.volume = _devCfgs[curDev].volume;
 			devInf.smplRate = 0;
@@ -366,7 +443,7 @@ UINT8 GYMPlayer::GetSongDeviceInfo(std::vector<PLR_DEV_INFO>& devInfList) const
 
 size_t GYMPlayer::DeviceID2OptionID(UINT32 id) const
 {
-	UINT8 type;
+	DEV_ID type;
 	UINT8 instance;
 	
 	if (id & 0x80000000)
@@ -485,6 +562,11 @@ UINT8 GYMPlayer::SetSampleRate(UINT32 sampleRate)
 	return 0x00;
 }
 
+double GYMPlayer::GetPlaybackSpeed(void) const
+{
+	return _playOpts.genOpts.pbSpeed / (double)0x10000;
+}
+
 UINT8 GYMPlayer::SetPlaybackSpeed(double speed)
 {
 	_playOpts.genOpts.pbSpeed = (UINT32)(0x10000 * speed);
@@ -495,13 +577,14 @@ UINT8 GYMPlayer::SetPlaybackSpeed(double speed)
 
 void GYMPlayer::RefreshTSRates(void)
 {
-	_tsMult = _outSmplRate;
+	_ttMult = 1;
 	_tsDiv = _tickFreq;
 	if (_playOpts.genOpts.pbSpeed != 0 && _playOpts.genOpts.pbSpeed != 0x10000)
 	{
-		_tsMult *= 0x10000;
+		_ttMult *= 0x10000;
 		_tsDiv *= _playOpts.genOpts.pbSpeed;
 	}
+	_tsMult = _ttMult * _outSmplRate;
 	if (_tsMult != _lastTsMult ||
 	    _tsDiv != _lastTsDiv)
 	{
@@ -531,7 +614,7 @@ double GYMPlayer::Tick2Second(UINT32 ticks) const
 {
 	if (ticks == (UINT32)-1)
 		return -1.0;
-	return ticks / (double)_tickFreq;
+	return (INT64)(ticks * _ttMult) / (double)(INT64)_tsDiv;
 }
 
 UINT8 GYMPlayer::GetState(void) const
@@ -659,7 +742,7 @@ UINT8 GYMPlayer::Start(void)
 		else
 			devCfg->smplRate = _outSmplRate;
 		
-		retVal = SndEmu_Start(_devCfgs[curDev].type, devCfg, &cDev->base.defInf);
+		retVal = SndEmu_Start2(_devCfgs[curDev].type, devCfg, &cDev->base.defInf, _userDevList, _devStartOpts);
 		if (retVal)
 		{
 			cDev->base.defInf.dataPtr = NULL;
@@ -684,7 +767,8 @@ UINT8 GYMPlayer::Start(void)
 		
 		for (clDev = &cDev->base; clDev != NULL; clDev = clDev->linkDev)
 		{
-			Resmpl_SetVals(&clDev->resmpl, 0xFF, _devCfgs[curDev].volume, _outSmplRate);
+			UINT8 resmplMode = (devOpts != NULL) ? devOpts->resmplMode : RSMODE_LINEAR;
+			Resmpl_SetVals(&clDev->resmpl, resmplMode, _devCfgs[curDev].volume, _outSmplRate);
 			Resmpl_DevConnect(&clDev->resmpl, &clDev->defInf);
 			Resmpl_Init(&clDev->resmpl);
 		}
@@ -1004,6 +1088,9 @@ void GYMPlayer::DoCommand(void)
 			
 			cDev->write(dataPtr, SN76496_W_REG, data);
 		}
+		return;
+	default:
+		emu_logf(&_logger, PLRLOG_WARN, "Unknown GYM command %02X found! (filePos 0x%06X)\n", curCmd, _filePos - 0x01);
 		return;
 	}
 	

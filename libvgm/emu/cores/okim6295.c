@@ -55,6 +55,8 @@
 
 #include "../../stdtype.h"
 #include "../snddef.h"
+#include "../EmuStructs.h"
+#include "../SoundDevs.h"
 #include "../EmuHelper.h"
 #include "../EmuCores.h"
 #include "../logging.h"
@@ -113,10 +115,38 @@ static DEV_DEF devDef =
 	
 	devFunc,	// rwFuncs
 };
-const DEV_DEF* devDefList_OKIM6295[] =
+
+static const char* DeviceName(const DEV_GEN_CFG* devCfg)
 {
-	&devDef,
-	NULL
+	return "MSM6295";
+}
+
+static UINT16 DeviceChannels(const DEV_GEN_CFG* devCfg)
+{
+	return 4;
+}
+
+static const char** DeviceChannelNames(const DEV_GEN_CFG* devCfg)
+{
+	return NULL;
+}
+
+static const DEVLINK_IDS* DeviceLinkIDs(const DEV_GEN_CFG* devCfg)
+{
+	return NULL;
+}
+
+const DEV_DECL sndDev_MSM6295 =
+{
+	DEVID_MSM6295,
+	DeviceName,
+	DeviceChannels,
+	DeviceChannelNames,
+	DeviceLinkIDs,
+	{	// cores
+		&devDef,
+		NULL
+	}
 };
 
 
@@ -564,8 +594,6 @@ static void okim6295_w(void* chip, UINT8 offset, UINT8 data)
 	case 0x0B:
 		info->clock_buffer[offset & 0x03] = data;
 		okim6295_set_clock(chip, 0);	// refresh clock from clock_buffer
-		if (info->SmpRateFunc != NULL)
-			info->SmpRateFunc(info->SmpRateData, okim6295_get_rate(chip));
 		break;
 	case 0x0C:
 		okim6295_set_pin7(info, data);

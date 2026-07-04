@@ -1,5 +1,5 @@
 #### libvgm ####
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.12)	# should work with >=3.4
 if(POLICY CMP0042)
 	cmake_policy(SET CMP0042 NEW)
 endif()
@@ -12,7 +12,8 @@ endif()
 
 project(libvgmMain VERSION 0.1 LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_C_STANDARD 90)
+set(CMAKE_CXX_STANDARD 98)
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/libs/cmake_modules/")
 
@@ -238,13 +239,14 @@ option(BUILD_PLAYER "build player application" ON)
 option(BUILD_VGM2WAV "build sample vgm2wav application" ON)
 set(LIBRARY_TYPE "STATIC" CACHE STRING "library build type (static/shared)")
 set_property(CACHE LIBRARY_TYPE PROPERTY STRINGS "SHARED;STATIC")
+option(REALLY_NEED_CXX14 "I really need C++14" OFF)
 option(USE_SANITIZERS "use sanitizers" ON)
 
 
 # --- main library ---
 add_subdirectory(utils)
 if(USE_SANITIZERS)
-	add_sanitizers(utils)
+	add_sanitizers(vgm-utils)
 endif(USE_SANITIZERS)
 
 if(BUILD_LIBAUDIO)
@@ -327,7 +329,7 @@ endif(BUILD_VGM2WAV)
 
 set(COMMON_HEADERS
 	common_def.h
-	stdbool.h
+	_stdbool.h
 	stdtype.h
 )
 

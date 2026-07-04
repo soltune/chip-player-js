@@ -391,18 +391,21 @@ UINT8 DROPlayer::GetSongDeviceInfo(std::vector<PLR_DEV_INFO>& devInfList) const
 		memset(&devInf, 0x00, sizeof(PLR_DEV_INFO));
 		
 		devInf.id = (UINT32)curDev;
+		devInf.parentIdx = (UINT32)-1;
 		devInf.type = _devTypes[curDev];
-		devInf.instance = (UINT8)curDev;
+		devInf.instance = (UINT16)curDev;
 		devInf.devCfg = devCfg;
 		if (! _devices.empty())
 		{
 			const VGM_BASEDEV& cDev = _devices[curDev].base;
+			devInf.devDecl = cDev.defInf.devDecl;
 			devInf.core = (cDev.defInf.devDef != NULL) ? cDev.defInf.devDef->coreID : 0x00;
 			devInf.volume = (cDev.resmpl.volumeL + cDev.resmpl.volumeR) / 2;
 			devInf.smplRate = cDev.defInf.sampleRate;
 		}
 		else
 		{
+			devInf.devDecl = SndEmu_GetDevDecl(devInf.type, _userDevList, _devStartOpts);
 			devInf.core = 0x00;
 			devInf.volume = 0x100;
 			devInf.smplRate = 0;
@@ -417,7 +420,7 @@ UINT8 DROPlayer::GetSongDeviceInfo(std::vector<PLR_DEV_INFO>& devInfList) const
 
 size_t DROPlayer::DeviceID2OptionID(UINT32 id) const
 {
-	UINT8 type;
+	DEV_ID type;
 	UINT8 instance;
 	
 	if (id & 0x80000000)
@@ -541,6 +544,11 @@ UINT8 DROPlayer::SetSampleRate(UINT32 sampleRate)
 	return 0x00;
 }
 
+double DROPlayer::GetPlaybackSpeed(void) const
+{
+	return _playOpts.genOpts.pbSpeed / (double)0x10000;
+}
+
 UINT8 DROPlayer::SetPlaybackSpeed(double speed)
 {
 	_playOpts.genOpts.pbSpeed = (UINT32)(0x10000 * speed);
@@ -551,13 +559,14 @@ UINT8 DROPlayer::SetPlaybackSpeed(double speed)
 
 void DROPlayer::RefreshTSRates(void)
 {
-	_tsMult = _outSmplRate;
+	_ttMult = 1;
 	_tsDiv = _tickFreq;
 	if (_playOpts.genOpts.pbSpeed != 0 && _playOpts.genOpts.pbSpeed != 0x10000)
 	{
-		_tsMult *= 0x10000;
+		_ttMult *= 0x10000;
 		_tsDiv *= _playOpts.genOpts.pbSpeed;
 	}
+	_tsMult = _ttMult * _outSmplRate;
 	if (_tsMult != _lastTsMult ||
 	    _tsDiv != _lastTsDiv)
 	{
@@ -587,7 +596,7 @@ double DROPlayer::Tick2Second(UINT32 ticks) const
 {
 	if (ticks == (UINT32)-1)
 		return -1.0;
-	return ticks / (double)_tickFreq;
+	return (INT64)(ticks * _ttMult) / (double)(INT64)_tsDiv;
 }
 
 UINT8 DROPlayer::GetState(void) const
@@ -712,7 +721,7 @@ UINT8 DROPlayer::Start(void)
 		else
 			devCfg->smplRate = _outSmplRate;
 		
-		retVal = SndEmu_Start(_devTypes[curDev], devCfg, &cDev->base.defInf);
+		retVal = SndEmu_Start2(_devTypes[curDev], devCfg, &cDev->base.defInf, _userDevList, _devStartOpts);
 		if (retVal)
 		{
 			cDev->base.defInf.dataPtr = NULL;
@@ -737,10 +746,12 @@ UINT8 DROPlayer::Start(void)
 		
 		for (clDev = &cDev->base; clDev != NULL; clDev = clDev->linkDev)
 		{
+			UINT8 resmplMode = (devOpts != NULL) ? devOpts->resmplMode : RSMODE_LINEAR;
+			
 			if (devOpts != NULL && clDev->defInf.devDef->SetMuteMask != NULL)
 				clDev->defInf.devDef->SetMuteMask(clDev->defInf.dataPtr, devOpts->muteOpts.chnMute[0]);
 			
-			Resmpl_SetVals(&clDev->resmpl, 0xFF, 0x100, _outSmplRate);
+			Resmpl_SetVals(&clDev->resmpl, resmplMode, 0x100, _outSmplRate);
 			// do DualOPL2 hard panning by muting either the left or right speaker
 			if (_devPanning[curDev] & 0x02)
 				clDev->resmpl.volumeL = 0x00;

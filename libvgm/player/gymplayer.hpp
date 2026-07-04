@@ -48,7 +48,7 @@ class GYMPlayer : public PlayerBase
 private:
 	struct DevCfg
 	{
-		UINT8 type;
+		DEV_ID type;
 		UINT16 volume;
 		std::vector<UINT8> data;
 	};
@@ -89,6 +89,7 @@ public:
 	
 	//UINT32 GetSampleRate(void) const;
 	UINT8 SetSampleRate(UINT32 sampleRate);
+	double GetPlaybackSpeed(void) const;
 	UINT8 SetPlaybackSpeed(double speed);
 	//void SetEventCallback(PLAYER_EVENT_CB cbFunc, void* cbParam);
 	UINT32 Tick2Sample(UINT32 ticks) const;
@@ -114,6 +115,7 @@ private:
 	void RefreshMuting(GYM_CHIPDEV& chipDev, const PLR_MUTE_OPTS& muteOpts);
 	void RefreshPanning(GYM_CHIPDEV& chipDev, const PLR_PAN_OPTS& panOpts);
 	
+	static bool CheckRawGYMFile(UINT32 dataLen, const UINT8* data);
 	UINT8 DecompressZlibData(void);
 	void CalcSongLength(void);
 	UINT8 LoadTags(void);
@@ -159,7 +161,7 @@ private:
 	// tick/sample conversion rates
 	UINT64 _tsMult;
 	UINT64 _tsDiv;
-	
+	UINT64 _ttMult;
 	UINT64 _lastTsMult;
 	UINT64 _lastTsDiv;
 	

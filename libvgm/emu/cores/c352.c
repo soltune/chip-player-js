@@ -23,6 +23,7 @@
 
 #include "../../stdtype.h"
 #include "../EmuStructs.h"
+#include "../SoundDevs.h"
 #include "../EmuCores.h"
 #include "../snddef.h"
 #include "../EmuHelper.h"
@@ -55,7 +56,7 @@ static DEVDEF_RWFUNC devFunc[] =
 };
 static DEV_DEF devDef =
 {
-	"C352", "MAME", FCC_MAME,
+	"C352", "superctr", FCC_CTR_,
 	
 	device_start_c352,
 	device_stop_c352,
@@ -72,10 +73,37 @@ static DEV_DEF devDef =
 	devFunc,	// rwFuncs
 };
 
-const DEV_DEF* devDefList_C352[] =
+static const char* DeviceName(const DEV_GEN_CFG* devCfg)
 {
-	&devDef,
-	NULL
+	return "C352";
+}
+
+static UINT16 DeviceChannels(const DEV_GEN_CFG* devCfg)
+{
+	return 32;
+}
+
+static const char** DeviceChannelNames(const DEV_GEN_CFG* devCfg)
+{
+	return NULL;
+}
+
+static const DEVLINK_IDS* DeviceLinkIDs(const DEV_GEN_CFG* devCfg)
+{
+	return NULL;
+}
+
+const DEV_DECL sndDev_C352 =
+{
+	DEVID_C352,
+	DeviceName,
+	DeviceChannels,
+	DeviceChannelNames,
+	DeviceLinkIDs,
+	{	// cores
+		&devDef,
+		NULL
+	}
 };
 
 
