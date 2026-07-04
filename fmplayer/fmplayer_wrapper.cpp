@@ -192,7 +192,7 @@ static int get_fmp_duration(struct fmdriver_work *work, struct driver_fmp *fmp, 
 
 static char* to_utf8(iconv_t ic, char* in_sjis, char* out_utf8) {
     size_t	in_size = strlen(in_sjis);
-    size_t	out_size = (size_t)TEXT_MAX;
+    size_t	out_size = (size_t)TEXT_MAX - 1; // reserve room for the trailing NUL
 
     iconv( ic, &in_sjis, &in_size, &out_utf8, &out_size );
     *out_utf8 = '\0';
@@ -234,7 +234,10 @@ extern "C" void EMSCRIPTEN_KEEPALIVE fmp_teardown (void) {
     free((void*) fmp.data);
     memset(fmp_sample_buffer, 0, sizeof(fmp_sample_buffer));
 	for (int i = 0; i < FMP_COMMENT_COUNT; i++) {
-	    free(&fmp_info_texts[i]);
+	    // free the malloc'd string, not the address of the static array slot;
+	    // free(&fmp_info_texts[i]) corrupted emmalloc metadata into static data
+	    free(fmp_info_texts[i]);
+	    fmp_info_texts[i] = NULL;
 	}
 	fmp_play_len = 0;
 	fmp_loop_detected = false;
@@ -255,12 +258,16 @@ extern "C"  int fmp_load_file(char *filename, void * inBuffer, uint32_t inBufSiz
 extern "C"  int EMSCRIPTEN_KEEPALIVE fmp_load_file(char *filename, void * inBuffer, uint32_t inBufSize) {
 	fmp_teardown();
 
+	if (inBufSize > UINT16_MAX) { // FMP data is 16-bit addressed; larger files are invalid
+	    return 1;
+	}
 	uint8_t *fmp_data = (uint8_t*) malloc(inBufSize * sizeof(uint8_t));
 	if (fmp_data == NULL) {
 	    return 1;
 	}
     memcpy(fmp_data, inBuffer, inBufSize);
 	if (!fmp_load(&fmp, fmp_data, (uint16_t) inBufSize)) {
+        free(fmp_data);
         return 1;
     }
 
@@ -329,8 +336,11 @@ extern "C" const char** EMSCRIPTEN_KEEPALIVE fmp_get_pcm_filenames() {
 
 extern "C" int fmp_load_pvi(const char* pvi_absolute_path) __attribute__((noinline));
 extern "C" int EMSCRIPTEN_KEEPALIVE fmp_load_pvi(const char* pvi_absolute_path) {
-    size_t filesize;
+    size_t filesize = 0;
     void *buf = fileread(pvi_absolute_path, 0, &filesize);
+    if (!buf) {
+        return 1;
+    }
     if (!fmp_adpcm_load(&fmp_work, (uint8_t *) buf, filesize)) {
         free(buf);
         return 1;

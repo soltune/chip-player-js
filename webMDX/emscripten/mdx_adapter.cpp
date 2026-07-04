@@ -79,7 +79,7 @@ char* internalRhythmPath = "/rhythm";
 
 static char* to_utf8(iconv_t ic, char* in_sjis, char* out_utf8) {
     size_t	in_size = strlen(in_sjis);
-    size_t	out_size = (size_t)TEXT_MAX;
+    size_t	out_size = (size_t)TEXT_MAX - 1; // reserve room for the trailing NUL
 
     iconv( ic, &in_sjis, &in_size, &out_utf8, &out_size );
     *out_utf8 = '\0';
@@ -144,6 +144,8 @@ static void do_teardown() {
 
 		for (int i = 0; i < 4; i ++) {
 		    free(pmd_pcm_filenames[i]);
+		    // avoid double free / stale reads when the next load fails
+		    pmd_pcm_filenames[i] = NULL;
 		}
 		initialized= 0;
 	}

@@ -80,12 +80,15 @@ int isUnicodeTag;
 
 static char* to_utf8(iconv_t ic, char* in_sjis, char* out_utf8) {
     if ( isUnicodeTag ) {
-        strcpy( out_utf8, in_sjis );
+        // tags come from raw_info_buffer (1024 bytes); an unbounded strcpy
+        // overflows the 255-byte static destination arrays
+        strncpy( out_utf8, in_sjis, TEXT_MAX - 1 );
+        out_utf8[TEXT_MAX - 1] = '\0';
         return out_utf8;
     }
 
     size_t  in_size = strlen(in_sjis);
-    size_t  out_size = (size_t)TEXT_MAX;
+    size_t  out_size = (size_t)TEXT_MAX - 1; // reserve room for the trailing NUL
 
     iconv( ic, &in_sjis, &in_size, &out_utf8, &out_size );
     *out_utf8 = '\0';
