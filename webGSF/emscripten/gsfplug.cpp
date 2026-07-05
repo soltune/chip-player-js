@@ -53,6 +53,7 @@
 #include <mgba/core/log.h>
 
 #include <psflib.h>
+#include <zlib.h>
 
 
 static unsigned int g_cat_arm = 0;
@@ -103,7 +104,10 @@ static struct gsf_set_logger
 #include <mgba-util/memory.h>
 
 extern "C" void* anonymousMemoryMap(size_t size) {
-	return malloc(size);
+	// mGBA expects mmap(MAP_ANONYMOUS) semantics, i.e. zero-filled pages.
+	// Plain malloc leaks previous heap contents into emulated RAM, making
+	// playback depend on allocation history (audibly nondeterministic).
+	return calloc(1, size);
 }
 
 extern "C" void mappedMemoryFree(void* memory, size_t size) {
@@ -568,6 +572,75 @@ int gsf_loader(void * context, const uint8_t * exe, size_t exe_size,
     return 0;
 }
 
+/*
+	Decompressed-lib cache: minigsf album playback loads the same multi-MB
+	.gsflib for every track; inflating it dominates track-switch latency.
+	Cache the decompressed lib ROM image keyed by lib URI, so switching
+	tracks within one set only re-inflates the tiny track exe.
+	Single entry; survives gsf_shutdown/gba_init on purpose.
+	(Same pattern as twosfplug.cpp's g_lib_cache.)
+*/
+struct gsf_lib_cache
+{
+	std::string uri;
+	uint8_t *data;
+	size_t data_size;
+	uint32_t entry;
+	int entry_set;
+	bool valid;
+
+	gsf_lib_cache() : data(0), data_size(0), entry(0), entry_set(0), valid(false) {}
+
+	void clear()
+	{
+		uri.clear();
+		if (data) { free(data); data = 0; }
+		data_size = 0;
+		entry = 0;
+		entry_set = 0;
+		valid = false;
+	}
+};
+static gsf_lib_cache g_lib_cache;
+
+// Inflates a PSF exe section. Returns a malloc'd buffer (caller frees), or
+// NULL on error. Grows geometrically; minigsf exes are tiny so this rarely
+// iterates more than once.
+static uint8_t *inflate_psf_exe(const uint8_t *cdata, size_t csize, size_t *out_size)
+{
+	uLongf capacity = (uLongf)(csize * 4 + 256);
+	uint8_t *buf = (uint8_t *)malloc(capacity);
+	if (!buf)
+		return NULL;
+
+	int zerr;
+	uLongf got = capacity;
+	while (Z_OK != (zerr = uncompress(buf, &got, cdata, csize)))
+	{
+		if (Z_MEM_ERROR != zerr && Z_BUF_ERROR != zerr)
+		{
+			free(buf);
+			return NULL;
+		}
+		if (capacity >= 256 * 1024 * 1024) // sanity cap
+		{
+			free(buf);
+			return NULL;
+		}
+		capacity += capacity;
+		uint8_t *nbuf = (uint8_t *)realloc(buf, capacity);
+		if (!nbuf)
+		{
+			free(buf);
+			return NULL;
+		}
+		buf = nbuf;
+		got = capacity;
+	}
+	*out_size = got;
+	return buf;
+}
+
 struct gsf_running_state
 {
 	struct mAVStream stream;
@@ -624,6 +697,12 @@ public:
 
 	~input_gsf() {
 		shutdown();
+		// m_state owns the decompressed ROM image (up to 32MB); without this it
+		// leaked on every gsf_shutdown() (i.e. every song change).
+		if (m_state) {
+			delete m_state;
+			m_state = NULL;
+		}
 	}
 
 	int32_t getCurrentPlayPosition() {
@@ -717,6 +796,99 @@ public:
 		return 0;
 	}
 
+	// Reads the track file's own exe section and overlays it onto m_state
+	// (whose ROM image was pre-seeded from the lib cache). Mirrors what the
+	// outermost psf_load_internal iteration would have done.
+	bool apply_track_sections(const char *uri) {
+		void *f = g_file->fopen(uri);
+		if (!f)
+			return false;
+
+		bool ok = false;
+		uint8_t *reserved_buf = 0;
+		uint8_t *exe_cbuf = 0;
+		uint8_t *exe = 0;
+		size_t exe_size = 0;
+
+		uint8_t hdr[16];
+		if (g_file->fread(hdr, 1, 16, f) == 16 &&
+			!memcmp(hdr, "PSF", 3) && hdr[3] == 0x22)
+		{
+			unsigned reserved_size = get_le32(hdr + 4);
+			unsigned exe_csize = get_le32(hdr + 8);
+
+			reserved_buf = (uint8_t *)malloc(reserved_size ? reserved_size : 1);
+			exe_cbuf = (uint8_t *)malloc(exe_csize ? exe_csize : 1);
+
+			if (reserved_buf && exe_cbuf &&
+				(!reserved_size || g_file->fread(reserved_buf, 1, reserved_size, f) == reserved_size) &&
+				(!exe_csize || g_file->fread(exe_cbuf, 1, exe_csize, f) == exe_csize))
+			{
+				if (exe_csize)
+					exe = inflate_psf_exe(exe_cbuf, exe_csize, &exe_size);
+
+				if (exe)
+					ok = (0 == gsf_loader(m_state, exe, exe_size, reserved_buf, reserved_size));
+			}
+		}
+
+		if (exe) free(exe);
+		if (exe_cbuf) free(exe_cbuf);
+		if (reserved_buf) free(reserved_buf);
+		g_file->fclose(f);
+		return ok;
+	}
+
+	// Fast path for minigsf tracks with exactly one _lib: reuse (or fill) the
+	// decompressed-lib cache instead of re-inflating the lib via psf_load.
+	// Returns false to fall back to the full psf_load path.
+	bool try_load_with_lib_cache() {
+		std::vector<std::string> libs = m_info.get_required_libs();
+		if (libs.size() != 1)
+			return false;
+
+		std::set<char> delims; delims.insert('\\'); delims.insert('/');
+		std::vector<std::string> p = splitpath(m_path, delims);
+		std::string path = m_path.substr(0, m_path.length() - p.back().length());
+		std::string lib_uri = path + libs[0];
+
+		if (!(g_lib_cache.valid && g_lib_cache.uri == lib_uri))
+		{
+			// (re)fill the cache: load just the lib (recursion handles nested _lib)
+			gsf_loader_state lib_state;
+			int ret = psf_load(lib_uri.c_str(), &psf_file_system, 0x22, gsf_loader,
+							   &lib_state, 0, 0, 0, 0, NULL);
+			if (ret < 0 || !lib_state.data)
+				return false;
+
+			g_lib_cache.clear();
+			g_lib_cache.uri = lib_uri;
+			// transfer buffer ownership from lib_state to the cache
+			g_lib_cache.data = lib_state.data;
+			g_lib_cache.data_size = lib_state.data_size;
+			lib_state.data = 0; lib_state.data_size = 0;
+			g_lib_cache.entry = lib_state.entry;
+			g_lib_cache.entry_set = lib_state.entry_set;
+			g_lib_cache.valid = true;
+		}
+
+		// seed the ROM image from the cached lib. In the full-load order the
+		// lib's exe is loaded first (setting entry), then the track's exe is
+		// overlaid; replicate that here. gsf_loader keeps a 10-byte slack
+		// after data_size, so preserve it.
+		m_state->data = (uint8_t *)malloc(g_lib_cache.data_size + 10);
+		if (!m_state->data)
+			return false;
+		memcpy(m_state->data, g_lib_cache.data, g_lib_cache.data_size);
+		memset(m_state->data + g_lib_cache.data_size, 0, 10);
+		m_state->data_size = g_lib_cache.data_size;
+		m_state->entry = g_lib_cache.entry;
+		m_state->entry_set = g_lib_cache.entry_set;
+
+		// overlay this track's own exe section
+		return apply_track_sections(m_path.c_str());
+	}
+
 	void decode_initialize() {
 
 		shutdown();
@@ -725,8 +897,15 @@ public:
 			delete m_state;
 		}
 		m_state= new gsf_loader_state();
-		if ( psf_load( m_path.c_str(), &psf_file_system, 0x22, gsf_loader, m_state, 0, 0, 0, 0, NULL ) < 0 )
-			throw exception_io_data( "Invalid GSF" );
+		if ( !try_load_with_lib_cache() )
+		{
+			// fast path failed (multi-lib, self-contained gsf, or an I/O
+			// error); reset any partial result and do the full load
+			delete m_state;
+			m_state= new gsf_loader_state();
+			if ( psf_load( m_path.c_str(), &psf_file_system, 0x22, gsf_loader, m_state, 0, 0, 0, 0, NULL ) < 0 )
+				throw exception_io_data( "Invalid GSF" );
+		}
 		if (m_state->data_size > UINT_MAX)
 			throw exception_io_data("Invalid GSF");
 
@@ -1049,16 +1228,19 @@ int gsf_read(int16_t *output_buffer, uint16_t outSize) {
 	
 	while (outSize) {
 		if (availableBufferSize) {
+			// sizes are in stereo frames: 1 frame = 2 x int16_t = 4 bytes,
+			// so memcpy uses <<2 (bytes) but int16_t* pointers advance by <<1 (elements)
 			if (availableBufferSize >= outSize) {
 				memcpy(output_buffer, availableBuffer, outSize<<2);
-				availableBuffer+= outSize<<2;
+				availableBuffer+= outSize<<1;
 				availableBufferSize-= outSize;
 				return requestedSize;
 			} else {
 				memcpy(output_buffer, availableBuffer, availableBufferSize<<2);
 				availableBuffer= 0;
-				output_buffer+= availableBufferSize<<2;
+				output_buffer+= availableBufferSize<<1;
 				outSize-= availableBufferSize;
+				availableBufferSize= 0;
 			}
 		} else {
 			if(!g_input_gsf->decode_run( &availableBuffer, &availableBufferSize)) {

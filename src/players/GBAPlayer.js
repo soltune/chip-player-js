@@ -8,6 +8,10 @@ const fileExtensions = [
 ];
 const CHANNEL_NAME = ['Square', 'Square', 'Wave', 'Noise', 'PCM', 'PCM'];
 const SAMPLES_PER_BUFFER = 16384; // allowed: buffer sizes: 256, 512, 1024, 2048, 4096, 8192, 16384
+// Total MEMFS budget for registered catalog files (minigsf/gsflib). Files are
+// kept as a refetch-avoidance cache but wasm memory never shrinks, so playing
+// many different games would otherwise grow the heap unboundedly.
+const MAX_MEMFS_BYTES = 64 * 1024 * 1024;
 const GBA_CHANNEL_COUNT = 2; // GBA DirectSound always outputs interleaved stereo (L/R/L/R...)
 const SOUND_ENHANCE_PRESETS = {
   '0': { treble:  0, presence: 0, exciter: 0 }, // Off
@@ -71,6 +75,34 @@ class GBALibWrapper {
     this.gbalib = chipCore;
     this.fs = this.gbalib.FS;
     this.currentFile = null;
+    // fullpath -> byte size; Map insertion order doubles as LRU recency order.
+    this.fileLRU = new Map();
+  }
+
+  touchFileLRU(fullpath, size) {
+    const known = this.fileLRU.get(fullpath);
+    this.fileLRU.delete(fullpath);
+    const s = (size !== undefined) ? size : known;
+    if (s !== undefined) {
+      this.fileLRU.set(fullpath, s);
+    }
+  }
+
+  evictLRUFiles() {
+    let total = 0;
+    this.fileLRU.forEach(size => { total += size; });
+    // Keep at least 2 entries: the current track and its lib are always the
+    // most recently touched files.
+    for (const [fullpath, size] of this.fileLRU) {
+      if (total <= MAX_MEMFS_BYTES || this.fileLRU.size <= 2) break;
+      try {
+        this.fs.unlink(fullpath);
+      } catch (e) {
+        // already gone; just drop the entry
+      }
+      this.fileLRU.delete(fullpath);
+      total -= size;
+    }
   }
 
   getAudioBuffer() {
@@ -190,7 +222,11 @@ class GBALibWrapper {
 
   existsFileData(path, filename) {
     try {
-      return this.fs.readdir(path).includes(filename);
+      const exists = this.fs.readdir(path).includes(filename);
+      if (exists) {
+        this.touchFileLRU(path + '/' + filename);
+      }
+      return exists;
     } catch (e) {
       return false; // given path does not exist
     }
@@ -211,8 +247,11 @@ class GBALibWrapper {
       this.fs.writeFile(path + '/' + filename, new Uint8Array(data));
     } catch (e) {
       // file may already exist, e.g. drag/dropped again.. just keep entry
+      this.touchFileLRU(path + '/' + filename);
       return false;
     }
+    this.touchFileLRU(path + '/' + filename, data.byteLength);
+    this.evictLRUFiles();
     return true;
   }
 }
@@ -305,9 +344,13 @@ export default class GBAPlayer extends Player {
         if (this.isFadingOut) {
           const current = this.currentPlaytime - duration;
           const ratio = Math.max((fadeOutMs - current) / fadeOutMs, 0);
-          this.resampleBuffer = this.resampleBuffer.map((value) => {
-            return value * ratio
-          });
+          // In-place: .map() would allocate a new Float32Array per audio
+          // callback, causing GC churn on the audio path.
+          const buf = this.resampleBuffer;
+          const n = this.numberOfSamplesToRender * this.channels.length;
+          for (let i = 0; i < n; i++) {
+            buf[i] *= ratio;
+          }
         }
       }
 
@@ -340,8 +383,11 @@ export default class GBAPlayer extends Player {
 
   getCopiedAudio(input, len, resampleOutput) {
     // just copy the rescaled values so there is no need for special handling in playback loop
+    // HEAP16 is re-fetched per block: memory growth may detach an old view,
+    // but no wasm call happens inside the loop, so a block-local view is safe.
+    const heap = this.lib.getDelegate().HEAP16;
     for (let i = 0; i < len * this.channels.length; i++) {
-      resampleOutput[i] = this.readFloatSample(input, i);
+      resampleOutput[i] = heap[input + i] / 0x8000;
     }
     return len;
   }
@@ -406,6 +452,11 @@ export default class GBAPlayer extends Player {
 
   resampleToFloat(channels, channelId, inputPtr, len, resampleOutput, resampleLen) {
     const ratio = len / resampleLen;
+    // Block-local heap view: per-sample readFloatSample() calls cost a
+    // this.lib.getDelegate().HEAP16 property chain 4x per output sample.
+    // No wasm call happens inside the loop, so the view cannot detach.
+    const heap = this.lib.getDelegate().HEAP16;
+    const base = inputPtr + channelId;
     for (let i = 0; i < resampleLen; i++) {
       const pos = i * ratio;
       const index = Math.floor(pos);
@@ -418,10 +469,10 @@ export default class GBAPlayer extends Player {
       const i2 = Math.min(index + 1, len - 1);
       const i3 = Math.min(index + 2, len - 1);
 
-      const p0 = this.readFloatSample(inputPtr, (i0 * GBA_CHANNEL_COUNT) + channelId);
-      const p1 = this.readFloatSample(inputPtr, (i1 * GBA_CHANNEL_COUNT) + channelId);
-      const p2 = this.readFloatSample(inputPtr, (i2 * GBA_CHANNEL_COUNT) + channelId);
-      const p3 = this.readFloatSample(inputPtr, (i3 * GBA_CHANNEL_COUNT) + channelId);
+      const p0 = heap[base + i0 * GBA_CHANNEL_COUNT] / 0x8000;
+      const p1 = heap[base + i1 * GBA_CHANNEL_COUNT] / 0x8000;
+      const p2 = heap[base + i2 * GBA_CHANNEL_COUNT] / 0x8000;
+      const p3 = heap[base + i3 * GBA_CHANNEL_COUNT] / 0x8000;
 
       // Catmull-Rom cubic interpolation (4-point)
       const t = frac;
