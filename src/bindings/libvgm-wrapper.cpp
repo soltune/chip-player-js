@@ -270,7 +270,17 @@ lvgm_player* lvgm_init(UINT32 sample_rate) {
   player->RegisterPlayerEngine(new GYMPlayer());
   {
     PlayerA::Config pCfg = player->GetConfiguration();
-    pCfg.masterVol = 0x800; // ? no idea. 0x1000 seemed too loud
+    // 0x10000 = 100% (16.16 fixed point). Upstream used 0x800 ("no idea. 0x1000
+    // seemed too loud"), which made VGM playback 5.2-5.7 dB quieter than the same
+    // OPNA tracks rendered by the S98 player (webS98/fmgen, measured 2026-07 with
+    // Sorcerian PC-88VA in both formats). 0x1000 matches the fmgen reference within
+    // 0.8 dB; OPNA tracks then peak around 0.44-0.63 after the JS-side conversion.
+    // Worst case measured across the catalog (Turbo Out Run, YM2151+SegaPCM):
+    // peak 1.18 with 13 of ~5.3M samples clamped at the Web Audio boundary --
+    // comparable to the old int16 VGMPlay pipeline, which hard-clipped the same way.
+    // NOTE: this value is tuned against the divisor in src/players/VGMPlayer.js
+    // (INT32_MAX = 0x8000000, actually 2^27) -- change them together or not at all.
+    pCfg.masterVol = 0x1000;
     pCfg.loopCount = g_indefinite_playback ? 0 : 2;
     pCfg.fadeSmpls = sample_rate * 4;	// fade over 4 seconds
     pCfg.endSilenceSmpls = sample_rate / 2;	// 0.5 seconds of silence at the end

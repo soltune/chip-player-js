@@ -12,7 +12,13 @@ const fileExtensions = [
   'dro',
 ];
 
-const INT32_MAX = 0x8000000; // 2147483648
+// Latent bug kept intentionally: 0x8000000 is 2^27 (134217728), not INT32_MAX
+// (2^31 = 0x80000000) as the original comment claimed. libvgm's int32 output is
+// ~24-bit nominal, so dividing by 2^27 boosts it 16x relative to true int32 full
+// scale. The overall loudness is tuned by pCfg.masterVol in
+// src/bindings/libvgm-wrapper.cpp against THIS divisor (matched to the S98/fmgen
+// player level, 2026-07) -- if you ever "fix" this constant, retune masterVol too.
+const INT32_MAX = 0x8000000; // 2^27, see note above
 const YRW801_ROM_PATH = `${SOUNDFONT_MOUNTPOINT}/yrw801.rom`;
 
 export default class VGMPlayer extends Player {
