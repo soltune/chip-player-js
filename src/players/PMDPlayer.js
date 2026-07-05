@@ -265,6 +265,23 @@ export default class PMDPlayer extends Player {
     this.sourceBufferLen = 0;
 
     this.params = {};
+    this.persistedSettings = {};
+    this.paramDefs = [
+      {
+        id: 'usepps',
+        label: 'Enable PPS',
+        hint: 'Play PPS samples as rhythm track, otherwise play with PMD internal SSG if disabled (PMD only)',
+        type: 'toggle',
+        defaultValue: true,
+      },
+      {
+        id: 'rhythmwssg',
+        label: 'Enable FM Rhythm with SSG Drums',
+        hint: 'Play FM(OPNA) rhythm samples with SSG drums (PMD only)',
+        type: 'toggle',
+        defaultValue: true,
+      },
+    ];
     this.voiceMask = [];
 
     // register rhythm data for OPNA
@@ -522,6 +539,10 @@ export default class PMDPlayer extends Player {
     this.isFadingOut = false;
     this.fadeOutStartMs = 0;
     this.params = {};
+    // Resolve params from pinned (persisted) settings, else hard-coded default.
+    // resolveParamValues() invokes setParameter() per param, which calls
+    // setUsePPS()/setRhythmWithSSG(). Must run after the music data is loaded.
+    this.resolveParamValues(this.persistedSettings);
 
     this.metadata = this.createMetadata();
   }
@@ -537,6 +558,8 @@ export default class PMDPlayer extends Player {
       this.lib.teardown();
     }
 
+    this.persistedSettings = persistedSettings;
+
     const [path, filename] = this.lib.getPathAndFilename(filepath);
     this.lib.registerFileData(path, filename,  data);
 
@@ -544,8 +567,6 @@ export default class PMDPlayer extends Player {
       // we will get also PCM asynchronously in `loadMusicData()` so the following impl should be given as a callback
       if (status === 0) {
         this.voiceMask = Array(this.getNumVoices()).fill(true);
-        this.lib.setRhythmWithSSG(true);
-        this.lib.setUsePPS(true);
         this.init(filepath, data);
         this.resume();
 
@@ -588,26 +609,6 @@ export default class PMDPlayer extends Player {
 
   getParameter(id) {
     return this.params[id];
-  }
-
-  getParamDefs() {
-    let params = {};
-    if (!this.lib.isClosed()) {
-      params = [{
-        id: 'usepps',
-        label: 'Enable PPS',
-        hint: 'Play PPS samples as rhythm track, otherwise play with PMD internal SSG if disabled (PMD only)',
-        type: 'toggle',
-        defaultValue: true,
-      }, {
-        id: 'rhythmwssg',
-        label: 'Enable FM Rhythm with SSG Drums',
-        hint: 'Play FM(OPNA) rhythm samples with SSG drums (PMD only)',
-        type: 'toggle',
-        defaultValue: true,
-      }];
-    }
-    return params;
   }
 
   setParameter(id, value) {

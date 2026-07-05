@@ -205,6 +205,16 @@ export default class PSFPlayer extends Player {
     this.sourceBufferLen = 0;
 
     this.params = {};
+    this.persistedSettings = {};
+    this.paramDefs = [
+      {
+        id: 'spu_reverb',
+        label: 'Enable SPU Reverb',
+        hint: 'Enable SPU reverb',
+        type: 'toggle',
+        defaultValue: true,
+      },
+    ];
     this.voiceMask = [];
 
   }
@@ -430,6 +440,9 @@ export default class PSFPlayer extends Player {
     this.fadeOutStartMs = 0;
     this.params = {};
     this.lastLoadedFilename = null;
+    // Resolve params from pinned (persisted) settings, else hard-coded default.
+    // resolveParamValues() invokes setParameter() per param, applying side effects.
+    this.resolveParamValues(this.persistedSettings);
 
     this.metadata = this.createMetadata();
   }
@@ -444,6 +457,8 @@ export default class PSFPlayer extends Player {
     if (!this.lib.isClosed()) {
       this.lib.teardown();
     }
+
+    this.persistedSettings = persistedSettings;
 
     const [path, filename] = this.lib.getPathAndFilename(filepath);
     this.lib.registerFileData(path, filename,  data);
@@ -502,19 +517,6 @@ export default class PSFPlayer extends Player {
 
   getParameter(id) {
     return this.params[id];
-  }
-
-  getParamDefs() {
-    let params = {
-      id: 'spu_reverb',
-      label: 'Enable SPU Reverb',
-      hint: 'Enable SPU reverb',
-      type: 'toggle',
-      defaultValue: true,
-    };
-    return [
-      params,
-    ];
   }
 
   setParameter(id, value) {

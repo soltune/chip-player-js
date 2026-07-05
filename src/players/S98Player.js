@@ -454,19 +454,22 @@ export default class S98Player extends Player {
     this.fadeOutStartMs = 0;
     this.hasLoop = false;
     this.params = {};
-    this.params.indefinitePlayback =
-      this.resolveParamValue('indefinitePlayback', undefined, persistedSettings) ?? false;
 
+    // Detect the target system first: it determines the default for pc98fix.
+    // The PC-9801 needs a volume-balance tweak because the core's default
+    // settings appear to target the PC-8801.
     this.metadata = this.createMetadata(data);
-    if (this.metadata.system.indexOf('9801') > -1 || this.metadata.system.indexOf('9821') > -1) {
-      // we need a tweak for the volume balance, as default setting seems to be referenced by PC-8801.
-      this.setVolumeFix(true);
-      this.isPC98System = true;
-    } else {
-      this.isPC98System = false;
-    }
-    // Keep the UI checkbox in sync with the applied state.
-    this.params.pc98fix = this.isPC98System;
+    this.isPC98System =
+      this.metadata.system.indexOf('9801') > -1 || this.metadata.system.indexOf('9821') > -1;
+
+    // Snapshot the (system-dependent) param defs so the base helpers
+    // (resolveParamValues/getParamValues/getParamDefault) can see them.
+    this.paramDefs = this.getParamDefs();
+
+    // Resolve params from pinned (persisted) settings, else the default
+    // (pc98fix defaults to the auto-detected system). resolveParamValues()
+    // invokes setParameter() per param, which applies setVolumeFix().
+    this.resolveParamValues(persistedSettings);
   }
 
   setVolumeFix(isPc9801Fix) {
