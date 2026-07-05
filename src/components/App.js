@@ -766,6 +766,9 @@ class App extends React.Component {
           return 0;
         });
         this.playContexts[path] = this.directoryListingToContext(items);
+        // Fork: the server assigns idx in DB order; reassign it after the
+        // client-side sort so it stays aligned with playContexts[path].
+        let fileIdx = 0;
         items.forEach(item => {
           // Convert timestamp 1704067200 to ISO date 2024-01-01
           item.mtime = new Date(item.mtime * 1000).toISOString().split('T')[0];
@@ -774,10 +777,12 @@ class App extends React.Component {
           //      The URL must be decoded for display from here on out.
           // TODO: Replace `href` entirely with `url` field
           const href = item.path.replace('%', '%25').replace('#', '%23');
-          if (item.type === 'file')
+          if (item.type === 'file') {
+            item.idx = fileIdx++;
             item.href = pathJoin(CATALOG_PREFIX, href);
-          else // item.type === 'directory'
+          } else { // item.type === 'directory'
             item.href = pathJoin('/browse', href);
+          }
         });
 
         if (path !== '') { // No '..' at top level browse path.
