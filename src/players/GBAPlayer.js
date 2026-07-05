@@ -213,6 +213,10 @@ class GBALibWrapper {
     this.gbalib.ccall('gba_set_mask', null, ['number'], [voices]);
   }
 
+  setHleAudio(enabled) {
+    this.gbalib.ccall('gba_set_hle_audio', null, ['number'], [enabled ? 1 : 0]);
+  }
+
   setTempo(tempo) {
   }
 
@@ -555,8 +559,10 @@ export default class GBAPlayer extends Player {
     this.fadeOutStartMs = 0;
     // Preserve sound_enhance across song loads; fall back to 'Light' on first load.
     const presetId = this.params?.sound_enhance ?? '1';
-    this.params = { sound_enhance: presetId };
+    const hleAudio = this.params?.gba_hle_audio ?? false;
+    this.params = { sound_enhance: presetId, gba_hle_audio: hleAudio };
     this._applyEnhancePreset(presetId);
+    this.lib.setHleAudio(hleAudio);
     this.lastLoadedFilename = null;
 
     // HPF state for harmonic exciter (Approach 2), one per channel
@@ -670,6 +676,13 @@ export default class GBAPlayer extends Player {
         }],
         defaultValue: '1',
       },
+      {
+        id: 'gba_hle_audio',
+        label: 'MP2K HQ Mixing (experimental)',
+        type: 'toggle',
+        hint: 'Re-synthesize PCM voices of MP2K (M4A/Sappy) driver games in the emulator at 16-bit precision, bypassing the noisy 8-bit software mixer. No effect on games using other sound drivers.',
+        defaultValue: false,
+      },
     ];
   }
 
@@ -688,6 +701,9 @@ export default class GBAPlayer extends Player {
     switch (id) {
       case 'sound_enhance':
         this._applyEnhancePreset(value);
+        break;
+      case 'gba_hle_audio':
+        this.lib.setHleAudio(!!value);
         break;
       default:
         console.warn('GBAPlayer has no parameter with id "%s".', id);

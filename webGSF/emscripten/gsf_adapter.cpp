@@ -61,6 +61,7 @@ extern	int gsf_read(int16_t *output_buffer, uint16_t outSize);
 extern	int gsf_seek_position (int ms);
 extern	void gsf_shutdown (void);
 extern  void gsf_set_channel_mask (int mask);
+extern  void gsf_set_hle_audio (int enable);
 
 void gsf_meta_set(const char * tag, const char * value) {
 	// propagate selected meta info for use in GUI
@@ -209,5 +210,10 @@ extern "C" int EMSCRIPTEN_KEEPALIVE gba_get_max_position() {
 extern "C" void gba_set_mask(int mask) __attribute__((noinline));
 extern "C" void EMSCRIPTEN_KEEPALIVE gba_set_mask(int mask) {
 	gsf_set_channel_mask(mask);
+}
+
+extern "C" void gba_set_hle_audio(int enable) __attribute__((noinline));
+extern "C" void EMSCRIPTEN_KEEPALIVE gba_set_hle_audio(int enable) {
+	gsf_set_hle_audio(enable);
 }
 

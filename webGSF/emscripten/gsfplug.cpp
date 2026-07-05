@@ -51,12 +51,19 @@
 #include <mgba/core/blip_buf.h>
 #include <mgba-util/vfs.h>
 #include <mgba/core/log.h>
+#include <mgba/internal/arm/arm.h>
+#include <mgba/internal/gba/gba.h>
+#include <mgba/internal/gba/extra/audio-mixer.h>
 
 #include <psflib.h>
 #include <zlib.h>
 
 
 static unsigned int g_cat_arm = 0;
+
+// MP2K HLE mixing ("XQ audio" backport). Survives gsf_shutdown/gba_init like
+// g_lib_cache, so the user's toggle persists across song changes.
+static bool g_hle_audio = false;
 
 extern "C" void GSFLogger(struct mLogger* logger, int category, enum mLogLevel level, const char* format, va_list args)
 {
@@ -669,6 +676,7 @@ class input_gsf
 	gsf_loader_state *m_state;
 	struct gsf_running_state m_output;
 	struct mCore * m_core;
+	struct GBAAudioMixer * m_mixer;
 	std::string m_path;
 	gsf_file_info m_info;
 	int32_t m_sample_rate;
@@ -689,7 +697,7 @@ class input_gsf
 	bool do_filter, do_suppressendsilence;
 
 public:
-	input_gsf(int32_t sample_rate) : silence_test_buffer( 0 ), m_core( 0 ), m_state(0) {
+	input_gsf(int32_t sample_rate) : silence_test_buffer( 0 ), m_core( 0 ), m_state(0), m_mixer(0) {
 		memset(&m_output, 0, sizeof(m_output));
 		memset(sample_buffer, 0, sizeof(sample_buffer));
 		m_sample_rate = sample_rate;
@@ -740,8 +748,38 @@ public:
 	{
 		if ( m_core )
 		{
+			// ARMDeinit runs the attached components' deinit (frees the
+			// mixer's track buffers), so only the struct itself is freed here.
 			m_core->deinit(m_core);
 			m_core = NULL;
+		}
+		if ( m_mixer )
+		{
+			free(m_mixer);
+			m_mixer = NULL;
+		}
+	}
+
+	// Attach/detach the MP2K HLE mixer according to g_hle_audio. Safe to call
+	// mid-play: detaching falls back to the FIFO samples immediately (they are
+	// produced regardless), attaching takes effect when the driver re-arms its
+	// FIFO DMA (every pcmDmaPeriod frames, i.e. sub-second for MP2K games).
+	void apply_hle_audio() {
+		if (!m_core) return;
+		struct GBA* gba = (struct GBA*) m_core->board;
+		struct ARMCore* cpu = (struct ARMCore*) m_core->cpu;
+		if (g_hle_audio) {
+			if (!m_mixer) {
+				m_mixer = (struct GBAAudioMixer*) calloc(1, sizeof(*m_mixer));
+				GBAAudioMixerCreate(m_mixer);
+				cpu->components[CPU_COMPONENT_AUDIO_MIXER] = &m_mixer->d;
+				ARMHotplugAttach(cpu, CPU_COMPONENT_AUDIO_MIXER);
+			} else {
+				gba->audio.mixer = m_mixer;
+			}
+		} else {
+			gba->audio.mixer = NULL;
+			gba->audio.externalMixing = false;
 		}
 	}
 
@@ -939,9 +977,11 @@ public:
 		opts.sampleRate = m_sample_rate;
 
 		mCoreConfigLoadDefaults(&core->config, &opts);
-		core->loadROM(core, rom);		
+		core->loadROM(core, rom);
 		core->reset(core);
 		m_core = core;
+
+		apply_hle_audio();
 
 		gsfemu_pos = 0.;
 
@@ -1308,4 +1348,9 @@ void gsf_shutdown (void) {
 
 void gsf_set_channel_mask (int32_t mask) {
     if (g_input_gsf) g_input_gsf->set_mask(mask);
+}
+
+void gsf_set_hle_audio (int enable) {
+    g_hle_audio = !!enable;
+    if (g_input_gsf) g_input_gsf->apply_hle_audio();
 }

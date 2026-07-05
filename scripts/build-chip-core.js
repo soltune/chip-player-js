@@ -564,6 +564,7 @@ const chipModules = [
       '_gba_get_audio_buffer_length',
       '_gba_compute_audio_samples',
       '_gba_set_mask',
+      '_gba_set_hle_audio',
       '_mCoreFindVF',
     ],
     flags: [

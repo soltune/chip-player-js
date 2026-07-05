@@ -68,6 +68,7 @@ emcc $OPT2 \
   ../mgba/src/gba/cheats/codebreaker.c \
   ../mgba/src/gba/cheats/gameshark.c \
   ../mgba/src/gba/audio.c \
+  ../mgba/src/gba/extra/audio-mixer.c \
   ../mgba/src/gba/bios.c \
   ../mgba/src/gba/cheats.c \
   ../mgba/src/gba/core.c \

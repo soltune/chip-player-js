@@ -26,6 +26,8 @@ const int GBA_AUDIO_VOLUME_MAX = 0x100;
 
 static const int CLOCKS_PER_FRAME = 0x400;
 
+#define MP2K_LOCK_MAX 8
+
 static int _applyBias(struct GBAAudio* audio, int sample);
 static void _sample(struct mTiming* timing, void* user, uint32_t cyclesLate);
 
@@ -49,9 +51,11 @@ void GBAAudioInit(struct GBAAudio* audio, size_t samples) {
 	CircleBufferInit(&audio->chA.fifo, GBA_AUDIO_FIFO_SIZE);
 	CircleBufferInit(&audio->chB.fifo, GBA_AUDIO_FIFO_SIZE);
 
+	audio->externalMixing = false;
 	audio->forceDisableChA = false;
 	audio->forceDisableChB = false;
 	audio->masterVolume = GBA_AUDIO_VOLUME_MAX;
+	audio->mixer = NULL;
 }
 
 void GBAAudioReset(struct GBAAudio* audio) {
@@ -113,6 +117,27 @@ void GBAAudioScheduleFifoDma(struct GBAAudio* audio, int number, struct GBADMA* 
 	}
 	info->reg = GBADMARegisterSetDestControl(info->reg, GBA_DMA_FIXED);
 	info->reg = GBADMARegisterSetWidth(info->reg, 1);
+	if (audio->mixer) {
+		uint32_t source = info->source;
+		uint32_t offsets[] = { 0x350, 0x980 };
+		size_t i;
+		for (i = 0; i < sizeof(offsets) / sizeof(*offsets); ++i) {
+			if (source < BASE_WORKING_RAM + offsets[i]) {
+				continue;
+			}
+			if (source >= BASE_IO + offsets[i]) {
+				continue;
+			}
+			uint32_t value = GBALoad32(audio->p->cpu, source - offsets[i], NULL);
+			if (value - MP2K_MAGIC <= MP2K_LOCK_MAX) {
+				audio->mixer->engage(audio->mixer, source - offsets[i]);
+				break;
+			}
+		}
+		if (i == sizeof(offsets) / sizeof(*offsets)) {
+			audio->externalMixing = false;
+		}
+	}
 }
 
 void GBAAudioWriteSOUND1CNT_LO(struct GBAAudio* audio, uint16_t value) {
@@ -265,23 +290,25 @@ static void _sample(struct mTiming* timing, void* user, uint32_t cyclesLate) {
 	sampleLeft >>= psgShift;
 	sampleRight >>= psgShift;
 
-	if (!audio->forceDisableChA) {
-		if (audio->chALeft) {
-			sampleLeft += (audio->chA.sample << 2) >> !audio->volumeChA;
+	if (!audio->externalMixing) {
+		if (!audio->forceDisableChA) {
+			if (audio->chALeft) {
+				sampleLeft += (audio->chA.sample << 2) >> !audio->volumeChA;
+			}
+
+			if (audio->chARight) {
+				sampleRight += (audio->chA.sample << 2) >> !audio->volumeChA;
+			}
 		}
 
-		if (audio->chARight) {
-			sampleRight += (audio->chA.sample << 2) >> !audio->volumeChA;
-		}
-	}
+		if (!audio->forceDisableChB) {
+			if (audio->chBLeft) {
+				sampleLeft += (audio->chB.sample << 2) >> !audio->volumeChB;
+			}
 
-	if (!audio->forceDisableChB) {
-		if (audio->chBLeft) {
-			sampleLeft += (audio->chB.sample << 2) >> !audio->volumeChB;
-		}
-
-		if (audio->chBRight) {
-			sampleRight += (audio->chB.sample << 2) >> !audio->volumeChB;
+			if (audio->chBRight) {
+				sampleRight += (audio->chB.sample << 2) >> !audio->volumeChB;
+			}
 		}
 	}
 
@@ -295,6 +322,9 @@ static void _sample(struct mTiming* timing, void* user, uint32_t cyclesLate) {
 		blip_add_delta(audio->psg.right, audio->clock, sampleRight - audio->lastRight);
 		audio->lastLeft = sampleLeft;
 		audio->lastRight = sampleRight;
+		if (audio->mixer) {
+			audio->mixer->step(audio->mixer);
+		}
 		audio->clock += audio->sampleInterval;
 		if (audio->clock >= CLOCKS_PER_FRAME) {
 			blip_end_frame(audio->psg.left, CLOCKS_PER_FRAME);
