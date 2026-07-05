@@ -304,13 +304,28 @@ static FORCEINLINE void adjust_channel_timer(channel_struct *chan)
 	chan->sampinc = (((double)ARM7_CLOCK) / (44100 * 2)) / (double)(0x10000 - chan->timer);
 }
 
+// SPUInterpolationMode and RESAMPLER_QUALITY_* are distinct enums with different
+// numbering (e.g. Sinc is 4 in the former, 5 in the latter); map them explicitly.
+static int resampler_quality_from_interpolation_mode(SPUInterpolationMode mode)
+{
+	switch (mode)
+	{
+	case SPUInterpolation_None:   return RESAMPLER_QUALITY_ZOH;
+	case SPUInterpolation_Blep:   return RESAMPLER_QUALITY_BLEP;
+	case SPUInterpolation_Linear: return RESAMPLER_QUALITY_LINEAR;
+	case SPUInterpolation_Cubic:  return RESAMPLER_QUALITY_CUBIC;
+	case SPUInterpolation_Sinc:   return RESAMPLER_QUALITY_SINC;
+	}
+	return RESAMPLER_QUALITY_CUBIC;
+}
+
 void SPU_struct::KeyOn(int channel)
 {
 	channel_struct &thischan = channels[channel];
 
     thischan.init_resampler();
     resampler_clear(thischan.resampler);
-    resampler_set_quality(thischan.resampler, thischan.format == 3 ? RESAMPLER_QUALITY_BLEP : spuInterpolationMode(state));
+    resampler_set_quality(thischan.resampler, thischan.format == 3 ? RESAMPLER_QUALITY_BLEP : resampler_quality_from_interpolation_mode(spuInterpolationMode(state)));
 
 	adjust_channel_timer(&thischan);
 

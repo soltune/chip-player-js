@@ -129,6 +129,14 @@ class DSLibWrapper {
     return this.ndslib.ccall('nds_get_mask');
   }
 
+  setInterpolation(mode) {
+    this.ndslib.ccall('nds_set_interpolation', null, ['number'], [mode]);
+  }
+
+  getInterpolation() {
+    return this.ndslib.ccall('nds_get_interpolation', 'number');
+  }
+
   setTempo(tempo) {
     //this.mdxpmdlib.ccall('nds_set_tempo', null, ['number'], [tempo]);
   }
@@ -167,6 +175,26 @@ class DSLibWrapper {
 }
 
 export default class NDSPlayer extends Player {
+  // SPUInterpolationMode values (vio2sf SPU.h); lower = less CPU.
+  paramDefs = [
+    {
+      id: 'nds_interpolation',
+      label: 'Interpolation',
+      hint: 'SPU channel interpolation quality. Lower settings reduce CPU load.',
+      type: 'enum',
+      options: [{
+        label: 'Interpolation',
+        items: [
+          { label: 'None (fastest)', value: '0' },
+          { label: 'Linear',         value: '2' },
+          { label: 'Cubic',          value: '3' },
+          { label: 'Sinc (best)',    value: '4' },
+        ],
+      }],
+      defaultValue: '3',
+    },
+  ];
+
   constructor(...args) {
     super(...args);
     autoBind(this);
@@ -197,6 +225,7 @@ export default class NDSPlayer extends Player {
     this.sourceBufferLen = 0;
 
     this.params = {};
+    this.persistedSettings = {};
 
   }
 
@@ -436,6 +465,7 @@ export default class NDSPlayer extends Player {
     const [path, filename] = this.lib.getPathAndFilename(filepath);
     this.lib.registerFileData(path, filename,  data);
     this.lastLoadedFilename = filename;
+    this.persistedSettings = persistedSettings;
 
     // nds_init blocks the main thread for a long time on heavy 2sf data;
     // suspend the audio context so the output doesn't glitch meanwhile.
@@ -443,6 +473,7 @@ export default class NDSPlayer extends Player {
       if (this.lib.loadMusicData(this.sampleRate, path, filename) === 0) {
         this.voiceMask = Array(this.getNumVoices()).fill(true);
         this.init();
+        this.resolveParamValues(persistedSettings);
 
         this.resume();
 
@@ -491,21 +522,11 @@ export default class NDSPlayer extends Player {
     return this.params[id];
   }
 
-  getParamDefs() {
-    // let params = {
-    //   id: 'spu_reverb',
-    //   label: 'Enable SPU Reverb',
-    //   hint: 'Enable SPU reverb',
-    //   type: 'toggle',
-    //   defaultValue: true,
-    // };
-    return [
-      // params,
-    ];
-  }
-
   setParameter(id, value) {
     switch (id) {
+      case 'nds_interpolation':
+        this.lib.setInterpolation(parseInt(value, 10));
+        break;
       default:
         console.warn('NDSPlayer has no parameter with id "%s".', id);
     }
@@ -604,6 +625,7 @@ export default class NDSPlayer extends Player {
         return this.muteAudioDuringCall(this.audioNode, () => {
           if (this.lib.loadMusicData(this.sampleRate, path, this.lastLoadedFilename) === 0) {
             this.init();
+            this.resolveParamValues(this.persistedSettings);
 
             this.resume();
 

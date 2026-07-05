@@ -533,6 +533,8 @@ const chipModules = [
       '_nds_compute_audio_samples',
       '_nds_set_mask',
       '_nds_get_mask',
+      '_nds_set_interpolation',
+      '_nds_get_interpolation',
     ],
     flags: [
       '-DEMSCRIPTEN',

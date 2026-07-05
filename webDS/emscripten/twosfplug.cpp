@@ -150,7 +150,10 @@ const psf_file_callbacks psf_file_system = {
 static unsigned int cfg_infinite= 0;
 static unsigned int cfg_deflength= 170000;
 static unsigned int cfg_deffade= 10000;
-static unsigned int cfg_resampling_quality= 4;
+// SPUInterpolationMode (see SPU.h): 0=None, 1=Blep, 2=Linear, 3=Cubic, 4=Sinc.
+// Default Cubic: matches the effective quality of the old hardcoded value 4,
+// which the resampler (with its differently-numbered enum) interpreted as cubic.
+static unsigned int cfg_resampling_quality= 3;
 
 // note: the "silence detection" logic is broken but with kode54's copy/paste approach to 
 // code reuse I don't care to investigate/fix his crap in all the various (slightly different)
@@ -703,6 +706,85 @@ static int twosf_info(void * context, const char * name, const char * value)
 	return 0;
 }
 
+/*
+	Decompressed-lib cache: mini2sf album playback loads the same multi-MB
+	.2sflib for every track; inflating it dominates track-switch latency.
+	Cache the decompressed lib ROM (and its tag-derived emu settings) keyed
+	by lib URI, so switching tracks within one set only re-inflates the tiny
+	track exe. Single entry; survives nds_teardown/nds_init on purpose.
+*/
+struct twosf_lib_cache
+{
+	std::string uri;
+	uint8_t *rom;
+	size_t rom_size;
+	uint8_t *state;
+	size_t state_size;
+
+	int initial_frames;
+	int sync_type;
+	int clockdown;
+	int arm9_clockdown_level;
+	int arm7_clockdown_level;
+
+	bool valid;
+
+	twosf_lib_cache() : rom(0), rom_size(0), state(0), state_size(0),
+		initial_frames(-1), sync_type(0), clockdown(0),
+		arm9_clockdown_level(0), arm7_clockdown_level(0), valid(false) {}
+
+	void clear()
+	{
+		uri.clear();
+		if (rom) { free(rom); rom = 0; }
+		rom_size = 0;
+		if (state) { free(state); state = 0; }
+		state_size = 0;
+		initial_frames = -1;
+		sync_type = clockdown = arm9_clockdown_level = arm7_clockdown_level = 0;
+		valid = false;
+	}
+};
+static twosf_lib_cache g_lib_cache;
+
+// Inflates a PSF exe section. Returns a malloc'd buffer (caller frees), or
+// NULL on error. Grows geometrically; mini2sf exes are tiny so this rarely
+// iterates more than once.
+static uint8_t *inflate_psf_exe(const uint8_t *cdata, size_t csize, size_t *out_size)
+{
+	uLongf capacity = (uLongf)(csize * 4 + 256);
+	uint8_t *buf = (uint8_t *)malloc(capacity);
+	if (!buf)
+		return NULL;
+
+	int zerr;
+	uLongf got = capacity;
+	while (Z_OK != (zerr = uncompress(buf, &got, cdata, csize)))
+	{
+		if (Z_MEM_ERROR != zerr && Z_BUF_ERROR != zerr)
+		{
+			free(buf);
+			return NULL;
+		}
+		if (capacity >= 256 * 1024 * 1024) // sanity cap
+		{
+			free(buf);
+			return NULL;
+		}
+		capacity += capacity;
+		uint8_t *nbuf = (uint8_t *)realloc(buf, capacity);
+		if (!nbuf)
+		{
+			free(buf);
+			return NULL;
+		}
+		buf = nbuf;
+		got = capacity;
+	}
+	*out_size = got;
+	return buf;
+}
+
 // 2sf addition end
 
 struct ds_running_state
@@ -887,6 +969,122 @@ public:
 		return 0;
 	}
 
+	// Reads the track file's own exe/reserved sections and overlays them onto
+	// m_state (whose rom was pre-seeded from the lib cache). Mirrors what the
+	// outermost psf_load_internal iteration would have done.
+	bool apply_track_sections(const char *uri) {
+		void *f = g_file->fopen(uri);
+		if (!f)
+			return false;
+
+		bool ok = false;
+		uint8_t *reserved_buf = 0;
+		uint8_t *exe_cbuf = 0;
+		uint8_t *exe = 0;
+		size_t exe_size = 0;
+
+		uint8_t hdr[16];
+		if (g_file->fread(hdr, 1, 16, f) == 16 &&
+			!memcmp(hdr, "PSF", 3) && hdr[3] == 0x24)
+		{
+			unsigned reserved_size = get_le32(hdr + 4);
+			unsigned exe_csize = get_le32(hdr + 8);
+
+			reserved_buf = (uint8_t *)malloc(reserved_size ? reserved_size : 1);
+			exe_cbuf = (uint8_t *)malloc(exe_csize ? exe_csize : 1);
+
+			if (reserved_buf && exe_cbuf &&
+				(!reserved_size || g_file->fread(reserved_buf, 1, reserved_size, f) == reserved_size) &&
+				(!exe_csize || g_file->fread(exe_cbuf, 1, exe_csize, f) == exe_csize))
+			{
+				if (exe_csize)
+					exe = inflate_psf_exe(exe_cbuf, exe_csize, &exe_size);
+
+				if (!exe_csize || exe)
+					ok = (0 == twosf_loader(m_state, exe, exe_size, reserved_buf, reserved_size));
+			}
+		}
+
+		if (exe) free(exe);
+		if (exe_cbuf) free(exe_cbuf);
+		if (reserved_buf) free(reserved_buf);
+		g_file->fclose(f);
+		return ok;
+	}
+
+	// Fast path for mini2sf tracks with exactly one _lib: reuse (or fill) the
+	// decompressed-lib cache instead of re-inflating the lib via psf_load.
+	// Returns false to fall back to the full psf_load path.
+	bool try_load_with_lib_cache() {
+		std::vector<std::string> libs = m_info.get_required_libs();
+		if (libs.size() != 1)
+			return false;
+
+		std::set<char> delims; delims.insert('\\'); delims.insert('/');
+		std::vector<std::string> p = splitpath(m_path, delims);
+		std::string path = m_path.substr(0, m_path.length() - p.back().length());
+		std::string lib_uri = path + libs[0];
+
+		if (!(g_lib_cache.valid && g_lib_cache.uri == lib_uri))
+		{
+			// (re)fill the cache: load just the lib (recursion handles nested _lib)
+			twosf_loader_state lib_state;
+			int ret = psf_load(lib_uri.c_str(), &psf_file_system, 0x24, twosf_loader,
+							   &lib_state, twosf_info, &lib_state, 1, print_message, 0);
+			if (ret < 0 || !lib_state.rom)
+				return false;
+
+			g_lib_cache.clear();
+			g_lib_cache.uri = lib_uri;
+			// transfer buffer ownership from lib_state to the cache
+			g_lib_cache.rom = lib_state.rom;
+			g_lib_cache.rom_size = lib_state.rom_size;
+			lib_state.rom = 0; lib_state.rom_size = 0;
+			g_lib_cache.state = lib_state.state;
+			g_lib_cache.state_size = lib_state.state_size;
+			lib_state.state = 0; lib_state.state_size = 0;
+			g_lib_cache.initial_frames = lib_state.initial_frames;
+			g_lib_cache.sync_type = lib_state.sync_type;
+			g_lib_cache.clockdown = lib_state.clockdown;
+			g_lib_cache.arm9_clockdown_level = lib_state.arm9_clockdown_level;
+			g_lib_cache.arm7_clockdown_level = lib_state.arm7_clockdown_level;
+			g_lib_cache.valid = true;
+		}
+
+		// track tags (outermost file only; no exe decompression happens here)
+		if (psf_load(m_path.c_str(), &psf_file_system, 0x24, 0, 0, twosf_info, m_state, 0, print_message, 0) < 0)
+			return false;
+
+		// lib tags arrive after the track's own tags in the full-load order,
+		// so a tag present in the lib wins; replicate that here.
+		if (g_lib_cache.initial_frames != -1) m_state->initial_frames = g_lib_cache.initial_frames;
+		if (g_lib_cache.sync_type) m_state->sync_type = g_lib_cache.sync_type;
+		if (g_lib_cache.clockdown) m_state->clockdown = g_lib_cache.clockdown;
+		if (g_lib_cache.arm9_clockdown_level) m_state->arm9_clockdown_level = g_lib_cache.arm9_clockdown_level;
+		if (g_lib_cache.arm7_clockdown_level) m_state->arm7_clockdown_level = g_lib_cache.arm7_clockdown_level;
+
+		// seed the rom (and save-state, if any) from the cached lib image
+		m_state->rom = (uint8_t *)malloc(g_lib_cache.rom_size + 10);
+		if (!m_state->rom)
+			return false;
+		memcpy(m_state->rom, g_lib_cache.rom, g_lib_cache.rom_size);
+		memset(m_state->rom + g_lib_cache.rom_size, 0, 10);
+		m_state->rom_size = g_lib_cache.rom_size;
+
+		if (g_lib_cache.state)
+		{
+			m_state->state = (uint8_t *)malloc(g_lib_cache.state_size + 10);
+			if (!m_state->state)
+				return false;
+			memcpy(m_state->state, g_lib_cache.state, g_lib_cache.state_size);
+			memset(m_state->state + g_lib_cache.state_size, 0, 10);
+			m_state->state_size = g_lib_cache.state_size;
+		}
+
+		// overlay this track's own exe/reserved sections
+		return apply_track_sections(m_path.c_str());
+	}
+
 	void decode_initialize() {
 
 		shutdown();
@@ -906,15 +1104,18 @@ public:
 
 		if ( !m_state->rom && !m_state->state )
 		{
-		//	std::string_fast msgbuf;
+			if ( !try_load_with_lib_cache() )
+			{
+				// fast path failed (multi-lib, self-contained 2sf, or an I/O
+				// error); reset any partial result and do the full load
+				delete m_state;
+				m_state = new twosf_loader_state();
 
-			int ret = psf_load(m_path.c_str(), &psf_file_system, 0x24, twosf_loader, m_state, twosf_info, m_state, 1, print_message, 0);
+				int ret = psf_load(m_path.c_str(), &psf_file_system, 0x24, twosf_loader, m_state, twosf_info, m_state, 1, print_message, 0);
 
-		//	console::print(msgbuf);
-		//	msgbuf.reset();
-
-			if ( ret < 0 )
-				throw exception_io_data( "Invalid 2SF" );
+				if ( ret < 0 )
+					throw exception_io_data( "Invalid 2SF" );
+			}
 
 			if (!m_state->arm7_clockdown_level)
 				m_state->arm7_clockdown_level = m_state->clockdown;
@@ -1160,6 +1361,11 @@ public:
 	uint32_t get_channel_mute () {
 	    return (uint32_t) m_emu->dwChannelMute;
 	}
+
+	// takes effect per channel at its next KeyOn
+	void set_interpolation (uint32_t mode) {
+	    if (m_emu) m_emu->dwInterpolation = mode;
+	}
 private:
 	double MulDiv(int ms, int sampleRate, int d) {
 		return ((double)ms)*sampleRate/d;
@@ -1287,4 +1493,14 @@ void ds_set_channel_mute( uint32_t mask ) {
 
 uint32_t ds_get_channel_mute(void) {
     return g_input_2sf->get_channel_mute();
+}
+
+void ds_set_interpolation( uint32_t mode ) {
+    if (mode > 4) mode = 4;
+    cfg_resampling_quality = mode;	// picked up by the next decode_initialize
+    if (g_input_2sf) g_input_2sf->set_interpolation( mode );
+}
+
+uint32_t ds_get_interpolation(void) {
+    return cfg_resampling_quality;
 }

@@ -51,6 +51,8 @@ extern	int ds_seek_position (int ms);
 extern  void ds_destory(void);
 extern  void ds_set_channel_mute(uint32_t mask);
 extern  int ds_get_channel_mute(void);
+extern  void ds_set_interpolation(uint32_t mode);
+extern  uint32_t ds_get_interpolation(void);
 
 void ds_meta_set(const char * tag, const char * value) {
 	// propagate selected meta info for use in GUI
@@ -205,4 +207,15 @@ extern "C" void EMSCRIPTEN_KEEPALIVE nds_set_mask(int32_t mask) {
 extern "C" int nds_get_mask() __attribute__((noinline));
 extern "C" int EMSCRIPTEN_KEEPALIVE nds_get_mask() {
 	return ds_get_channel_mute();
+}
+
+// SPUInterpolationMode: 0=None, 1=Blep, 2=Linear, 3=Cubic, 4=Sinc
+extern "C" void nds_set_interpolation(int32_t mode) __attribute__((noinline));
+extern "C" void EMSCRIPTEN_KEEPALIVE nds_set_interpolation(int32_t mode) {
+	ds_set_interpolation(mode < 0 ? 0 : (uint32_t)mode);
+}
+
+extern "C" int nds_get_interpolation() __attribute__((noinline));
+extern "C" int EMSCRIPTEN_KEEPALIVE nds_get_interpolation() {
+	return ds_get_interpolation();
 }
