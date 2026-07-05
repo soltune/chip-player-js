@@ -296,6 +296,32 @@ export default class GBAPlayer extends Player {
     this.sourceBufferLen = 0;
 
     this.params = {};
+    this.persistedSettings = {};
+    this.paramDefs = [
+      {
+        id: 'sound_enhance',
+        label: 'Enhancement',
+        hint: 'Audio enhancement preset: EQ (treble/presence) + harmonic exciter',
+        type: 'enum',
+        options: [{
+          label: 'Enhancement',
+          items: [
+            { label: 'Off',    value: '0' },
+            { label: 'Light',  value: '1' },
+            { label: 'Medium', value: '2' },
+            { label: 'Strong', value: '3' },
+          ],
+        }],
+        defaultValue: '1',
+      },
+      {
+        id: 'gba_hle_audio',
+        label: 'MP2K HQ Mixing (experimental)',
+        type: 'toggle',
+        hint: 'Re-synthesize PCM voices of MP2K (M4A/Sappy) driver games in the emulator at 16-bit precision, bypassing the noisy 8-bit software mixer. No effect on games using other sound drivers.',
+        defaultValue: false,
+      },
+    ];
     this.voiceMask = [];
 
   }
@@ -557,12 +583,10 @@ export default class GBAPlayer extends Player {
     this.currentPlaytime = 0;
     this.isFadingOut = false;
     this.fadeOutStartMs = 0;
-    // Preserve sound_enhance across song loads; fall back to 'Light' on first load.
-    const presetId = this.params?.sound_enhance ?? '1';
-    const hleAudio = this.params?.gba_hle_audio ?? false;
-    this.params = { sound_enhance: presetId, gba_hle_audio: hleAudio };
-    this._applyEnhancePreset(presetId);
-    this.lib.setHleAudio(hleAudio);
+    // Resolve params from pinned (persisted) settings, falling back to each
+    // param's hard-coded default. resolveParamValues() invokes setParameter()
+    // per param, which applies the enhancement preset and HLE-audio side effects.
+    this.resolveParamValues(this.persistedSettings);
     this.lastLoadedFilename = null;
 
     // HPF state for harmonic exciter (Approach 2), one per channel
@@ -585,6 +609,8 @@ export default class GBAPlayer extends Player {
     if (!this.lib.isClosed()) {
       this.lib.teardown();
     }
+
+    this.persistedSettings = persistedSettings;
 
     this.resampleBuffer = this.allocResampleBuffer(0);
     this.numberOfSamplesToRender = 0;
@@ -656,34 +682,6 @@ export default class GBAPlayer extends Player {
 
   getParameter(id) {
     return this.params[id];
-  }
-
-  getParamDefs() {
-    return [
-      {
-        id: 'sound_enhance',
-        label: 'Enhancement',
-        hint: 'Audio enhancement preset: EQ (treble/presence) + harmonic exciter',
-        type: 'enum',
-        options: [{
-          label: 'Enhancement',
-          items: [
-            { label: 'Off',    value: '0' },
-            { label: 'Light',  value: '1' },
-            { label: 'Medium', value: '2' },
-            { label: 'Strong', value: '3' },
-          ],
-        }],
-        defaultValue: '1',
-      },
-      {
-        id: 'gba_hle_audio',
-        label: 'MP2K HQ Mixing (experimental)',
-        type: 'toggle',
-        hint: 'Re-synthesize PCM voices of MP2K (M4A/Sappy) driver games in the emulator at 16-bit precision, bypassing the noisy 8-bit software mixer. No effect on games using other sound drivers.',
-        defaultValue: false,
-      },
-    ];
   }
 
   _applyEnhancePreset(presetId) {
