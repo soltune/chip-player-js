@@ -26,6 +26,7 @@
 
 #include "FIFO.h"
 #include "dscard.h"
+#include "rtc.h"
 
 #include "ARM9.h"
 #include "mc.h"
@@ -97,6 +98,7 @@ typedef struct MMU_struct {
         memory_chip_t bupmem;
 		  
         nds_dscard	dscard[2];
+        RTC_t		rtc;
 		u32			CheckTimers;
 		u32			CheckDMAs;
 		  

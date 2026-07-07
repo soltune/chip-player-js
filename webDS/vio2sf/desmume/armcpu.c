@@ -536,9 +536,71 @@ armcpu_flagIrq( armcpu_t *armcpu) {
 }
 
 
+u32 g_pcwatch_time_cs; /* set by the host: rendered time in centiseconds */
+
+#ifdef DEBUG_PC_WATCH
+#include <stdio.h>
+static const u32 pc_watchlist[] = {
+	0x0200b7f4, /* card sync read */
+	0x0200b668, /* card async request */
+	0x0200b544, /* card send B7 */
+	0x0200b5f0, /* card irq continuation */
+	0x0200e940, /* FS_OpenFile */
+	0x0200ea94, /* FS_ReadFile */
+	0x0200dfb4, /* FSi_SendCommand */
+	0x0200ed20, /* FSi_InitRom */
+	0x02039fec, /* game: read file async */
+	0x020552b4, /* Assets: load file */
+	0x020637e8, /* sound: load MUS */
+	0x02063828, /* sound: play BGM */
+	0x0209d9ac, /* name-table search (runaway loop) */
+	0x0209d728, /* its caller (from stack trace) */
+	0x02000ec4, /* 2sf driver entry (replaced game main) */
+	0x02040a40, /* mov r0,r5 just before blx r4 */
+	/* init-list call return sites (timing which init is slow) */
+	0x02000bf8, 0x02000bfc, 0x02000c00, 0x02000c04,
+	0x02000c08, 0x02000c0c, 0x02000c10, 0x02000c18,
+};
+static int pc_watch_hits[sizeof(pc_watchlist)/sizeof(pc_watchlist[0])];
+static int bigcmp_hits;
+static void pc_watch(armcpu_t *armcpu)
+{
+	unsigned i;
+	if (armcpu->proc_ID != 0) return;
+	if (armcpu->instruct_adr == 0x0200144c && armcpu->R[2] > 0x10000 &&
+	    bigcmp_hits++ < 10)
+		fprintf(stderr, "[bigcmp] r0=%08x r1=%08x len=%08x lr=%08x\n",
+		        armcpu->R[0], armcpu->R[1], armcpu->R[2], armcpu->R[14]);
+	for (i = 0; i < sizeof(pc_watchlist)/sizeof(pc_watchlist[0]); i++) {
+		if (armcpu->instruct_adr == pc_watchlist[i]) {
+			if (pc_watch_hits[i]++ < 5)
+				fprintf(stderr, "[pc] t=%u.%02us hit %08x (lr=%08x r0=%08x r1=%08x r2=%08x r3=%08x)\n",
+				        g_pcwatch_time_cs / 100, g_pcwatch_time_cs % 100,
+				        armcpu->instruct_adr, armcpu->R[14],
+				        armcpu->R[0], armcpu->R[1], armcpu->R[2], armcpu->R[3]);
+		}
+	}
+}
+#endif
+
 u32 armcpu_exec(armcpu_t *armcpu)
 {
         u32 c = 1;
+
+#ifdef DEBUG_PC_WATCH
+	pc_watch(armcpu);
+#endif
+
+#ifndef GDB_STUB
+	/* level-triggered IRQ: take a pending enabled interrupt as soon as
+	   CPSR.I allows it, instead of only at hframe boundaries */
+	if (!armcpu->CPSR.bits.I && armcpu->state->MMU->reg_IME[armcpu->proc_ID]
+	    && (armcpu->state->MMU->reg_IF[armcpu->proc_ID]
+	        & armcpu->state->MMU->reg_IE[armcpu->proc_ID]))
+	{
+		armcpu_irqExeption(armcpu);
+	}
+#endif
 
 #ifdef GDB_STUB
         if ( armcpu->stalled)

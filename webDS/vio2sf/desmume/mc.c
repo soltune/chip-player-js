@@ -109,13 +109,78 @@ void mc_realloc(memory_chip_t *mc, int type, u32 size)
 
 void mc_reset_com(memory_chip_t *mc)
 {
+	mc->com = 0;
+	mc->addr = 0;
+	mc->addr_shift = 0;
 }
 u8 fw_transfer(memory_chip_t *mc, u8 data)
 {
 	return 0;
 }
+/* Backup memory as a serial flash with 3-byte addressing.
+   Unwritten content reads back as 0xFF (erased flash), which is what
+   games expect when no save exists. */
 u8 bm_transfer(memory_chip_t *mc, u8 data)
 {
-	return 0;
+	if (mc->com == 0)
+	{
+		switch (data)
+		{
+		case 0x06: /* WREN */
+			mc->write_enable = TRUE;
+			return 0;
+		case 0x04: /* WRDI */
+			mc->write_enable = FALSE;
+			return 0;
+		case 0x05: /* RDSR */
+			return mc->write_enable ? 0x02 : 0x00;
+		case 0x9F: /* RDID */
+			mc->com = 0x9F;
+			return 0;
+		case 0x03: /* READ */
+		case 0x0B: /* fast read */
+		case 0x02: /* page program */
+		case 0x0A: /* page write */
+			mc->com = data;
+			mc->addr = 0;
+			mc->addr_shift = 3;
+			return 0;
+		default:
+			return 0;
+		}
+	}
+
+	switch (mc->com)
+	{
+	case 0x03:
+	case 0x0B:
+		if (mc->addr_shift > 0)
+		{
+			mc->addr_shift--;
+			mc->addr |= (u32)data << (8 * mc->addr_shift);
+			return 0;
+		}
+		{
+			u8 ret = (mc->data && mc->addr < mc->size) ? mc->data[mc->addr] : 0xFF;
+			mc->addr++;
+			return ret;
+		}
+	case 0x02:
+	case 0x0A:
+		if (mc->addr_shift > 0)
+		{
+			mc->addr_shift--;
+			mc->addr |= (u32)data << (8 * mc->addr_shift);
+			return 0;
+		}
+		if (mc->data && mc->addr < mc->size && mc->writeable_buffer)
+			mc->data[mc->addr] = data;
+		mc->addr++;
+		return 0;
+	case 0x9F:
+		return 0xFF;
+	default:
+		return 0;
+	}
 }
 

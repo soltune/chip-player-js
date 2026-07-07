@@ -250,8 +250,8 @@ static INLINE void NDS_makeARM9Int(NDS_state *state, u32 num)
         /* flag the interrupt request source */
         state->MMU->reg_IF[0] |= (1<<num);
 
-        /* generate the interrupt if enabled */
-	if ((state->MMU->reg_IE[0] & (1 << num)) && state->MMU->reg_IME[0])
+        /* halt exits when (IE & IF) != 0, regardless of IME/CPSR.I (GBATEK) */
+	if (state->MMU->reg_IE[0] & (1 << num))
 	{
 		state->NDS_ARM9->wIRQ = TRUE;
 		state->NDS_ARM9->waitIRQ = FALSE;
@@ -263,8 +263,8 @@ static INLINE void NDS_makeARM7Int(NDS_state *state, u32 num)
         /* flag the interrupt request source */
 	state->MMU->reg_IF[1] |= (1<<num);
 
-        /* generate the interrupt if enabled */
-	if ((state->MMU->reg_IE[1] & (1 << num)) && state->MMU->reg_IME[1])
+        /* halt exits when (IE & IF) != 0, regardless of IME/CPSR.I (GBATEK) */
+	if (state->MMU->reg_IE[1] & (1 << num))
 	{
 		state->NDS_ARM7->wIRQ = TRUE;
 		state->NDS_ARM7->waitIRQ = FALSE;

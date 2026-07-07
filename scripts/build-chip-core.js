@@ -513,6 +513,7 @@ const chipModules = [
       'vio2sf/desmume/MMU.c',
       'vio2sf/desmume/NDSSystem.c',
       'vio2sf/desmume/resampler.c',
+      'vio2sf/desmume/rtc.c',
       'vio2sf/desmume/state.c',
       'vio2sf/desmume/thumb_instructions.c',
       'vio2sf/desmume/nds_spu.cpp',

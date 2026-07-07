@@ -144,6 +144,61 @@ const u32 MMU_ARM7_WAIT32[16]={
 	1, 1, 1, 1, 1, 1, 1, 1, 8, 8, 5, 1, 1, 1, 1, 1,
 };
 
+/* same algorithm as calc_CRC16 in NDSSystem.c */
+static u32 fw_crc16(u32 start, const u8 *data, int count)
+{
+	int i, j;
+	u32 crc = start & 0xffff;
+	static const u16 val[] = { 0xC0C1,0xC181,0xC301,0xC601,0xCC01,0xD801,0xF001,0xA001 };
+	for (i = 0; i < count; i++)
+	{
+		crc = crc ^ data[i];
+		for (j = 0; j < 8; j++)
+		{
+			int do_bit = 0;
+			if (crc & 0x1) do_bit = 1;
+			crc = crc >> 1;
+			if (do_bit) crc = crc ^ (val[j] << (7-j));
+		}
+	}
+	return crc;
+}
+
+/* Build a minimal valid firmware image: only the user settings block is
+   needed (NDS_Reset copies it to 0x027FFC80 where games read nickname,
+   language and touch screen calibration). Garbage here can hang games. */
+static void fill_default_firmware(u8 *fw)
+{
+	u32 off = 0x3FE00;
+	u8 *u;
+	u32 crc;
+	if (!fw) return;
+	memset(fw, 0, NDS_FW_SIZE_V1);
+	fw[0x20] = (u8)(off >> 3);
+	fw[0x21] = (u8)(off >> 11);
+	u = fw + off;
+	u[0x00] = 5;       /* version */
+	u[0x02] = 1;       /* birthday month */
+	u[0x03] = 1;       /* birthday day */
+	u[0x06] = 'S'; u[0x08] = 'O'; u[0x0A] = 'M'; u[0x0C] = 'A'; /* nickname UTF-16LE */
+	u[0x1A] = 4;       /* nickname length */
+	u[0x50] = 0;       /* message length */
+	/* touch screen calibration: ADC (0x200,0x200)->(32,32), (0xE00,0xB00)->(224,160) */
+	u[0x58] = 0x00; u[0x59] = 0x02;  /* adc x1 */
+	u[0x5A] = 0x00; u[0x5B] = 0x02;  /* adc y1 */
+	u[0x5C] = 32;                    /* scr x1 */
+	u[0x5D] = 32;                    /* scr y1 */
+	u[0x5E] = 0x00; u[0x5F] = 0x0E;  /* adc x2 */
+	u[0x60] = 0x00; u[0x61] = 0x0B;  /* adc y2 */
+	u[0x62] = 224;                   /* scr x2 */
+	u[0x63] = 160;                   /* scr y2 */
+	u[0x64] = 0x00;                  /* language: Japanese */
+	u[0x70] = 0;                     /* update counter */
+	crc = fw_crc16(0xffff, u, 0x70);
+	u[0x72] = (u8)crc;
+	u[0x73] = (u8)(crc >> 8);
+}
+
 void MMU_Init(NDS_state *state) {
 	int i;
 
@@ -173,17 +228,22 @@ void MMU_Init(NDS_state *state) {
 
 	for(i = 0;i < 16;i++)
 		FIFOInit(state->MMU->fifos + i);
-	
+
+	rtcInit(&state->MMU->rtc);
+
         mc_init(&state->MMU->fw, MC_TYPE_FLASH);  /* init fw device */
         mc_alloc(&state->MMU->fw, NDS_FW_SIZE_V1);
         state->MMU->fw.fp = NULL;
+        fill_default_firmware(state->MMU->fw.data);
 
         // Init Backup Memory device, this should really be done when the rom is loaded
         mc_init(&state->MMU->bupmem, MC_TYPE_AUTODETECT);
-        mc_alloc(&state->MMU->bupmem, 1);
+        mc_alloc(&state->MMU->bupmem, MC_SIZE_4MBITS);
+        if (state->MMU->bupmem.data)
+            memset(state->MMU->bupmem.data, 0xFF, state->MMU->bupmem.size);
         state->MMU->bupmem.fp = NULL;
 
-} 
+}
 
 void MMU_DeInit(NDS_state *state) {
 	LOG("MMU deinit\n");
@@ -222,7 +282,9 @@ void MMU_clearMem(NDS_state *state)
 	
 	for(i = 0;i < 16;i++)
 	FIFOInit(state->MMU->fifos + i);
-	
+
+	rtcInit(&state->MMU->rtc);
+
 	state->MMU->DTCMRegion = 0;
 	state->MMU->ITCMRegion = 0x00800000;
 	
@@ -522,6 +584,93 @@ void MMU_unsetRom(NDS_state *state)
 	state->rom_mask = ROM_MASK;
 }
 
+/* ---- IPC FIFO (GBATEK 0x4000184/0x4000188/0x4100000) ----
+ * fifos[IPCFIFO+x] is CPU x's RECEIVE fifo (written by the other CPU).
+ * IPCFIFOCNT bits: 0 send-empty, 1 send-full, 2 send-empty-IRQ-enable,
+ * 3 send-flush(w), 8 recv-empty, 9 recv-full, 10 recv-not-empty-IRQ-enable,
+ * 14 error(w1c), 15 enable. IRQs: 17 send-fifo-empty, 18 recv-fifo-not-empty. */
+
+static void ipc_fifo_update_status(NDS_state *state, u32 proc)
+{
+	u32 remote = (proc+1)&1;
+	FIFO *send = state->MMU->fifos + (IPCFIFO+remote);
+	FIFO *recv = state->MMU->fifos + (IPCFIFO+proc);
+	u16 cnt = T1ReadWord(state->MMU->MMU_MEM[proc][0x40], 0x184);
+	cnt &= ~0x0303;
+	cnt |= (send->empty?0x0001:0) | (send->full?0x0002:0)
+	     | (recv->empty?0x0100:0) | (recv->full?0x0200:0);
+	T1WriteWord(state->MMU->MMU_MEM[proc][0x40], 0x184, cnt);
+}
+
+static void ipc_fifo_send(NDS_state *state, u32 proc, u32 val)
+{
+	u32 remote = (proc+1)&1;
+	FIFO *rfifo = state->MMU->fifos + (IPCFIFO+remote);
+	u16 cnt = T1ReadWord(state->MMU->MMU_MEM[proc][0x40], 0x184);
+	u16 cnt_r = T1ReadWord(state->MMU->MMU_MEM[remote][0x40], 0x184);
+	BOOL was_empty;
+#ifdef DEBUG_IPC_TRACE
+	fprintf(stderr, "[ipc] send %s val=%08x cnt=%04x cnt_r=%04x\n",
+	        proc ? "7->9" : "9->7", val, cnt, cnt_r);
+#endif
+	if (!(cnt & 0x8000))
+		return;
+	was_empty = rfifo->empty;
+	FIFOAdd(rfifo, val);
+	ipc_fifo_update_status(state, proc);
+	ipc_fifo_update_status(state, remote);
+	if (was_empty && (cnt_r & 0x0400))
+		NDS_makeInt(state, remote, 18); /* remote: recv fifo not empty */
+}
+
+static u32 ipc_fifo_recv(NDS_state *state, u32 proc)
+{
+	u32 remote = (proc+1)&1;
+	FIFO *fifo = state->MMU->fifos + (IPCFIFO+proc);
+	u16 cnt = T1ReadWord(state->MMU->MMU_MEM[proc][0x40], 0x184);
+	u16 cnt_r = T1ReadWord(state->MMU->MMU_MEM[remote][0x40], 0x184);
+	u32 val;
+	if (fifo->empty)
+	{
+		/* read from empty fifo: error flag, undefined value */
+		T1WriteWord(state->MMU->MMU_MEM[proc][0x40], 0x184, cnt | 0x4000);
+		return 0;
+	}
+	val = FIFOValue(fifo);
+#ifdef DEBUG_IPC_TRACE
+	fprintf(stderr, "[ipc] recv %s val=%08x\n", proc ? "7<-9" : "9<-7", val);
+#endif
+	ipc_fifo_update_status(state, proc);
+	ipc_fifo_update_status(state, remote);
+	if (fifo->empty && (cnt_r & 0x0004))
+		NDS_makeInt(state, remote, 17); /* remote: send fifo empty */
+	return val;
+}
+
+static void ipc_fifocnt_write(NDS_state *state, u32 proc, u16 val)
+{
+	u32 remote = (proc+1)&1;
+	FIFO *send = state->MMU->fifos + (IPCFIFO+remote);
+	FIFO *recv = state->MMU->fifos + (IPCFIFO+proc);
+	u16 cnt = T1ReadWord(state->MMU->MMU_MEM[proc][0x40], 0x184);
+	u16 newcnt;
+	if (val & 0x0008)
+	{
+		/* flush own send fifo */
+		FIFOInit(send);
+	}
+	/* edge-triggered IRQs on enabling while condition already true */
+	if ((val & 0x0004) && !(cnt & 0x0004) && send->empty)
+		NDS_makeInt(state, proc, 17);
+	if ((val & 0x0400) && !(cnt & 0x0400) && !recv->empty)
+		NDS_makeInt(state, proc, 18);
+	/* keep enable bits from val; error bit is sticky unless acknowledged (w1c) */
+	newcnt = (u16)((val & 0x8404) | ((cnt & 0x4000) & (u16)~(val & 0x4000)));
+	T1WriteWord(state->MMU->MMU_MEM[proc][0x40], 0x184, newcnt);
+	ipc_fifo_update_status(state, proc);
+	ipc_fifo_update_status(state, remote);
+}
+
 u8 FASTCALL MMU_read8(NDS_state *state, u32 proc, u32 adr)
 {
 #ifdef INTERNAL_DTCM_READ
@@ -594,9 +743,13 @@ u16 FASTCALL MMU_read16(NDS_state *state, u32 proc, u32 adr)
 				return (state->gpu3D->NDS_3D_GetNumVertex(state->gpu3D)&8191);
 #endif
 
-			case REG_IPCFIFORECV :               /* TODO (clear): ??? */
-				state->execute = FALSE;
-				return 1;
+			case 0x04000138 :
+				if (proc == ARMCPU_ARM7)
+					return rtcRead(&state->MMU->rtc);
+				break;
+
+			case REG_IPCFIFORECV :
+				return (u16)ipc_fifo_recv(state, proc);
 				
 			case REG_IME :
 				return (u16)state->MMU->reg_IME[proc];
@@ -736,25 +889,7 @@ u32 FASTCALL MMU_read32(NDS_state *state, u32 proc, u32 adr)
 			case REG_IF :
 				return state->MMU->reg_IF[proc];
 			case REG_IPCFIFORECV :
-			{
-				u16 IPCFIFO_CNT = T1ReadWord(state->MMU->MMU_MEM[proc][0x40], 0x184);
-				if(IPCFIFO_CNT&0x8000)
-				{
-				//execute = FALSE;
-				u32 fifonum = IPCFIFO+proc;
-				u32 val = FIFOValue(state->MMU->fifos + fifonum);
-				u32 remote = (proc+1) & 1;
-				u16 IPCFIFO_CNT_remote = T1ReadWord(state->MMU->MMU_MEM[remote][0x40], 0x184);
-				IPCFIFO_CNT |= (state->MMU->fifos[fifonum].empty<<8) | (state->MMU->fifos[fifonum].full<<9) | (state->MMU->fifos[fifonum].error<<14);
-				IPCFIFO_CNT_remote |= (state->MMU->fifos[fifonum].empty) | (state->MMU->fifos[fifonum].full<<1);
-				T1WriteWord(state->MMU->MMU_MEM[proc][0x40], 0x184, IPCFIFO_CNT);
-				T1WriteWord(state->MMU->MMU_MEM[remote][0x40], 0x184, IPCFIFO_CNT_remote);
-				if ((state->MMU->fifos[fifonum].empty) && (IPCFIFO_CNT & BIT(2)))
-					NDS_makeInt(state, remote,17) ; /* remote: SEND FIFO EMPTY */
-				return val;
-				}
-			}
-			return 0;
+				return ipc_fifo_recv(state, proc);
                         case REG_TM0CNTL :
                         case REG_TM1CNTL :
                         case REG_TM2CNTL :
@@ -1611,6 +1746,14 @@ void FASTCALL MMU_write16(NDS_state *state, u32 proc, u32 adr, u16 val)
 				state->MMU->reg_IF[proc] &= (~(((u32)val)<<16));
 				return;
 				
+                        case 0x04000138 :
+				if (proc == ARMCPU_ARM7)
+				{
+					rtcWrite(&state->MMU->rtc, val);
+					return;
+				}
+				break;
+
                         case REG_IPCSYNC :
 				{
 				u32 remote = (proc+1)&1;
@@ -1622,28 +1765,7 @@ void FASTCALL MMU_write16(NDS_state *state, u32 proc, u32 adr, u16 val)
 				}
 				return;
                         case REG_IPCFIFOCNT :
-				{
-					u32 cnt_l = T1ReadWord(state->MMU->MMU_MEM[proc][0x40], 0x184) ;
-					u32 cnt_r = T1ReadWord(state->MMU->MMU_MEM[(proc+1) & 1][0x40], 0x184) ;
-					if ((val & 0x8000) && !(cnt_l & 0x8000))
-					{
-						/* this is the first init, the other side didnt init yet */
-						/* so do a complete init */
-						FIFOInit(state->MMU->fifos + (IPCFIFO+proc));
-						T1WriteWord(state->MMU->MMU_MEM[proc][0x40], 0x184,0x8101) ;
-						/* and then handle it as usual */
-					}
-
-				if(val & 0x4008)
-				{
-					FIFOInit(state->MMU->fifos + (IPCFIFO+((proc+1)&1)));
-					T1WriteWord(state->MMU->MMU_MEM[proc][0x40], 0x184, (cnt_l & 0x0301) | (val & 0x8404) | 1);
-					T1WriteWord(state->MMU->MMU_MEM[proc^1][0x40], 0x184, (cnt_r & 0xC507) | 0x100);
-					state->MMU->reg_IF[proc] |= ((val & 4)<<15);// & (MMU->reg_IME[proc]<<17);// & (MMU->reg_IE[proc]&0x20000);//
-					return;
-				}
-				T1WriteWord(state->MMU->MMU_MEM[proc][0x40], 0x184, T1ReadWord(state->MMU->MMU_MEM[proc][0x40], 0x184) | (val & 0xBFF4));
-				}
+				ipc_fifocnt_write(state, proc, val);
 				return;
                         case REG_TM0CNTL :
                         case REG_TM1CNTL :
@@ -2634,48 +2756,10 @@ void FASTCALL MMU_write32(NDS_state *state, u32 proc, u32 adr, u32 val)
 				}
 				return;
                         case REG_IPCFIFOCNT :
-							{
-					u32 cnt_l = T1ReadWord(state->MMU->MMU_MEM[proc][0x40], 0x184) ;
-					u32 cnt_r = T1ReadWord(state->MMU->MMU_MEM[(proc+1) & 1][0x40], 0x184) ;
-					if ((val & 0x8000) && !(cnt_l & 0x8000))
-					{
-						/* this is the first init, the other side didnt init yet */
-						/* so do a complete init */
-						FIFOInit(state->MMU->fifos + (IPCFIFO+proc));
-						T1WriteWord(state->MMU->MMU_MEM[proc][0x40], 0x184,0x8101) ;
-						/* and then handle it as usual */
-					}
-				if(val & 0x4008)
-				{
-					FIFOInit(state->MMU->fifos + (IPCFIFO+((proc+1)&1)));
-					T1WriteWord(state->MMU->MMU_MEM[proc][0x40], 0x184, (cnt_l & 0x0301) | (val & 0x8404) | 1);
-					T1WriteWord(state->MMU->MMU_MEM[proc^1][0x40], 0x184, (cnt_r & 0xC507) | 0x100);
-					state->MMU->reg_IF[proc] |= ((val & 4)<<15);// & (MMU->reg_IME[proc]<<17);// & (MMU->reg_IE[proc]&0x20000);//
-					return;
-				}
-				T1WriteWord(state->MMU->MMU_MEM[proc][0x40], 0x184, val & 0xBFF4);
-				//execute = FALSE;
+				ipc_fifocnt_write(state, proc, (u16)val);
 				return;
-							}
                         case REG_IPCFIFOSEND :
-				{
-					u16 IPCFIFO_CNT = T1ReadWord(state->MMU->MMU_MEM[proc][0x40], 0x184);
-					if(IPCFIFO_CNT&0x8000)
-					{
-					//if(val==43) execute = FALSE;
-					u32 remote = (proc+1)&1;
-					u32 fifonum = IPCFIFO+remote;
-                                        u16 IPCFIFO_CNT_remote;
-					FIFOAdd(state->MMU->fifos + fifonum, val);
-					IPCFIFO_CNT = (IPCFIFO_CNT & 0xFFFC) | (state->MMU->fifos[fifonum].full<<1);
-                                        IPCFIFO_CNT_remote = T1ReadWord(state->MMU->MMU_MEM[remote][0x40], 0x184);
-					IPCFIFO_CNT_remote = (IPCFIFO_CNT_remote & 0xFCFF) | (state->MMU->fifos[fifonum].full<<10);
-					T1WriteWord(state->MMU->MMU_MEM[proc][0x40], 0x184, IPCFIFO_CNT);
-					T1WriteWord(state->MMU->MMU_MEM[remote][0x40], 0x184, IPCFIFO_CNT_remote);
-					state->MMU->reg_IF[remote] |= ((IPCFIFO_CNT_remote & (1<<10))<<8);// & (MMU->reg_IME[remote] << 18);// & (MMU->reg_IE[remote] & 0x40000);//
-					//execute = FALSE;
-					}
-				}
+				ipc_fifo_send(state, proc, val);
 				return;
 			case REG_DMA0CNTL :
 				//LOG("32 bit dma0 %04X\r\n", val);
