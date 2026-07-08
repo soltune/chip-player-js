@@ -1,10 +1,10 @@
 import autoBind from 'auto-bind';
 import Player from "./Player.js";
+import ensureRhythmRom from "./rhythmRom.js";
 
 const fileExtensions = [
   's98',
 ];
-const rhythmPath = '/rhythm';
 
 const SAMPLES_PER_BUFFER = 16384; // allowed: buffer sizes: 256, 512, 1024, 2048, 4096, 8192, 16384
 const S98_CHANNEL_COUNT = 2; // S98 always outputs interleaved stereo (L/R/L/R...)
@@ -159,8 +159,8 @@ export default class S98Player extends Player {
     this.params = {};
     this.voiceMask = [];
 
-    // register rhythm data for OPNA
-    this.registerRhythmData();
+    // register rhythm data for OPNA (fetched once and shared across players)
+    ensureRhythmRom(this.core);
   }
 
   processAudioInner(channels) {
@@ -242,56 +242,6 @@ export default class S98Player extends Player {
       }
     });
     return absolutePath;
-  }
-
-  registerRhythmData() {
-    [
-      '2608_BD.WAV',
-      '2608_HH.WAV',
-      '2608_RIM.WAV',
-      '2608_SD.WAV',
-      '2608_TOM.WAV',
-      '2608_TOP.WAV',
-    ].forEach((rhythmFile) => {
-      if (!this.existsFileData(rhythmPath, rhythmFile)) {
-        const remoteRhythmAbsolutePath = this.getAbsolutePath([rhythmPath, rhythmFile]);
-        fetch(remoteRhythmAbsolutePath, {method: 'GET',})
-          .then(response => {
-            if (!response.ok) {
-              throw Error(response.statusText);
-            }
-            return response.arrayBuffer();
-          })
-          .then(buffer => {
-            this.registerFileData(rhythmPath, rhythmFile, buffer);
-          })
-          .catch(e => {
-            //console.log(e);
-          });
-      }
-    });
-  }
-
-  existsFileData(path, filename) {
-    try {
-      return this.fs.readdir(path).includes(filename);
-    } catch (e) {
-      return false; // given path does not exist
-    }
-  }
-
-  registerFileData(path, filename, data) {
-    try {
-      this.fs.mkdir(path);
-    } catch (ignore) {
-    }
-    try {
-      this.fs.writeFile(path + '/' + filename, new Uint8Array(data));
-    } catch (e) {
-      // file may already exist, e.g. drag/dropped again.. just keep entry
-      return false;
-    }
-    return true;
   }
 
   getResampledAudio(input, len) {

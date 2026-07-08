@@ -1,12 +1,12 @@
 import autoBind from 'auto-bind';
 import Player from "./Player.js";
+import ensureRhythmRom from "./rhythmRom.js";
 import {CATALOG_PREFIX} from "../config";
 
 const fileExtensions = [
   'm', 'm2', 'mz'   // PMD
 ];
 
-const rhythmPath = '/rhythm';
 const internalPCMPath = '/pmdpcm';
 
 const SAMPLES_PER_BUFFER = 16384; // allowed: buffer sizes: 256, 512, 1024, 2048, 4096, 8192, 16384
@@ -284,8 +284,8 @@ export default class PMDPlayer extends Player {
     ];
     this.voiceMask = [];
 
-    // register rhythm data for OPNA
-    this.registerRhythmData();
+    // register rhythm data for OPNA (fetched once and shared across players)
+    ensureRhythmRom(this.core);
 
   }
 
@@ -350,34 +350,6 @@ export default class PMDPlayer extends Player {
         this.copySamplesMono();
       }
     }
-  }
-
-  registerRhythmData() {
-    [
-      '2608_BD.WAV',
-      '2608_HH.WAV',
-      '2608_RIM.WAV',
-      '2608_SD.WAV',
-      '2608_TOM.WAV',
-      '2608_TOP.WAV',
-    ].forEach((rhythmFile) => {
-      if (!this.lib.existsFileData(rhythmPath, rhythmFile)) {
-        const remoteRhythmAbsolutePath = this.lib.getAbsolutePath([rhythmPath, rhythmFile]);
-        fetch(remoteRhythmAbsolutePath, {method: 'GET',})
-          .then(response => {
-            if (!response.ok) {
-              throw Error(response.statusText);
-            }
-            return response.arrayBuffer();
-          })
-          .then(buffer => {
-            this.lib.registerFileData(rhythmPath, rhythmFile, buffer);
-          })
-          .catch(e => {
-            //console.log(e);
-          });
-      }
-    });
   }
 
   getResampledAudio(input, len) {
