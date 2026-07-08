@@ -2,50 +2,41 @@
 
 
 ## About this fork
-Chip Player JS is web-based chip tune player written by Matt Montag.
-  
-This fork is to share my fixes like;  
-- Small bugfixes and improvements
-    - [GME] fixed incorrect text encoding handling in the tags
-    - [GME/nsf] supported `FDS write protect` for some tunes which use multi extend chips
-    - [Font] added additional font to improve rendering Japanese text
-        - the font is created by [MM of 自家製フォント工房](http://jikasei.me/font/kh-dotfont/) licensed by SIL Open Font License (with some modifications made by me)
-- additional file formats support
-    - **gbs, hes**
-    - **s98** ([webS98](https://github.com/wothke/webS98/), based on [m_s98.kpi S98V3](http://www.vesta.dti.ne.jp/~tsato/soft_s98v3.html))
-        - supports rhythm samples for OPNA
-        - corrects volume balance for PC-9801
-            - the player reduces the volume of PSG ch if there's `9801` in 'system' tag.
-        - the following sound samples must be located at `chip-player-js/public/rhythm` before building (each filenames are case sensitive)
-            - 2608_BD.WAV
-            - 2608_HH.WAV 
-            - 2608_RIM.WAV 
-            - 2608_SD.WAV
-            - 2608_TOM.WAV
-            - 2608_TOP.WAV
-    - **pmd** ([webMDX](https://github.com/wothke/webMDX), based on [pmdmini](https://github.com/mistydemeo/pmdmini))
-        - supports rhythm samples for OPNA
-        - supports ADPCM/PCM (.pps, .ppc, .p86, .pzi)
-        - the following sound samples must be located at `chip-player-js/public/rhythm` before building (each filenames are case sensitive)
-            - 2608_BD.WAV
-            - 2608_HH.WAV 
-            - 2608_RIM.WAV 
-            - 2608_SD.WAV
-            - 2608_TOM.WAV
-            - 2608_TOP.WAV
-    - **fmp** ([fmplayer](https://github.com/takamichih/fmplayer/))
-        - supports rhythm rom for OPNA
-        - supports ADPCM/PCM (.pvi, .pzi(for PPZ8))
-        - `ym2608_adpcm_rom.bin` must be located at `chip-player-js/public/rhythm` before building (the filename is case sensitive)
-    - **psf, minipsf** ([webPSX](https://github.com/wothke/webpsx))
-    - **2sf, mini2sf** ([webDS](https://github.com/wothke/webDS))
-    - **gsf** ([webGSF](https://github.com/wothke/webGSF))
-- additional soundfonts
-    - added two high quality piano soundfonts. if you'd like to listen piano solo this is good choice :)
-        - place the following .sf2 at public/sondfonts folder to enable them
-        - [Equinox Grand Pianos](http://www.mediafire.com/?12enyjv0ewj)
-        - [Warren S. Trachtman - Steinway Model-C Soundfont](https://archive.org/details/WST25FStein_00Sep22.sf2)
-- Reverb effect
+Chip Player JS is a web-based chiptune player written by Matt Montag.
+
+This fork tracks a recent upstream (merged through 2026-06) and builds against
+Emscripten 5.x. On top of that baseline it adds the following:
+
+### Additional file formats (players not present upstream)
+- **s98** ([webS98](https://github.com/wothke/webS98/), based on [m_s98.kpi S98V3](http://www.vesta.dti.ne.jp/~tsato/soft_s98v3.html))
+    - supports rhythm samples for OPNA
+    - corrects volume balance for PC-9801 (reduces the PSG channel volume when the `system` tag contains `9801`)
+    - the following sound samples must be located at `chip-player-js/public/rhythm` before building (each filename is case sensitive)
+        - 2608_BD.WAV / 2608_HH.WAV / 2608_RIM.WAV / 2608_SD.WAV / 2608_TOM.WAV / 2608_TOP.WAV
+- **pmd** ([webMDX](https://github.com/wothke/webMDX), based on [pmdmini](https://github.com/mistydemeo/pmdmini))
+    - supports rhythm samples for OPNA (same WAV files as above)
+    - supports ADPCM/PCM (.pps, .ppc, .p86, .pzi)
+- **fmp** ([fmplayer](https://github.com/takamichih/fmplayer/))
+    - supports rhythm rom for OPNA
+    - supports ADPCM/PCM (.pvi, .pzi(for PPZ8))
+    - `ym2608_adpcm_rom.bin` must be located at `chip-player-js/public/rhythm` before building (the filename is case sensitive)
+- **psf, minipsf** ([webPSX](https://github.com/wothke/webpsx))
+- **2sf, mini2sf** ([webDS](https://github.com/wothke/webDS))
+- **gsf, minigsf** ([webGSF](https://github.com/wothke/webGSF))
+    - optional EQ + harmonic exciter enhancement
+    - MP2K HLE high-quality mixing toggle (backported from mGBA's XQ audio)
+- **mp3 streaming** for large audio-format sources
+
+> Note: each pcm file (.pzi, .pvi, .pdx ...) is assumed to be in the same directory as the music file.
+
+### Other extras
+- **Font**: added a font to improve rendering of Japanese text, created by [MM of 自家製フォント工房](http://jikasei.me/font/kh-dotfont/) under the SIL Open Font License (with some modifications by me)
+- **Soundfonts**: two high-quality piano soundfonts for piano solo listening (place the .sf2 files under `public/soundfonts`)
+    - [Equinox Grand Pianos](http://www.mediafire.com/?12enyjv0ewj)
+    - [Warren S. Trachtman - Steinway Model-C Soundfont](https://archive.org/details/WST25FStein_00Sep22.sf2)
+- **GME fixes**: corrected tag text-encoding handling; `FDS write protect` support for tunes that use multiple expansion chips
+- **Stability & platform fixes**: iOS Safari audio-session recovery, plus fixes for memory leaks, seeking, and song-transition glitches
+- **Reverb effect**
     - may be useful when playing a system(like nes, gameboy, msx ...) that does not have its own reverb.
     - all impulse response files are from [Open AIR](https://www.openair.hosted.york.ac.uk/).
         - [Koli National Park - Summer](https://www.openair.hosted.york.ac.uk/?page_id=577) ([Creative Commons, CC BY 4.0](https://creativecommons.org/licenses/by/4.0/))
@@ -82,36 +73,15 @@ This fork is to share my fixes like;
             - www.openairlib.net
             - Audiolab, University of York
             - Dr. Damian T. Murphy
-    
-
-**This player assumes each pcm files(.pzi, .pvi, .pdx ...) are in the same directory where the music files are.**
 
 ## Building the libraries (this fork)
-All static libraries required by `npm run build-chip-core` — the upstream
-side-by-side clones (libxmp, game-music-emu, FluidLite, libvgm, libsidplayfp)
-and the in-repo ones (psflib, lazyusf2, webGSF's libwebgsf.a) — are built by
-one script:
+For a full setup walkthrough — prerequisites, cloning the sibling repos,
+installing the Emscripten SDK, building the native libraries and chip-core,
+the catalog, the database, and running the app — see
+**[GETTING_STARTED.md](GETTING_STARTED.md)**. That guide is the canonical
+build reference for this fork (including the flag policy and troubleshooting).
 
-```sh
-$ scripts/build-libs.sh          # clones siblings next to this repo if missing
-$ npm run build-chip-core        # then link chip-core (src/chip-core.wasm)
-```
-
-Requirements: emsdk 5.x at `~/src/emsdk`, cmake, automake/libtool, and `xa`
-(for libsidplayfp; `brew install automake libtool xa`).
-
-Flag policy baked into the script and `scripts/build-chip-core.js`:
-- **no `-flto`** — LTO miscompiles the legacy engine code (pmdwin, mdxmini,
-  gme's kss/hes emulators, libxmp) under Emscripten 5, causing
-  "memory access out of bounds" at load.
-- **`-fwrapv`** — the same legacy code assumes wrapping signed overflow.
-- `STACK_SIZE=5MB` — Emscripten 5 shrank the default stack to 64KB, which
-  the old engines overflow.
-
-libsidplayfp needs extra care (unpublished resid fork, GNU/BSD od
-differences); the script handles it — details in
-[scripts/patches/libsidplayfp-NOTES.txt](scripts/patches/libsidplayfp-NOTES.txt).
-
+### Optional: FluidLite SF3 support
 You can also enable sf3 support of FluidLite by building with `ENABLE_SF3` option like the following. 
 Loading sf3 files is quite slow, furthermore, doing the above will increase the .wasm file by around 200kb.　 
 So please consider if you need it carefully.
