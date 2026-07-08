@@ -321,6 +321,14 @@ void _mp2kStep(struct GBAAudioMixer* mixer) {
 		}
 		sample.left = (sample.left * mixer->p->masterVolume) >> 8;
 		sample.right = (sample.right * mixer->p->masterVolume) >> 8;
+		// The HLE mixer bypasses the standard _sample() PCM path, so the
+		// DirectSound channel mute flags must be honored here too. The HLE mixer
+		// re-synthesizes MP2K tracks as a single stream with no A/B split, so
+		// muting either PCM voice silences the whole re-synthesized output.
+		if (mixer->p->forceDisableChA || mixer->p->forceDisableChB) {
+			sample.left = 0;
+			sample.right = 0;
+		}
 		if (mixer->p->externalMixing) {
 			blip_add_delta(mixer->p->psg.left, mixer->p->clock + i * interval, sample.left - mixer->last.left);
 			blip_add_delta(mixer->p->psg.right, mixer->p->clock + i * interval, sample.right - mixer->last.right);
