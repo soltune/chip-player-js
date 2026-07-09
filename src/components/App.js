@@ -112,12 +112,20 @@ class App extends React.Component {
     //                           └─> reverb (wet) ─> compressor
     const compressor = this.audioCompressor = audioCtx.createDynamicsCompressor();
     compressor.connect(audioCtx.destination);
-    compressor.ratio.value = 1.0; // transparent until volume boost engages
     const gainNode = this.gainNode = audioCtx.createGain();
-    gainNode.gain.value = 1;
     gainNode.connect(compressor);
     this.reverb = new ImpulseResponseReverb(audioCtx, gainNode, compressor);
-    this.reverb.gain = 0.7;
+    // Volume boost / reverb / list order are persisted in user settings
+    // (UserProvider: localStorage, synced with the server when logged in).
+    // Restore them into the audio graph here; componentDidUpdate applies any
+    // later changes (Settings tab edits, server sync after login).
+    const { volumeBoost, reverbModel, reverbGain } = App.getGlobalSettings(props.userContext);
+    compressor.ratio.value = this.getCompressorRatio(volumeBoost); // ratio 1.0 is transparent until volume boost engages
+    gainNode.gain.value = volumeBoost; // volume slider starts at 100%
+    this.reverb.gain = reverbGain;
+    if (reverbModel) {
+      this.reverb.loadModel(`${process.env.PUBLIC_URL || ''}/reverb/${reverbModel}`);
+    }
     const playerNode = this.playerNode = audioCtx.createScriptProcessor(bufferSize, 0, 2);
     playerNode.connect(gainNode);
     // Fork: vizNode mixes playerNode output with StreamPlayer's MediaElementSource
@@ -150,10 +158,6 @@ class App extends React.Component {
       songPath: null,
       songId: null,
       volume: 100,
-      boost: 1.0,
-      reverb: '',
-      reverbGain: this.reverb.gain,
-      order: 'orderByTitle',
       repeat: REPEAT_OFF,
       shuffle: SHUFFLE_OFF,
       directories: {},
@@ -165,6 +169,43 @@ class App extends React.Component {
     };
 
     this.initChipCore(audioCtx, playerNode, bufferSize);
+  }
+
+  // Fork: global params (GlobalParams.js) persisted in user settings. Fall back
+  // to defaults for settings objects saved before these keys existed.
+  static getGlobalSettings(userContext) {
+    const settings = userContext?.settings || {};
+    return {
+      volumeBoost: settings.volumeBoost ?? 1.0,
+      reverbModel: settings.reverbModel ?? '',
+      reverbGain: settings.reverbGain ?? 0.7,
+      browseOrder: settings.browseOrder ?? 'orderByTitle',
+    };
+  }
+
+  componentDidUpdate(prevProps) {
+    // Fork: global settings can change from the Settings tab or arrive from the
+    // server after login; apply them to the audio graph / browse cache in one place.
+    const prev = App.getGlobalSettings(prevProps.userContext);
+    const curr = App.getGlobalSettings(this.props.userContext);
+    if (prev.volumeBoost !== curr.volumeBoost) {
+      this.audioCompressor.ratio.value = this.getCompressorRatio(curr.volumeBoost); // avoid clipping
+      this.gainNode.gain.value = Math.max(0, Math.min(2, this.state.volume * 0.01)) * curr.volumeBoost;
+    }
+    if (prev.reverbModel !== curr.reverbModel) {
+      if (curr.reverbModel) {
+        this.reverb.loadModel(`${process.env.PUBLIC_URL || ''}/reverb/${curr.reverbModel}`);
+      } else {
+        this.reverb.dispose();
+      }
+    }
+    if (prev.reverbGain !== curr.reverbGain) {
+      this.reverb.gain = curr.reverbGain;
+    }
+    if (prev.browseOrder !== curr.browseOrder) {
+      // Dropping cached listings forces Browse to refetch with the new sort order.
+      this.setState({ directories: {} });
+    }
   }
 
   async initChipCore(audioCtx, playerNode, bufferSize) {
@@ -680,7 +721,8 @@ class App extends React.Component {
 
   handleVolumeChange(volume) {
     this.setState({ volume });
-    this.gainNode.gain.value = Math.max(0, Math.min(2, volume * 0.01)) * this.state.boost;
+    this.gainNode.gain.value = Math.max(0, Math.min(2, volume * 0.01)) *
+      App.getGlobalSettings(this.props.userContext).volumeBoost;
   }
 
   getCompressorRatio(boost) {
@@ -688,34 +730,23 @@ class App extends React.Component {
     return (boost > 1.0) ? (boost / maxBoost * maxCompressorRatio) : 1.0;
   }
 
+  // The global-param handlers below only write to user settings;
+  // componentDidUpdate applies the new values to the audio graph.
   handleVolumeBoostChange(event) {
-    const boost = parseFloat(event.target ? event.target.value : event);
-    this.audioCompressor.ratio.value = this.getCompressorRatio(boost); // avoid clipping
-    this.gainNode.gain.value = Math.max(0, Math.min(2, this.state.volume * 0.01)) * boost;
-    this.setState({ boost });
+    const volumeBoost = parseFloat(event.target ? event.target.value : event);
+    this.props.userContext.updateSettings({ volumeBoost });
   }
 
   handleReverbClick(event) {
-    const fileName = event.target.value;
-    if (!fileName) {
-      this.reverb.dispose();
-    } else {
-      this.reverb.loadModel(`${process.env.PUBLIC_URL || ''}/reverb/${fileName}`);
-    }
-    this.setState({ reverb: fileName });
+    this.props.userContext.updateSettings({ reverbModel: event.target.value });
   }
 
   handleReverbGainChange(event) {
-    const gain = parseFloat(event.target.value);
-    this.reverb.gain = gain;
-    this.setState({ reverbGain: gain });
+    this.props.userContext.updateSettings({ reverbGain: parseFloat(event.target.value) });
   }
 
   handleOrderClick(event) {
-    const order = event.target.value;
-    if (order === this.state.order) return;
-    // Dropping cached listings forces Browse to refetch with the new sort order.
-    this.setState({ order: order, directories: {} });
+    this.props.userContext.updateSettings({ browseOrder: event.target.value });
   }
 
   handleCycleRepeat() {
@@ -760,7 +791,8 @@ class App extends React.Component {
       .then(response => response.json())
       .then(items => {
         // Fork: apply the selected sort order; directories always group before files.
-        items = App[this.state.order](items).sort((a, b) => {
+        const { browseOrder } = App.getGlobalSettings(this.props.userContext);
+        items = (App[browseOrder] || App.orderByTitle)(items).sort((a, b) => {
           if (a.type < b.type) return -1;
           if (a.type > b.type) return 1;
           return 0;
@@ -925,6 +957,7 @@ class App extends React.Component {
     const currIdx = this.sequencer?.getCurrIdx();
     const search = { search: window.location.search };
     const { settings } = this.props.userContext;
+    const globalSettings = App.getGlobalSettings(this.props.userContext);
     const showPlayerSettings = settings?.showPlayerSettings;
 
     return (
@@ -1032,10 +1065,10 @@ class App extends React.Component {
                     onPinParam={this.handlePinParam}
                     persistedSettings={settings}
                     sequencer={this.sequencer}
-                    boost={this.state.boost}
-                    reverb={this.state.reverb}
-                    reverbGain={this.state.reverbGain}
-                    order={this.state.order}
+                    boost={globalSettings.volumeBoost}
+                    reverb={globalSettings.reverbModel}
+                    reverbGain={globalSettings.reverbGain}
+                    order={globalSettings.browseOrder}
                     handleVolumeBoostChange={this.handleVolumeBoostChange}
                     handleReverbClick={this.handleReverbClick}
                     handleReverbGainChange={this.handleReverbGainChange}

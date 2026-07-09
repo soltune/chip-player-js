@@ -24,6 +24,11 @@ const UserContext = createContext({
 const DEFAULT_SETTINGS = {
   showPlayerSettings: false,
   theme: 'msdos',
+  // Fork: global params shown in the Settings tab (see GlobalParams.js).
+  volumeBoost: 1.0,
+  reverbModel: '',
+  reverbGain: 0.7,
+  browseOrder: 'orderByTitle',
 };
 
 const UserProvider = ({ children }) => {
@@ -45,7 +50,9 @@ const UserProvider = ({ children }) => {
     // Restore settings from localStorage.
     try {
       const settings = window.localStorage.getItem('settings');
-      return settings ? JSON.parse(settings) : DEFAULT_SETTINGS;
+      // Merge over defaults so keys introduced after the settings were first
+      // saved always exist.
+      return settings ? { ...DEFAULT_SETTINGS, ...JSON.parse(settings) } : DEFAULT_SETTINGS;
     } catch (e) {
       console.error('Could not load settings from localStorage', e);
       return DEFAULT_SETTINGS;
