@@ -43,6 +43,8 @@ export default class Player extends EventEmitter {
     this.params = {};
     this.infoTexts = [];
     this.looping = false; // infinite looping mode (vs. normal mode where it stops at end of song)
+    this.muteGainNode = null; // assigned by App; see muteAudioDuringCall
+    this.renderHoldUntil = 0; // audio-clock time; processAudio emits silence until then
   }
 
   /**
@@ -282,6 +284,20 @@ export default class Player extends EventEmitter {
   }
 
   processAudio(output) {
+    // Until the post-resume unmute deadline set by muteAudioDuringCall, emit
+    // silence instead of rendering: the mute gain is still zero, so anything
+    // rendered here would be consumed (e.g. from the prebuffer queue) but
+    // never heard, eating the head of the new audio.
+    if (this.renderHoldUntil) {
+      if (this.audioNode && this.audioNode.context.currentTime < this.renderHoldUntil) {
+        for (let i = 0; i < output.length; i++) {
+          output[i].fill(0);
+        }
+        return;
+      }
+      this.renderHoldUntil = 0;
+    }
+
     const start = performance.now();
     this.processAudioInner(output);
     const end = performance.now();
@@ -314,11 +330,45 @@ export default class Player extends EventEmitter {
     // Workaround to eliminate stuttering.
     if (audioNode.context.state === 'running') {
       console.debug('Suspending audio context during expensive operation...');
+      const muteGain = this.muteGainNode;
+      if (muteGain) {
+        // The ScriptProcessor keeps already-rendered buffers in flight;
+        // suspend() freezes them rather than dropping them, so without this
+        // mute they play once (a burst of the pre-suspend song) on resume.
+        // Ramp instead of an instant zero: cutting a loud waveform mid-swing
+        // clicks audibly.
+        const now = audioNode.context.currentTime;
+        muteGain.gain.cancelScheduledValues(now);
+        muteGain.gain.setValueAtTime(muteGain.gain.value, now);
+        muteGain.gain.linearRampToValueAtTime(0, now + 0.005);
+        // Wait for the ramp to render AND for the muted audio to reach the
+        // physical output before freezing the graph. The OS/device buffer
+        // still holds outputLatency worth of pre-ramp (full volume) audio;
+        // suspending while it carries a loud waveform pops at the device
+        // level. A ramp frozen mid-descent would also finish on the stale
+        // buffer after resume.
+        const rampMs = 5;
+        const outputLatencyMs = 1000 * (audioNode.context.outputLatency || 0.05);
+        await new Promise(resolve => setTimeout(resolve, rampMs + outputLatencyMs + 10));
+      }
       await audioNode.context.suspend();
       try {
         fn();
       } finally {
         await audioNode.context.resume();
+        if (muteGain) {
+          // Unmute once the stale in-flight buffers have drained. Chrome can
+          // hold 2 buffers in flight, so 2 lengths is a boundary case that
+          // leaks a click-sized tail of the old song; 6 leaves headroom for
+          // device-level buffering on top of that. renderHoldUntil makes
+          // processAudio emit silence until the unmute, so the drain window
+          // consumes no new audio, and the first real buffer arrives one
+          // buffer length later — after the 10ms ramp has completed.
+          const drainSec = 6 * audioNode.bufferSize / audioNode.context.sampleRate;
+          this.renderHoldUntil = audioNode.context.currentTime + drainSec;
+          muteGain.gain.setValueAtTime(0, this.renderHoldUntil);
+          muteGain.gain.linearRampToValueAtTime(1, this.renderHoldUntil + 0.01);
+        }
       }
     } else {
       fn();

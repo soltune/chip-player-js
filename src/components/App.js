@@ -108,8 +108,8 @@ class App extends React.Component {
       Math.pow(2, Math.ceil(Math.log2((audioCtx.baseLatency || 0.001) * audioCtx.sampleRate))), 2048);
     // Fork: gainNode feeds a compressor (anti-clipping for volume boost) and a
     // parallel convolution reverb wet path, instead of connecting to destination directly.
-    //   playerNode ─> gainNode ─┬─> compressor ─> destination
-    //                           └─> reverb (wet) ─> compressor
+    //   playerNode ─> muteGain ─> gainNode ─┬─> compressor ─> destination
+    //                                       └─> reverb (wet) ─> compressor
     const compressor = this.audioCompressor = audioCtx.createDynamicsCompressor();
     compressor.connect(audioCtx.destination);
     const gainNode = this.gainNode = audioCtx.createGain();
@@ -127,12 +127,19 @@ class App extends React.Component {
       this.reverb.loadModel(`${process.env.PUBLIC_URL || ''}/reverb/${reverbModel}`);
     }
     const playerNode = this.playerNode = audioCtx.createScriptProcessor(bufferSize, 0, 2);
-    playerNode.connect(gainNode);
+    // Fork: muteGain lets muteAudioDuringCall silence the ScriptProcessor's
+    // in-flight buffer across suspend/resume (suspend freezes an already-
+    // rendered buffer of the previous song, which would otherwise play once
+    // on resume). Separate from gainNode, which belongs to the volume slider.
+    const muteGain = this.muteGain = audioCtx.createGain();
+    playerNode.connect(muteGain);
+    muteGain.connect(gainNode);
     // Fork: vizNode mixes playerNode output with StreamPlayer's MediaElementSource
     // (which bypasses playerNode), so the Visualizer's analyser sees both. Tapped
-    // pre-gain so the spectrogram is unaffected by the volume slider.
+    // pre-gain (but post-muteGain, so stale buffers don't flash on the
+    // spectrogram) so it is unaffected by the volume slider.
     const vizNode = this.vizNode = audioCtx.createGain();
-    playerNode.connect(vizNode);
+    muteGain.connect(vizNode);
 
     unlockAudioContext(audioCtx);
     console.log('Sample rate: %d hz. Base latency: %d. Buffer size: %d.',
@@ -249,6 +256,8 @@ class App extends React.Component {
     ].map(P => new P(this.chipCore, audioCtx.sampleRate, bufferSize, debug));
     players.forEach(p => {
       p.audioNode = this.playerNode;
+      // Fork: used by Player.muteAudioDuringCall to mute stale in-flight audio.
+      p.muteGainNode = this.muteGain;
       // Fork: StreamPlayer connects its MediaElementSource here so streams pass
       // through the master gain / effects chain.
       p.destinationNode = this.gainNode;
