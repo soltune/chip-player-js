@@ -1477,19 +1477,29 @@ uint16_t available_buffer_size= 0;
 
 int ds_read(int16_t *output_buffer, uint16_t out_size) {
 	uint16_t requested_size= out_size;
-	
+
 	while (out_size) {
 		if (available_buffer_size) {
+			// note: sizes are in frames; <<2 for bytes (memcpy) but <<1 for
+			// int16_t* element advances. The advance was `<<2` (double the
+			// correct step) for years without harm because decode_run always
+			// returned full AUDIO_BUF_SIZE chunks, so these partial-consume
+			// branches never ran; the opening-silence skip's short first
+			// chunk exercises them (out-of-bounds reads = loud noise burst).
 			if (available_buffer_size >= out_size) {
 				memcpy(output_buffer, available_buffer, out_size<<2);
-				available_buffer+= out_size<<2;
+				available_buffer+= out_size<<1;
 				available_buffer_size-= out_size;
 				return requested_size;
 			} else {
 				memcpy(output_buffer, available_buffer, available_buffer_size<<2);
-				available_buffer= 0;
-				output_buffer+= available_buffer_size<<2;
+				output_buffer+= available_buffer_size<<1;
 				out_size-= available_buffer_size;
+				// zeroing only the pointer left the stale size behind, so the
+				// next iteration kept "consuming" from a NULL buffer (reads
+				// wasm low memory = loud static) until the size drained
+				available_buffer= 0;
+				available_buffer_size= 0;
 			}
 		} else {
 			if(!g_input_2sf->decode_run( &available_buffer, &available_buffer_size)) {
