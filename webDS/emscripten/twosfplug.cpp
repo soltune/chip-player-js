@@ -162,6 +162,13 @@ static unsigned int cfg_suppressopeningsilence = 0;
 static unsigned int cfg_suppressendsilence = 0;
 static unsigned int cfg_endsilenceseconds= 5;
 
+// Independent opening-silence skip, replacing the disabled logic above.
+// Some drivers (imageepoch: World Destruction, Luminous Arc) idle 5-6 seconds
+// after reset before the first note; that silence is data/driver time, not
+// emulator startup. Runs once per decode_initialize.
+static unsigned int cfg_skip_opening_silence = 1;
+static unsigned int cfg_opening_silence_max_sec = 15;
+
 static const char field_length[]="2sf_length";
 static const char field_fade[]="2sf_fade";
 
@@ -817,6 +824,11 @@ class input_twosf
 	int err;
 	int data_written,remainder,pos_delta,startsilence,silence;
 
+	// first audible buffer held back by skip_opening_silence() so the attack
+	// of the first note survives the skip; drained by the next decode_run
+	int16_t m_pending_samples[AUDIO_BUF_SIZE * 2];
+	int m_pending_count; // frames
+
 	double ds_emu_pos;	// in seconds
 
 	int song_len,fade_len;
@@ -825,9 +837,9 @@ class input_twosf
 //	bool do_filter, do_suppressendsilence;
 
 public:
-	input_twosf() : silence_test_buffer( 0 ), m_emu( 0 ), m_state(0) 
+	input_twosf() : silence_test_buffer( 0 ), m_emu( 0 ), m_state(0), m_pending_count(0)
 	{
-		memset(&m_output, 0, sizeof(m_output));		
+		memset(&m_output, 0, sizeof(m_output));
 	}
 
 	void resetPlayback() {
@@ -1139,9 +1151,14 @@ public:
 		// 2sf impl end
 		
 		// -------------- copy/paste standard handling:
-				
+
 		resetPlayback();
-		
+
+		// Run on every (re)initialization: the emu ends up running "silence
+		// length" ahead of the reported position, which keeps decode_seek's
+		// forward/backward math consistent. Side effect: leading silence no
+		// longer eats into the tag length, so song endings are not cut short.
+		skip_opening_silence();
 
 		/* is broken anyway..
 		
@@ -1274,8 +1291,18 @@ public:
 			*/
 			{
 				// 2sf start
-				written = samples;
-				state_render( m_emu, m_output.samples, written );
+				if ( m_pending_count )
+				{
+					// first audible buffer held back by skip_opening_silence()
+					written = m_pending_count;
+					memcpy( m_output.samples, m_pending_samples, written * sizeof(int16_t) * 2 );
+					m_pending_count = 0;
+				}
+				else
+				{
+					written = samples;
+					state_render( m_emu, m_output.samples, written );
+				}
 				// 2sf end
 			}
 
@@ -1335,6 +1362,12 @@ public:
 		}
 		unsigned int howmany = ( int )( ( p_seconds - ds_emu_pos )*44100 );
 
+		// the held-back first audible buffer is pre-seek audio; only keep it
+		// when the target is exactly the current position (e.g. restart to 0
+		// right after init, where the pending chunk is still what plays next)
+		if ( howmany )
+			m_pending_count = 0;
+
 		// more abortable, and emu doesn't like doing huge numbers of samples per call anyway
 		while ( howmany )
 		{
@@ -1367,6 +1400,35 @@ public:
 	    if (m_emu) m_emu->dwInterpolation = mode;
 	}
 private:
+	// Renders and discards output until the first audible frame (or the
+	// cfg_opening_silence_max_sec cap). The buffer containing the first
+	// audible frame is kept in m_pending_samples so decode_run can emit it
+	// with the attack intact. Skipped frames are intentionally not counted
+	// into data_written/ds_emu_pos.
+	void skip_opening_silence() {
+		m_pending_count = 0;
+		if ( !cfg_skip_opening_silence )
+			return;
+		unsigned remaining = cfg_opening_silence_max_sec * 44100;
+		while ( remaining )
+		{
+			unsigned chunk = remaining > AUDIO_BUF_SIZE ? AUDIO_BUF_SIZE : remaining;
+			state_render( m_emu, m_output.samples, chunk );
+			const int16_t *p = m_output.samples;
+			unsigned i;
+			for ( i = 0; i < chunk; ++i, p += 2 )
+				if ( p[0] || p[1] ) break;
+			if ( i < chunk )
+			{
+				m_pending_count = chunk - i;
+				memcpy( m_pending_samples, m_output.samples + i * 2, m_pending_count * sizeof(int16_t) * 2 );
+				return;
+			}
+			remaining -= chunk;
+		}
+		// never audible within the cap: play as-is (genuinely silent track)
+	}
+
 	double MulDiv(int ms, int sampleRate, int d) {
 		return ((double)ms)*sampleRate/d;
 	}

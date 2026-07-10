@@ -10,6 +10,23 @@ const fileExtensions = [
 const SAMPLES_PER_BUFFER = 16384; // allowed: buffer sizes: 256, 512, 1024, 2048, 4096, 8192, 16384
 const NDS_CHANNEL_COUNT = 2; // NDS always outputs interleaved stereo (L/R/L/R...)
 
+// Pre-render queue ("prebuffer"). DS emulation runs on the main thread inside
+// the ScriptProcessor callback and heavy titles (streaming drivers like World
+// Destruction/Soma Bringer) render near real time, so any main-thread jank
+// (GC, React renders) starves the ~2-buffer slack Chrome gives us and
+// crackles. Keeping this much audio pre-rendered decouples emulation from the
+// audio deadline; refill happens opportunistically at the end of each
+// callback, time-boxed so a callback never blocks the thread for long.
+const PREBUFFER_TARGET_MS = 500;
+// Fraction of the callback period the callback may spend in total (drain +
+// refill). Steady state needs production ≈ consumption (that cost is the
+// song's, not the queue's); the remaining headroom above that rebuilds the
+// queue after a main-thread stall at roughly (utilization - realtime cost)
+// per callback.
+const PREBUFFER_REFILL_UTILIZATION = 0.8;
+const PREBUFFER_PREFILL_BUDGET_MS = 1500; // during (muted) load/seek
+const FADEOUT_MS = 2000;
+
 class DSLibWrapper {
   constructor(chipCore) {
     this.ndslib = chipCore;
@@ -214,19 +231,121 @@ export default class NDSPlayer extends Player {
 
     this.paused = true;
     this.fileExtensions = fileExtensions;
+    this.pendingFileRequests = new Set();
     this.tempo = 1.0;
     this.isFadingOut = false;
     this.fadeOutStartMs = 0;
     this.currentPlaytime = 0;
 
-    this.numberOfSamplesToRender = 0;
-    this.sourceBufferIdx = 0;
     this.sourceBuffer = null;
     this.sourceBufferLen = 0;
+
+    // pre-render queue: Float32Array chunks of interleaved stereo at the
+    // output sample rate; fifoHeadOffset counts the frames consumed so far
+    // from fifo[0], queuedFrames the total unconsumed frames across the queue
+    this.fifo = [];
+    this.fifoHeadOffset = 0;
+    this.queuedFrames = 0;
+    this.producerFinished = false;
 
     this.params = {};
     this.persistedSettings = {};
 
+  }
+
+  // ---- pre-render queue (producer side) ----
+
+  flushPrebuffer() {
+    this.fifo = [];
+    this.fifoHeadOffset = 0;
+    this.queuedFrames = 0;
+    this.producerFinished = false;
+  }
+
+  queuedMs() {
+    return this.queuedFrames / this.sampleRate * 1000;
+  }
+
+  // Renders one emulator chunk, resamples it to output rate (interleaved
+  // stereo) and appends it to the queue. Returns false once the song (tag
+  // length + fadeout) has ended; no chunk is queued in that case.
+  produceChunk() {
+    if (this.producerFinished) {
+      return false;
+    }
+    // this.currentPlaytime tracks the emulator-side position (which runs
+    // ahead of the audible position by queuedMs)
+    this.currentPlaytime = Math.max(this.lib.getPlaybackPosition(), this.currentPlaytime);
+    const duration = this.getDurationMs();
+
+    let finished = (this.currentPlaytime >= duration + FADEOUT_MS);
+    if (!finished) {
+      if (this.currentPlaytime >= duration && !this.isFadingOut) {
+        this.setFadeout(this.currentPlaytime);
+      }
+      finished = (this.lib.computeAudioSamples() === 1);
+    }
+    if (finished) {
+      this.producerFinished = true;
+      return false;
+    }
+
+    // refresh just in case they are not using one fixed buffer..
+    this.sourceBuffer = this.lib.getAudioBuffer();
+    this.sourceBufferLen = this.lib.getAudioBufferLength();
+
+    const frames = this.getResampledFloats(this.sourceBuffer, this.sourceBufferLen, this.sampleRate, this.inputSampleRate);
+
+    let ratio = 1.0;
+    if (this.isFadingOut) {
+      const current = this.currentPlaytime - duration;
+      ratio = Math.max((FADEOUT_MS - current) / FADEOUT_MS, 0);
+    }
+    const chunk = new Float32Array(frames * NDS_CHANNEL_COUNT);
+    for (let i = 0; i < chunk.length; i++) {
+      chunk[i] = this.resampleBuffer[i] * ratio;
+    }
+    this.fifo.push(chunk);
+    this.queuedFrames += frames;
+    return true;
+  }
+
+  // Fills the queue up to the target depth (time-boxed). Call the expensive
+  // initial fill only under muteAudioDuringCall (load/seek); the audio
+  // callback itself tops the queue up with a much smaller budget.
+  prefillAudio(budgetMs = PREBUFFER_PREFILL_BUDGET_MS) {
+    const t0 = performance.now();
+    while (this.queuedMs() < PREBUFFER_TARGET_MS &&
+           (performance.now() - t0) < budgetMs) {
+      if (!this.produceChunk()) break;
+    }
+  }
+
+  // ---- audio callback (consumer side) ----
+
+  // Copies up to wantFrames from the queue head into the output channels.
+  consumeFromFifo(channels, destOffset, wantFrames) {
+    const head = this.fifo[0];
+    const headFrames = head.length / NDS_CHANNEL_COUNT - this.fifoHeadOffset;
+    const take = Math.min(headFrames, wantFrames);
+    const base = this.fifoHeadOffset * NDS_CHANNEL_COUNT;
+    if (channels.length === 2) {
+      for (let i = 0; i < take; i++) {
+        channels[0][destOffset + i] = head[base + i * 2];
+        channels[1][destOffset + i] = head[base + i * 2 + 1];
+      }
+    } else {
+      for (let i = 0; i < take; i++) {
+        channels[0][destOffset + i] = head[base + i * 2];
+      }
+    }
+    this.fifoHeadOffset += take;
+    if (this.fifoHeadOffset * NDS_CHANNEL_COUNT >= head.length) {
+      this.fifo.shift();
+      this.fifoHeadOffset = 0;
+    }
+    this.queuedFrames -= take;
+    return take;
   }
 
   processAudioInner(channels) {
@@ -234,69 +353,46 @@ export default class NDSPlayer extends Player {
     this.isStereo = channels.length === 2;
 
     if (this.paused) {
-      for (let i = 0; i < this.channels.length; i++) {
-        this.channels[i].fill(0);
+      for (let i = 0; i < channels.length; i++) {
+        channels[i].fill(0);
       }
       return;
     }
 
-    const outSize = this.channels[0].length;
-    this.numberOfSamplesRendered = 0;
-    const fadeOutMs = 2000;
+    const t0 = performance.now();
+    const outSize = channels[0].length;
+    let rendered = 0;
 
-    while (this.numberOfSamplesRendered < outSize) {
-      if (this.numberOfSamplesToRender === 0) {
-
-        let finished = false;
-        this.currentPlaytime = Math.max(this.getPositionMs(), this.currentPlaytime);
-        const duration = this.getDurationMs();
-
-        finished = (this.currentPlaytime >= duration + fadeOutMs);
-        if (!finished) {
-          if (this.currentPlaytime >= duration && !this.isFadingOut) {
-            this.setFadeout(this.currentPlaytime);
+    while (rendered < outSize) {
+      if (this.queuedFrames === 0) {
+        if (this.producerFinished) {
+          for (let i = 0; i < channels.length; i++) {
+            channels[i].fill(0, rendered);
           }
-          finished = (this.lib.computeAudioSamples() === 1);
-        }
-
-        if (finished) {
-          // no frame left
-          this.fillEmpty(outSize);
           this.stop();
           return;
         }
-
-        // refresh just in case they are not using one fixed buffer..
-        this.sourceBuffer = this.lib.getAudioBuffer();
-        this.sourceBufferLen = this.lib.getAudioBufferLength();
-
-        this.numberOfSamplesToRender = this.getResampledAudio();
-        this.sourceBufferIdx = 0;
-
-        if (this.isFadingOut) {
-          const current = this.currentPlaytime - duration;
-          const ratio = Math.max((fadeOutMs - current) / fadeOutMs, 0);
-          this.resampleBuffer = this.resampleBuffer.map((value) => {
-            return value * ratio
-          });
-        }
+        // queue underrun: render synchronously (pre-queue behavior)
+        this.produceChunk();
+        continue;
       }
-
-      if (this.isStereo) {
-        this.copySamplesStereo();
-      } else {
-        this.copySamplesMono();
-      }
+      rendered += this.consumeFromFifo(channels, rendered, outSize - rendered);
     }
-  }
 
-  getResampledAudio(input, len) {
-    return this.getResampledFloats(this.sourceBuffer, this.sourceBufferLen, this.sampleRate, this.inputSampleRate);
+    // refill toward the target with whatever is left of this callback's time
+    // budget, so transient main-thread stalls drain the queue instead of
+    // causing an audible glitch and the deficit is rebuilt afterwards
+    const callbackBudget = (outSize / this.sampleRate) * 1000 * PREBUFFER_REFILL_UTILIZATION;
+    while (!this.producerFinished &&
+           this.queuedMs() < PREBUFFER_TARGET_MS &&
+           (performance.now() - t0) < callbackBudget) {
+      if (!this.produceChunk()) break;
+    }
   }
 
   getCopiedAudio(input, len, resampleOutput) {
     // just copy the rescaled values so there is no need for special handling in playback loop
-    for (let i = 0; i < len * this.channels.length; i++) {
+    for (let i = 0; i < len * NDS_CHANNEL_COUNT; i++) {
       resampleOutput[i] = this.readFloatSample(input, i);
     }
     return len;
@@ -310,9 +406,11 @@ export default class NDSPlayer extends Player {
     return new Float32Array(s);
   }
 
+  // Always produces interleaved stereo at the output rate (the queue format),
+  // regardless of the output node's channel count.
   getResampledFloats(input, len, sampleRate, inputSampleRate) {
     let resampleLen = Math.round(len * sampleRate / inputSampleRate);
-    const bufSize = resampleLen * this.channels.length;	// for each of the x channels
+    const bufSize = resampleLen * NDS_CHANNEL_COUNT;
 
     if (bufSize > this.resampleBuffer.length) {
       this.resampleBuffer = this.allocResampleBuffer(bufSize);
@@ -321,16 +419,13 @@ export default class NDSPlayer extends Player {
     if (sampleRate === inputSampleRate) {
       resampleLen = this.getCopiedAudio(input, len, this.resampleBuffer);
     } else {
-      // only mono and interleaved stereo data is currently implemented..
-      this.resampleToFloat(this.channels, 0, input, len, this.resampleBuffer, resampleLen);
-      if (this.isStereo) {
-        this.resampleToFloat(this.channels, 1, input, len, this.resampleBuffer, resampleLen);
-      }
+      this.resampleToFloat(0, input, len, this.resampleBuffer, resampleLen);
+      this.resampleToFloat(1, input, len, this.resampleBuffer, resampleLen);
     }
     return resampleLen;
   }
 
-  resampleToFloat(channels, channelId, inputPtr, len, resampleOutput, resampleLen) {
+  resampleToFloat(channelId, inputPtr, len, resampleOutput, resampleLen) {
     const ratio = len / resampleLen;
     for (let i = 0; i < resampleLen; i++) {
       const pos = i * ratio;
@@ -361,51 +456,8 @@ export default class NDSPlayer extends Player {
       );
 
       // Catmull-Rom can overshoot at sharp transients, so clamp to valid range.
-      resampleOutput[(i * channels.length) + channelId] = Math.max(-1.0, Math.min(1.0, sample));
+      resampleOutput[(i * NDS_CHANNEL_COUNT) + channelId] = Math.max(-1.0, Math.min(1.0, sample));
     }
-  }
-
-  copySamplesStereo() {
-    const outSize = this.channels[0].length;
-    const availableSpace = Math.min(this.numberOfSamplesToRender, outSize - this.numberOfSamplesRendered);
-    
-    for (let i = 0; i < availableSpace; i++) {
-      const l = this.resampleBuffer[this.sourceBufferIdx++];
-      const r = this.resampleBuffer[this.sourceBufferIdx++];
-      
-      // クリッピング防止
-      this.channels[0][i + this.numberOfSamplesRendered] = Math.max(-1.0, Math.min(1.0, l));
-      this.channels[1][i + this.numberOfSamplesRendered] = Math.max(-1.0, Math.min(1.0, r));
-    }
-    
-    this.numberOfSamplesToRender -= availableSpace;
-    this.numberOfSamplesRendered += availableSpace;
-  }
-
-  copySamplesMono() {
-    const outSize = this.channels[0].length;
-    const availableSpace = Math.min(this.numberOfSamplesToRender, outSize - this.numberOfSamplesRendered);
-    
-    for (let i = 0; i < availableSpace; i++) {
-      const sample = this.resampleBuffer[this.sourceBufferIdx++];
-      // クリッピング防止
-      this.channels[0][i + this.numberOfSamplesRendered] = Math.max(-1.0, Math.min(1.0, sample));
-    }
-    
-    this.numberOfSamplesToRender -= availableSpace;
-    this.numberOfSamplesRendered += availableSpace;
-  }
-
-  fillEmpty(outSize) {
-    const availableSpace = outSize - this.numberOfSamplesRendered;
-
-    for (let i = 0; i < availableSpace; i++) {
-      for (let j = 0; j < this.channels.length; j++) {
-        this.channels[j][i + this.numberOfSamplesRendered] = 0;
-      }
-    }
-    this.numberOfSamplesToRender = 0;
-    this.numberOfSamplesRendered = outSize;
   }
 
   resetSampleRate(sampleRate, inputSampleRate) {
@@ -416,7 +468,7 @@ export default class NDSPlayer extends Player {
       this.inputSampleRate = inputSampleRate;
     }
 
-    const s = Math.round(SAMPLES_PER_BUFFER * (this.sampleRate / this.inputSampleRate)) * this.channels.length;
+    const s = Math.round(SAMPLES_PER_BUFFER * (this.sampleRate / this.inputSampleRate)) * NDS_CHANNEL_COUNT;
 
     if (s > this.resampleBuffer.length) {
       this.resampleBuffer = this.allocResampleBuffer(s);
@@ -436,22 +488,21 @@ export default class NDSPlayer extends Player {
 
   // overrided methods from Player
   restart() {
-    this.lib.seekPlaybackPosition(0);
+    this.seekMs(0);
     this.resume();
   }
 
   loadData(data, filepath, persistedSettings = {}) {
     this.suspend();
-    
+
     if (!this.lib.isClosed()) {
       this.lib.teardown();
     }
 
     this.resampleBuffer = this.allocResampleBuffer(0);
-    this.numberOfSamplesToRender = 0;
-    this.sourceBufferIdx = 0;
     this.sourceBuffer = null;
     this.sourceBufferLen = 0;
+    this.flushPrebuffer();
     this.currentPlaytime = 0;
     this.isFadingOut = false;
     this.fadeOutStartMs = 0;
@@ -474,6 +525,7 @@ export default class NDSPlayer extends Player {
         this.voiceMask = Array(this.getNumVoices()).fill(true);
         this.init();
         this.resolveParamValues(persistedSettings);
+        this.prefillAudio();
 
         this.resume();
 
@@ -507,7 +559,8 @@ export default class NDSPlayer extends Player {
   }
 
   getPositionMs() {
-    return this.isPaused()? 0 : this.lib.getPlaybackPosition();
+    // the emulator runs ahead of the audible position by the queued amount
+    return this.isPaused()? 0 : Math.max(0, this.lib.getPlaybackPosition() - this.queuedMs());
   }
 
   getDurationMs() {
@@ -575,11 +628,20 @@ export default class NDSPlayer extends Player {
   }
 
   seekMs(positionMs) {
-    this.lib.seekPlaybackPosition(positionMs);
+    // Seeking re-renders audio synchronously (a backward seek reloads the ROM
+    // and can block for many seconds); without suspending the context, the
+    // ScriptProcessor callbacks queued during the block fire in a burst
+    // afterwards and skip playback far past the seek target.
+    return this.muteAudioDuringCall(this.audioNode, () => {
+      this.flushPrebuffer(); // queued chunks are pre-seek audio
+      this.lib.seekPlaybackPosition(positionMs);
+      this.prefillAudio();
+    });
   }
 
   stop() {
     this.suspend();
+    this.flushPrebuffer();
     this.lib.teardown();
 
     console.debug('NDSPlayer.stop()');
@@ -595,6 +657,14 @@ export default class NDSPlayer extends Player {
       return 0;
     }
 
+    // Rapid repeated loads (e.g. double click) can request the same _lib
+    // several times before the first fetch lands; only the first fetch should
+    // re-init, the rest would tear down the already-playing song.
+    if (this.pendingFileRequests.has(fullFilename)) {
+      return -1;
+    }
+    this.pendingFileRequests.add(fullFilename);
+
     const remotePath = this.lib.getAbsolutePath([CATALOG_PREFIX, fullFilename]);
     fetch(remotePath, {method: 'GET',})
       .then(response => {
@@ -604,13 +674,19 @@ export default class NDSPlayer extends Player {
         return response.arrayBuffer();
       })
       .then(buffer => {
+        this.pendingFileRequests.delete(fullFilename);
+        this.lib.registerFileData(path, filename, buffer);
+        if (!this.lastLoadedFilename) {
+          // no load is waiting on this file anymore (a later init already
+          // succeeded and cleared it); don't tear down the playing song
+          return;
+        }
         this.suspend();
 
         this.resampleBuffer = this.allocResampleBuffer(0);
-        this.numberOfSamplesToRender = 0;
-        this.sourceBufferIdx = 0;
         this.sourceBuffer = null;
         this.sourceBufferLen = 0;
+        this.flushPrebuffer();
         this.currentPlaytime = 0;
         this.isFadingOut = false;
         this.fadeOutStartMs = 0;
@@ -621,11 +697,11 @@ export default class NDSPlayer extends Player {
           }
         }
 
-        this.lib.registerFileData(path, filename, buffer);
         return this.muteAudioDuringCall(this.audioNode, () => {
           if (this.lib.loadMusicData(this.sampleRate, path, this.lastLoadedFilename) === 0) {
             this.init();
             this.resolveParamValues(this.persistedSettings);
+            this.prefillAudio();
 
             this.resume();
 
@@ -636,7 +712,9 @@ export default class NDSPlayer extends Player {
           }
         });
       })
-      .catch(e => {});
+      .catch(e => {
+        this.pendingFileRequests.delete(fullFilename);
+      });
 
     return -1;
   }
