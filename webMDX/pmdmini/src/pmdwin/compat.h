@@ -2,10 +2,16 @@
 #define PMDWIN_COMPAT_H
 
 #include <stdio.h>
+#include <stdint.h>
 
 typedef unsigned char BYTE;
 typedef unsigned short WORD;
-typedef unsigned long DWORD;
+/* DWORD must be a fixed-width type because it is used in packed
+   structures (such as PZIHEADER) read directly from files via fread.
+   Using 'unsigned long' is 4 bytes on wasm32/Win32, but becomes 8 bytes
+   on LP64 (native iOS/macOS). This breaks the header layout, causing
+   PPZ8 to use a garbage address as the playback pointer and crash. */
+typedef uint32_t DWORD;
 typedef long long _int64;
 
 #ifndef HAVE_STRNICMP
