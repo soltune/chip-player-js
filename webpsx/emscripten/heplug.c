@@ -417,7 +417,9 @@ static int EMU_CALL virtual_readfile(void *context, const char *path, int offset
     return psf2fs_virtual_readfile(context, path, offset, buffer, length);
 }
 
-#define PATH_MAX 255
+/* 1024: native (iOS/macOS) builds pass absolute cache paths that easily exceed
+ * 255 chars; the wasm MEMFS paths were always short so 255 used to be enough */
+#define PATH_MAX 1024
 
 typedef struct {
 	int channels;

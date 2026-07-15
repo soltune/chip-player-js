@@ -942,8 +942,9 @@ static void perform_state_offset(struct R3000_MEMORY_MAP *map, struct IOP_STATE 
   //
   // It's safe to typecast this "pointer" to a uint32 since, due to
   // the STATEOFS hack, it'll never be bigger than 4GB
+  // (go through size_t so the cast also compiles on 64-bit / LP64 targets)
   //
-  uint32 o = (uint32)(map->type.p);
+  uint32 o = (uint32)(size_t)(map->type.p);
   map->type.p = ((uint8*)state) + o;
 }
 

@@ -35,6 +35,13 @@ void PSG::Reset()
 	SetReg(7, 0xff);
 	SetReg(14, 0xff);
 	SetReg(15, 0xff);
+	// chip-player-js fork: the tone/noise phase counters were never initialized
+	// anywhere. The Emscripten build always starts from a zeroed heap, so the
+	// web player is deterministic by accident; native builds (chip-player-native)
+	// inherit whatever garbage malloc returns and playback differs run-to-run.
+	// Zeroing here matches the de-facto web behaviour.
+	scount[0] = scount[1] = scount[2] = 0;
+	ncount = 0;
 }
 
 // ---------------------------------------------------------------------------

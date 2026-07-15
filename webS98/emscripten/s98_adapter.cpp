@@ -45,8 +45,13 @@
 #define EMSCRIPTEN_KEEPALIVE
 #endif
 
+// chip-player-js fork: overridable like webMDX's internalRhythmPath so the
+// native build (chip-player-native) can point this at its bundle directory.
+// The web build keeps the Emscripten FS default below.
+char* s98_internalRhythmPath = (char*)"/rhythm";
+
 const char *getEmscriptenRhythmPath() {
-	return "/rhythm";
+	return s98_internalRhythmPath;
 }
 
 #define CHANNELS 2				
