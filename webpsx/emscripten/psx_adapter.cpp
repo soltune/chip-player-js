@@ -95,6 +95,11 @@ static char psfby_str[TEXT_MAX];
 	void he_set_reverb(DB_fileinfo_t *_info, uint8 enable);
 //}
 
+// anonymous namespace: psx/gsf/nds adapters each define an identical "StaticBlock"
+// whose implicitly-inline (weak) constructor gets coalesced to a single definition
+// when all adapters are linked into one binary, leaving the other adapters'
+// info_texts uninitialized (NULL).
+namespace {
 struct StaticBlock {
     StaticBlock(){
 		info_texts[0]= title_str;
@@ -106,6 +111,7 @@ struct StaticBlock {
 		info_texts[6]= psfby_str;
     }
 };
+}
 
 DB_fileinfo_t* song_info= 0;
 
