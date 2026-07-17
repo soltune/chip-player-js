@@ -908,14 +908,20 @@ public:
 		free( m_emu );
 		m_emu = NULL;
 
-		free(m_state->rom);
-		m_state->rom = NULL;
+		// m_state is NULL until the first decode_initialize; dereferencing it
+		// only "worked" on wasm because address 0 is readable zero-filled heap
+		// (native SIGSEGVs here). free(NULL) was a no-op there, so guarding is
+		// behavior-neutral for the web build.
+		if (m_state) {
+			free(m_state->rom);
+			m_state->rom = NULL;
 
-		free(m_state->state);
-		m_state->state = NULL;
+			free(m_state->state);
+			m_state->state = NULL;
 
-        delete m_state;
-        m_state = NULL;
+			delete m_state;
+			m_state = NULL;
+		}
 	}
 
 	int open(const char * p_path ) {
