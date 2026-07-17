@@ -133,15 +133,36 @@ const dbStatements = {
           modified_at = @now
   `),
 
+  // The favorites list view resolves display paths by songId, so the client may
+  // send a different catalog path than the one stored at add time. Remove by
+  // stored path OR songId (@songId may be null if the path is gone from the
+  // catalog). IS/IS NOT keep NULL comparisons safe: entries without a stored
+  // path must survive removals of other songs. The EXISTS guard keeps changes=0
+  // when nothing matches, so the route can report 404.
   removeFavoriteByPathStmt: db.prepare(`
       UPDATE playlists
       SET items = (
           SELECT json_group_array(value)
           FROM json_each(items)
-          WHERE json_extract(value, '$.path') != @path
+          WHERE json_extract(value, '$.path') IS NOT @path
+            AND (@songId IS NULL OR json_extract(value, '$.songId') IS NOT @songId)
       ),
       modified_at = @now
       WHERE user_id = @userId AND type = 'favorites'
+        AND EXISTS (
+            SELECT 1 FROM json_each(items)
+            WHERE json_extract(value, '$.path') IS @path
+               OR (@songId IS NOT NULL AND json_extract(value, '$.songId') IS @songId)
+        )
+  `),
+
+  // Favorites are keyed by songId; used to keep adds idempotent.
+  hasFavoriteStmt: db.prepare(`
+      SELECT 1
+      FROM playlists p, json_each(p.items)
+      WHERE p.user_id = @userId AND p.type = 'favorites'
+        AND json_extract(value, '$.songId') IS @songId
+      LIMIT 1
   `),
 
   getCsdbSidStmt: db.prepare('SELECT xml FROM csdb_db.sids WHERE csdbid = ? LIMIT 1'),

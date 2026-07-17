@@ -43,6 +43,7 @@ const {
   getFavoritesStmt,
   addFavoriteByPathStmt,
   removeFavoriteByPathStmt,
+  hasFavoriteStmt,
   getUserSettingsStmt,
   replaceUserSettingsStmt,
   insertPlaybackStmt,
@@ -595,6 +596,11 @@ router.post(
         return res.status(404).json({ error: 'Song not found' });
       }
 
+      // Favorites are keyed by songId; skip duplicates so repeated adds are idempotent.
+      if (hasFavoriteStmt.get({ userId: req.userId, songId: song.song_id })) {
+        return res.json({ success: true, duplicate: true });
+      }
+
       // Resolve the path to a song ID on insertion.
       addFavoriteByPathStmt.run({
         userId: req.userId,
@@ -623,18 +629,20 @@ router.post(
         .replace('https://gifx.co/music/', '')
         .replace('http://localhost:8080/catalog/', '');
       try { songPath = decodeURIComponent(songPath); } catch (e) {}
-      removeFavoriteByPathStmt.run({
+      // The client may send a resolved catalog path that differs from the stored
+      // one (duplicate files share a songId), so also remove by songId.
+      const song = getSongByPathStmt.get(songPath);
+      const info = removeFavoriteByPathStmt.run({
         userId: req.userId,
         path: songPath,
+        songId: song ? song.song_id : null,
         now,
       });
-      // Get rows affected
-      const rowsAffected = removeFavoriteByPathStmt.changes;
-      if (rowsAffected === 0) {
+      if (info.changes === 0) {
         return res.status(404).json({ error: 'Favorite not found' });
       }
 
-      res.json({ success: true, removed: rowsAffected });
+      res.json({ success: true });
     } catch (e) {
       console.error('Error removing favorite:', e);
       res.status(500).json({ error: 'Failed to remove favorite' });
