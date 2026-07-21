@@ -5,7 +5,7 @@
 #   ../libxmp           https://github.com/libxmp/libxmp.git
 #   ../game-music-emu   https://github.com/soltune/game-music-emu.git (chip-player)
 #   ../FluidLite        https://github.com/divideconcept/FluidLite.git
-#   ../libvgm           https://github.com/ValleyBell/libvgm.git
+#   ../libvgm           https://github.com/soltune/libvgm.git (chip-player)
 #   ../libsidplayfp     https://github.com/mmontag/libsidplayfp.git (montag-dev-2.14)
 # In-repo builds: fluidlite is NOT used (stale subtree); psflib, lazyusf2 and
 # webGSF build from the in-repo sources.
@@ -33,7 +33,7 @@ echo '=== side-by-side clones'
 clone_if_missing https://github.com/libxmp/libxmp.git          "$SIB/libxmp"
 clone_if_missing https://github.com/soltune/game-music-emu.git "$SIB/game-music-emu" chip-player
 clone_if_missing https://github.com/divideconcept/FluidLite.git "$SIB/FluidLite"
-clone_if_missing https://github.com/ValleyBell/libvgm.git      "$SIB/libvgm"
+clone_if_missing https://github.com/soltune/libvgm.git         "$SIB/libvgm" chip-player
 clone_if_missing https://github.com/mmontag/libsidplayfp.git   "$SIB/libsidplayfp" montag-dev-2.14
 
 echo '=== libxmp-lite (side-by-side)'
