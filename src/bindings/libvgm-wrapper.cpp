@@ -19,6 +19,7 @@
 #include "utils/FileLoader.h"
 #include "utils/MemoryLoader.h"
 #include "emu/EmuCores.h"
+#include "emu/cores/gbintf.h"
 
 /* C wrapper functions */
 typedef struct lvgm_player lvgm_player;
@@ -329,6 +330,27 @@ UINT8 lvgm_load_data(lvgm_player *player, const UINT8 *data, const UINT32 size) 
         devOpts.emuCore[0] = FCC_MAXM;
         base->SetDeviceOptions(devOptID, devOpts);
       }
+    }
+  }
+
+  // Force MAME core for GB DMG. The SameBoy core (libvgm default since
+  // 0847196) emulates the phase-dependent DMG "NR43 write while running"
+  // LFSR glitches; VGM timing is quantized to the sample grid, so the
+  // glitch model misfires and silences noise drums whose driver
+  // pitch-slides NR43 right after trigger (e.g. Konami). The MAME core
+  // needs the envelope-retrigger fix from our libvgm branch
+  // fix/gb-noise-envelope-retrigger, or quiet ghost notes get cut short.
+  // Legacy mode reloads length from NRx1 on trigger, required for old
+  // vgm_cmp-optimized rips that omit redundant NRx1 writes.
+  for (int instance = 0; instance < 2; instance++) {
+    devOptID = PLR_DEV_ID(DEVID_GB_DMG, instance);
+    retVal = base->GetDeviceOptions(devOptID, devOpts);
+    if (!(retVal & 0x80)) {
+      if (!devOpts.emuCore[0]) {
+        devOpts.emuCore[0] = FCC_MAME;
+      }
+      devOpts.coreOpts |= OPT_GB_DMG_LEGACY_MODE;
+      base->SetDeviceOptions(devOptID, devOpts);
     }
   }
 
