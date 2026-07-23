@@ -120,12 +120,35 @@ static void _stepSample(struct GBAAudioMixer* mixer, struct GBAMP2kTrack* track)
 		break;
 	default:
 #ifdef MP2K_DEBUG_TRACE
-		fprintf(stderr, "MP2KDBG f=%d SKIPTYPE type=%02x key=%d\n", mp2kDebugFrame, instrument.type, note);
+		// A skip is a real dropout only if this PCM channel is still sounding
+		// (status set, wave assigned, envelope audible) while the owning
+		// track's current instrument has moved on to a PSG voice.
+		fprintf(stderr, "MP2KDBG f=%d ch=%d SKIPTYPE type=%02x key=%d st=%02x wav=%08x env=%d\n",
+		        mp2kDebugFrame, (int) (track - mixer->activeTracks), instrument.type, note,
+		        track->channel->status, track->channel->waveData, track->channel->envelopeV);
 #endif
 		// We don't care about PSG channels
 		return;
 	}
 	headerAddress = instrument.data.waveData;
+#ifdef MP2K_DEBUG_TRACE
+	{
+		int chIdx = (int) (track - mixer->activeTracks);
+		if (headerAddress != track->channel->waveData) {
+			fprintf(stderr, "MP2KDBG f=%d ch=%d WAVMISMATCH itype=%02x trkkey=%d midiKey=%d lookup=%08x actual=%08x freq=%u st=%02x\n",
+			        mp2kDebugFrame, chIdx, instrument.type, note, track->channel->midiKey,
+			        headerAddress, track->channel->waveData, track->channel->freq,
+			        track->channel->status);
+		}
+	}
+#endif
+	// Prototype fix: the track's instrument describes the *next* note once the
+	// sequence advances, while this channel may still be sounding (sustain or
+	// release) with the wave it was started with. The engine keeps the actually
+	// playing wave header in the channel struct, so prefer that.
+	if (track->channel->waveData >= 0x20) {
+		headerAddress = track->channel->waveData;
+	}
 	if (headerAddress < 0x20) {
 		mLOG(GBA_AUDIO, ERROR, "Audio track has invalid instrument");
 		return;
