@@ -341,7 +341,11 @@ UINT8 lvgm_load_data(lvgm_player *player, const UINT8 *data, const UINT32 size) 
   // needs the envelope-retrigger fix from our libvgm branch
   // fix/gb-noise-envelope-retrigger, or quiet ghost notes get cut short.
   // Legacy mode reloads length from NRx1 on trigger, required for old
-  // vgm_cmp-optimized rips that omit redundant NRx1 writes.
+  // vgm_cmp-optimized rips that omit redundant NRx1 writes. It also marks
+  // the wave channel running as soon as NR30 enables the DAC, which makes
+  // the phase-dependent DMG wave RAM corruption model fire on drivers that
+  // correctly avoid it on hardware (DAC off -> rewrite -> trigger), so the
+  // corruption emulation must be disabled alongside it.
   for (int instance = 0; instance < 2; instance++) {
     devOptID = PLR_DEV_ID(DEVID_GB_DMG, instance);
     retVal = base->GetDeviceOptions(devOptID, devOpts);
@@ -349,7 +353,7 @@ UINT8 lvgm_load_data(lvgm_player *player, const UINT8 *data, const UINT32 size) 
       if (!devOpts.emuCore[0]) {
         devOpts.emuCore[0] = FCC_MAME;
       }
-      devOpts.coreOpts |= OPT_GB_DMG_LEGACY_MODE;
+      devOpts.coreOpts |= OPT_GB_DMG_LEGACY_MODE | OPT_GB_DMG_NO_WAVE_CORRUPT;
       base->SetDeviceOptions(devOptID, devOpts);
     }
   }
