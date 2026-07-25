@@ -127,6 +127,15 @@ static void _stepSample(struct GBAAudioMixer* mixer, struct GBAMP2kTrack* track)
 		        mp2kDebugFrame, (int) (track - mixer->activeTracks), instrument.type, note,
 		        track->channel->status, track->channel->waveData, track->channel->envelopeV);
 #endif
+		// Not in upstream mGBA: the track's current instrument being a PSG
+		// voice only means the *next* note is PSG; this channel may still be
+		// sounding a PCM wave (e.g. a drum started in the same tick the
+		// sequence advanced to a PSG hi-hat, audible as dropped drums).
+		// Judge by the channel's own state instead.
+		if (track->channel->waveData >= 0x20 && track->channel->status && track->channel->freq) {
+			freq = GBA_ARM7TDMI_FREQUENCY / (double) track->channel->freq;
+			break;
+		}
 		// We don't care about PSG channels
 		return;
 	}
@@ -159,9 +168,20 @@ static void _stepSample(struct GBAAudioMixer* mixer, struct GBAMP2kTrack* track)
 	uint32_t sampleI = track->samplePlaying;
 	double sampleOffset = track->currentOffset;
 	double updates = VIDEO_TOTAL_LENGTH / (mixer->tempo * mixer->p->sampleInterval / OVERSAMPLE);
+#ifdef MP2K_FIX_ONESHOT
+	// WaveData +0x2: u16 flags, bit 0x4000 = looped. The real engine stops a
+	// one-shot sample at its end; upstream unconditionally jumps back to
+	// loopOffset (usually 0), replaying one-shot drums from the top whenever
+	// the note outlives the sample (audible as doubled drum hits).
+	bool waveLooped = (memory->load16(cpu, headerAddress + 0x2, 0) & 0x4000) == 0x4000;
+#endif
 	int nSample;
 	for (nSample = 0; nSample < updates; ++nSample) {
+#ifdef MP2K_FIX_ONESHOT
+		int8_t sample = (!waveLooped && sampleI >= endOffset) ? 0 : memory->load8(cpu, sampleBase + sampleI, 0);
+#else
 		int8_t sample = memory->load8(cpu, sampleBase + sampleI, 0);
+#endif
 
 		struct GBAStereoSample stereo = {
 			(sample * track->channel->leftVolume * track->channel->envelopeV) >> 9,
@@ -176,7 +196,22 @@ static void _stepSample(struct GBAAudioMixer* mixer, struct GBAMP2kTrack* track)
 			sampleOffset -= freq;
 			++sampleI;
 			if (sampleI >= endOffset) {
+#ifdef MP2K_DEBUG_TRACE
+				fprintf(stderr, "MP2KDBG f=%d ch=%d WRAP wav=%08x end=%u loop=%u hdrflags=%04x st=%02x env=%d\n",
+				        mp2kDebugFrame, (int) (track - mixer->activeTracks),
+				        headerAddress, endOffset, loopOffset,
+				        memory->load16(cpu, headerAddress + 0x2, 0),
+				        track->channel->status, track->channel->envelopeV);
+#endif
+#ifdef MP2K_FIX_ONESHOT
+				if (waveLooped) {
+					sampleI = loopOffset;
+				}
+				// one-shot: leave sampleI past the end; the sample loads
+				// above yield silence until the engine ends the note.
+#else
 				sampleI = loopOffset;
+#endif
 			}
 		}
 	}
@@ -243,12 +278,20 @@ static void _mp2kReload(struct GBAAudioMixer* mixer) {
 		// keeps the stale playback offset and the new sample starts somewhere
 		// in the middle, losing its attack (audible as dropped drums). Detect
 		// the retrigger via the channel's own note identity and restart.
+#ifndef MP2K_NO_RETRIG
 		if (ch->status && (prevStatus == 0 || ch->track != prevTrack ||
 		                   ch->waveData != prevWaveData || ch->midiKey != prevMidiKey)) {
+#ifdef MP2K_DEBUG_TRACE
+			fprintf(stderr, "MP2KDBG f=%d ch=%d RETRIG st=%02x<-%02x trk=%08x<-%08x wav=%08x<-%08x key=%d<-%d freq=%u env=%d pos=%u\n",
+			        mp2kDebugFrame, i, ch->status, prevStatus, ch->track, prevTrack,
+			        ch->waveData, prevWaveData, ch->midiKey, prevMidiKey,
+			        ch->freq, ch->envelopeV, track->samplePlaying);
+#endif
 			track->samplePlaying = 0;
 			track->currentOffset = 0;
 			CircleBufferClear(&track->buffer);
 		}
+#endif
 
 		base = ch->track;
 		if (base) {
@@ -302,6 +345,10 @@ static void _mp2kReload(struct GBAAudioMixer* mixer) {
 
 bool _mp2kEngage(struct GBAAudioMixer* mixer, uint32_t address) {
 	if (address != mixer->contextAddress) {
+#ifdef MP2K_DEBUG_TRACE
+		fprintf(stderr, "MP2KDBG f=%d ENGAGE ctx=%08x (was %08x)\n",
+		        mp2kDebugFrame, address, mixer->contextAddress);
+#endif
 		mixer->contextAddress = address;
 		mixer->p->externalMixing = true;
 		_mp2kReload(mixer);
@@ -374,9 +421,11 @@ void _mp2kVblank(struct GBAAudioMixer* mixer) {
 		struct GBAMP2kSoundChannel* dch = &mixer->context.chans[dbgI];
 		struct GBAMP2kTrack* dtr = &mixer->activeTracks[dbgI];
 		if (dch->status) {
-			fprintf(stderr, "MP2KDBG f=%d ch=%d st=%02x itype=%02x key=%d freq=%u env=%d\n",
+			fprintf(stderr, "MP2KDBG f=%d ch=%d st=%02x itype=%02x key=%d freq=%u env=%d lv=%d rv=%d eL=%d eR=%d ve=%d wav=%08x\n",
 			        mp2kDebugFrame, dbgI, dch->status, dtr->track.instrument.type,
-			        dtr->track.key, dch->freq, dch->envelopeV);
+			        dtr->track.key, dch->freq, dch->envelopeV,
+			        dch->leftVolume, dch->rightVolume, dch->envelopeLeft, dch->envelopeRight,
+			        dch->ve, dch->waveData);
 		}
 	}
 #endif
