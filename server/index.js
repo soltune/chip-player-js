@@ -677,6 +677,12 @@ router.post(
 app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => res.sendStatus(404));
 
 // Static file fallback - should be handled by Nginx in production
+// Assets under /static/ have content-hashed filenames, so they can be
+// cached indefinitely; a changed file always gets a new URL.
+app.use('/static', express.static(path.join(LOCAL_CLIENT_BUILD_ROOT, 'static'), {
+  maxAge: '1y',
+  immutable: true,
+}));
 app.use(express.static(LOCAL_CLIENT_BUILD_ROOT));
 app.use('/catalog', cache1Hour, fixSidMimeType, express.static(LOCAL_CATALOG_ROOT));
 app.use('/soundfonts', cache1Hour, express.static(LOCAL_SOUNDFONT_ROOT));

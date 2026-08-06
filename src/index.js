@@ -17,3 +17,13 @@ ReactDOM.render((
     </ToastProvider>
   </Router>
 ), document.getElementById('root'));
+
+// Warm up the kanji fallback font (x68k) in the background. Browsers fetch a
+// @font-face only when a glyph actually needs it, which causes a visible font
+// swap the first time a directory with Japanese titles is opened.
+const warmUpKanjiFont = () => document.fonts.load('100 16px x68k', '漢');
+if ('requestIdleCallback' in window) {
+  requestIdleCallback(warmUpKanjiFont);
+} else {
+  setTimeout(warmUpKanjiFont, 2000);
+}

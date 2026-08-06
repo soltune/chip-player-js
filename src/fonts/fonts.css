@@ -6,7 +6,7 @@
 /* Fork: kanji fallback (PxPlusChipPlayer covers kana but not full kanji) */
 @font-face {
     font-family: x68k;
-    src: url(KH-Dot-Kodenmachou-16_chipplayerjs.ttf) format('truetype');
+    src: url(KH-Dot-Kodenmachou-16_chipplayerjs.woff2) format('woff2');
     font-weight: 100;
     font-style: normal;
 }
