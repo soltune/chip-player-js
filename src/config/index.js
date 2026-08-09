@@ -30,6 +30,7 @@ const FORMATS = [
   'm2',
   'mz',
   'mdx',
+  'mgs',
   'mid',
   'midi',
   'mini2sf',

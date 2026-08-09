@@ -46,6 +46,7 @@ import FMPPlayer from '../players/FMPPlayer';
 import PSFPlayer from '../players/PSFPlayer';
 import NDSPlayer from '../players/NDSPlayer';
 import GBAPlayer from '../players/GBAPlayer';
+import KSSPlayer from '../players/KSSPlayer';
 import StreamPlayer from '../players/StreamPlayer';
 import { ImpulseResponseReverb } from '../effects/Reverb';
 
@@ -250,6 +251,7 @@ class App extends React.Component {
       PSFPlayer,
       NDSPlayer,
       GBAPlayer,
+      KSSPlayer, // .mgs via libkss (.kss stays on GMEPlayer)
       VGMPlayer,
       SIDPlayer,
       StreamPlayer,
