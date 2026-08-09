@@ -173,6 +173,43 @@ const chipModules = [
     ],
   },
   {
+    name: 'libkss',
+    enabled: true,
+    sourceFiles: [
+      // Side-by-side clone (https://github.com/digital-sound-antiques/libkss, main).
+      // Used for .mgs playback via the bundled MGSDRV driver; .kss stays on gme.
+      '../libkss/build/libkss.a',
+      '../libkss/build/modules/emu2149/libemu2149.a',
+      '../libkss/build/modules/emu2212/libemu2212.a',
+      '../libkss/build/modules/emu2413/libemu2413.a',
+      '../libkss/build/modules/emu76489/libemu76489.a',
+      '../libkss/build/modules/emu8950/libemu8950.a',
+      '../libkss/build/modules/kmz80/libkmz80.a',
+      'src/bindings/libkss-wrapper.cpp',
+    ],
+    exportedFunctions: [
+      '_lkss_init',
+      '_lkss_load_data',
+      '_lkss_stop',
+      '_lkss_render',
+      '_lkss_get_position_ms',
+      '_lkss_seek_ms',
+      '_lkss_get_stop_flag',
+      '_lkss_get_loop_count',
+      '_lkss_get_title',
+      '_lkss_get_mgs_text',
+      '_lkss_get_fmpac',
+      '_lkss_get_msx_audio',
+      '_lkss_get_sn76489',
+      '_lkss_set_channel_mask',
+      '_lkss_get_channel_mask',
+    ],
+    flags: [
+      '-I../libkss/src',
+      '-I../libkss/modules',
+    ],
+  },
+  {
     name: 'fluidlite',
     enabled: true,
     sourceFiles: [

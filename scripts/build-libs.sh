@@ -7,6 +7,7 @@
 #   ../FluidLite        https://github.com/divideconcept/FluidLite.git
 #   ../libvgm           https://github.com/soltune/libvgm.git (chip-player)
 #   ../libsidplayfp     https://github.com/mmontag/libsidplayfp.git (montag-dev-2.14)
+#   ../libkss           https://github.com/digital-sound-antiques/libkss.git (main)
 # In-repo builds: fluidlite is NOT used (stale subtree); psflib, lazyusf2 and
 # webGSF build from the in-repo sources.
 #
@@ -35,6 +36,7 @@ clone_if_missing https://github.com/soltune/game-music-emu.git "$SIB/game-music-
 clone_if_missing https://github.com/divideconcept/FluidLite.git "$SIB/FluidLite"
 clone_if_missing https://github.com/soltune/libvgm.git         "$SIB/libvgm" chip-player
 clone_if_missing https://github.com/mmontag/libsidplayfp.git   "$SIB/libsidplayfp" montag-dev-2.14
+clone_if_missing https://github.com/digital-sound-antiques/libkss.git "$SIB/libkss" main
 
 echo '=== libxmp-lite (side-by-side)'
 ( cd "$SIB/libxmp" && mkdir -p build && cd build
@@ -84,6 +86,26 @@ echo '=== libsidplayfp (side-by-side; see scripts/patches/libsidplayfp-NOTES.txt
     --with-simd=sse4 XA="$(command -v xa)" OD="$(command -v od)" \
     CXXFLAGS="-Oz -msimd128" LDFLAGS="-Oz -msimd128"
   emmake make -j"$J" )
+
+echo '=== libkss (side-by-side; .mgs playback via bundled MGSDRV driver)'
+( cd "$SIB/libkss"
+  git submodule update --init --recursive
+  mkdir -p build && cd build
+  # game-music-emu bundles an older emu2413 (for NSF VRC7) exporting the same
+  # OPLL_* symbols; rename libkss's copies at compile time to avoid duplicate
+  # symbols in the final chip-core link. The macros rewrite both the
+  # definitions (emu2413.c) and every reference (emu2413.h users) alike.
+  OPLL_RENAMES="-DOPLL_new=LKSS_OPLL_new -DOPLL_delete=LKSS_OPLL_delete \
+-DOPLL_reset=LKSS_OPLL_reset -DOPLL_forceRefresh=LKSS_OPLL_forceRefresh \
+-DOPLL_setPatch=LKSS_OPLL_setPatch -DOPLL_copyPatch=LKSS_OPLL_copyPatch \
+-DOPLL_getDefaultPatch=LKSS_OPLL_getDefaultPatch -DOPLL_writeIO=LKSS_OPLL_writeIO \
+-DOPLL_writeReg=LKSS_OPLL_writeReg -DOPLL_calc=LKSS_OPLL_calc"
+  # libkss's CMakeLists overwrites CMAKE_C_FLAGS with "-O3 -Wall", so inject
+  # our flags through CMAKE_C_FLAGS_RELEASE (appended after, -Oz wins over -O3).
+  emcmake cmake .. -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_C_FLAGS_RELEASE="-Oz -fwrapv $OPLL_RENAMES" \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+  emmake make -j"$J" kss )
 
 echo '=== psflib (in-repo)'
 ( cd "$ROOT/psflib" && emmake make -f Emscripten.Makefile libpsflib.a )
