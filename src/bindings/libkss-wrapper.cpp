@@ -68,6 +68,7 @@ int lkss_load_data(LkssContext *ctx, uint8_t *data, uint32_t size, const char *f
     unloadSong(ctx);
     return 2;
   }
+  KSSPLAY_set_master_volume(ctx->play, 48);
   KSSPLAY_set_data(ctx->play, ctx->kss);
   KSSPLAY_get_MGStext(ctx->play, ctx->mgsText, sizeof(ctx->mgsText));
 
