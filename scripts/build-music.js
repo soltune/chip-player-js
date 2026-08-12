@@ -186,6 +186,7 @@ const findTextStmt = db.prepare('SELECT id FROM texts WHERE hash = ?');
 const insertTextStmt = db.prepare('INSERT INTO texts (hash, content) VALUES (?, ?)');
 
 const updateSortOrderStmt = db.prepare('UPDATE music SET sort_order = ? WHERE path = ?');
+const updateImageIdStmt = db.prepare('UPDATE music SET image_id = ? WHERE path = ?');
 
 // Calculate scan root
 const scanTarget = options.filter ? path.join(CATALOG_DIR, options.filter) : CATALOG_DIR;
@@ -204,9 +205,9 @@ const existingFiles = new Map();
 if (!options.resetDb) {
   if (options.verbose) console.log(chalk.cyan('Loading existing file cache...'));
   try {
-    const rows = db.prepare('SELECT path, mtime, sort_order FROM music').all();
+    const rows = db.prepare('SELECT path, mtime, sort_order, image_id FROM music').all();
     for (const row of rows) {
-      existingFiles.set(row.path, { mtime: row.mtime, sort_order: row.sort_order });
+      existingFiles.set(row.path, { mtime: row.mtime, sort_order: row.sort_order, image_id: row.image_id });
     }
     if (options.verbose) console.log(chalk.cyan(`Loaded ${existingFiles.size} existing entries.`));
   } catch (err) {
@@ -445,6 +446,13 @@ function processFile(child, directoryId, dirEntries, dirImagePath, dirTextIds) {
   const { fullPath, relativePath, name, ext, sortOrder } = child;
   
   const stat = fs.statSync(fullPath);
+  const baseName = path.basename(name, ext);
+
+  // Image sidecars can be added, replaced, or removed without the song file
+  // ever changing, so resolve the image before the unmodified check below.
+  const specificImageName = findSpecificSidecar(dirEntries, baseName, ['png', 'jpg', 'jpeg', 'gif']);
+  const finalImagePath = specificImageName ? path.join(path.dirname(relativePath), specificImageName) : dirImagePath;
+  const finalImageId = !options.dryrun ? getImageId(finalImagePath) : null;
 
   // Check for incremental skip
   if (options.skipUnmodified && existingFiles.has(relativePath)) {
@@ -454,6 +462,11 @@ function processFile(child, directoryId, dirEntries, dirImagePath, dirTextIds) {
       // Check if sort order needs update
       if (!options.dryrun && cached.sort_order !== sortOrder) {
         updateSortOrderStmt.run(sortOrder, relativePath);
+      }
+      // Refresh the image even though the file itself is unchanged.
+      if (!options.dryrun && cached.image_id !== finalImageId) {
+        updateImageIdStmt.run(finalImageId, relativePath);
+        if (options.verbose) console.log(chalk.cyan(`[IMG] ${relativePath} -> ${finalImagePath || '(none)'}`));
       }
       
       skipped++;
@@ -480,12 +493,7 @@ function processFile(child, directoryId, dirEntries, dirImagePath, dirTextIds) {
 
   // --- Sidecar Resolution for File ---
   
-  // 1. Image
-  const baseName = path.basename(name, ext);
-  const specificImageName = findSpecificSidecar(dirEntries, baseName, ['png', 'jpg', 'jpeg', 'gif']);
-  const finalImagePath = specificImageName ? path.join(path.dirname(relativePath), specificImageName) : dirImagePath;
-  
-  const finalImageId = !options.dryrun ? getImageId(finalImagePath) : null;
+  // 1. Image: resolved before the unmodified check above.
 
   // 2. Text
   const specificTextName = findSpecificSidecar(dirEntries, baseName, ['txt', 'text', 'doc']);
