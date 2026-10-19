@@ -2,6 +2,7 @@ import MIDIEvents from './MIDIEvents';
 import MIDIFile from './MIDIFile';
 const { EVENT_MIDI, EVENT_MIDI_CONTROLLER } = MIDIEvents;
 
+const CC_64_SUSTAIN = 64;
 const CC_102_TRACK_LOOP_START = 102;
 const CC_103_TRACK_LOOP_END = 103;
 const CC_123_ALL_NOTES_OFF = 123;
@@ -200,9 +201,46 @@ function allNotesOff(track, channel, playTime) {
     type: EVENT_MIDI,
     subtype: EVENT_MIDI_CONTROLLER,
     param1: CC_123_ALL_NOTES_OFF,
+    param2: 0,
     delta: 0,
   };
 }
+
+function sustainOff(track, channel, playTime) {
+  return {
+    channel: channel,
+    track: track,
+    playTime: playTime,
+    type: EVENT_MIDI,
+    subtype: EVENT_MIDI_CONTROLLER,
+    param1: CC_64_SUSTAIN,
+    param2: 0,
+    delta: 0,
+  };
+}
+
+// Fix for MIDI files missing note-off or sustain-release events before the end track event
+const originalGetEvents = MIDIFile.prototype.getEvents;
+MIDIFile.prototype.getEvents = function (...args) {
+  const events = originalGetEvents.apply(this, args);
+  const trackChannels = {};
+  for (let i = 0; i < events.length; i++) {
+    const event = events[i];
+    const track = event.track || 0;
+    if (event.channel !== undefined) {
+      (trackChannels[track] || (trackChannels[track] = new Set())).add(event.channel);
+    } else if (event.type === MIDIEvents.EVENT_META && event.subtype === MIDIEvents.EVENT_META_END_OF_TRACK) {
+      if (trackChannels[track]) {
+        for (const ch of trackChannels[track]) {
+          events.splice(i++, 0, allNotesOff(track, ch, event.playTime));
+          events.splice(i++, 0, sustainOff(track, ch, event.playTime));
+        }
+        trackChannels[track].clear();
+      }
+    }
+  }
+  return events;
+};
 
 function printTrack(t, events) {
   const ticksPerChar = 1000;

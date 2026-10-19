@@ -45,6 +45,11 @@ export default class Player extends EventEmitter {
     this.looping = false; // infinite looping mode (vs. normal mode where it stops at end of song)
     this.muteGainNode = null; // assigned by App; see muteAudioDuringCall
     this.renderHoldUntil = 0; // audio-clock time; processAudio emits silence until then
+    this.silenceDuration = -1;
+    this.silenceSamplesRemaining = 0;
+    this.onSilenceEnd = null;
+    this.trailingSilenceSamples = 0;
+    this.durationMs = 0;
   }
 
   /**
@@ -118,6 +123,9 @@ export default class Player extends EventEmitter {
   }
 
   seekMs(ms) {
+    this.silenceSamplesRemaining = 0;
+    this.onSilenceEnd = null;
+    this.trailingSilenceSamples = 0;
     console.debug(`Player.seekMs() not implemented for ${this.constructor.name}.`);
   }
 
@@ -256,9 +264,10 @@ export default class Player extends EventEmitter {
   }
 
   getBasePlayerState() {
+    this.durationMs = this.getDurationMs() || 0;
     return {
       metadata: this.getMetadata(),
-      durationMs: this.getDurationMs(),
+      durationMs: this.durationMs,
       positionMs: this.getPositionMs(),
       numSubtunes: this.getNumSubtunes(),
       subtune: this.getSubtune(),
@@ -278,9 +287,42 @@ export default class Player extends EventEmitter {
     this.looping = looping;
   }
 
+  setSilenceDuration(seconds) {
+    const val = Number(seconds);
+    this.silenceDuration = isNaN(val) ? -1 : val;
+  }
+
+  handleSongEnd(onSilenceEnd = null) {
+    let defaultCallback = null;
+    if (this.getSubtune() + 1 < this.getNumSubtunes()) {
+      defaultCallback = () => this.playSubtune(this.getSubtune() + 1);
+    }
+    const endAction = onSilenceEnd || defaultCallback || (() => this.stop());
+
+    if (this.silenceDuration >= 0) {
+      const trailingSilenceSec = this.trailingSilenceSamples / this.sampleRate;
+      const neededSilenceSec = Math.max(0, this.silenceDuration - trailingSilenceSec);
+      this.silenceSamplesRemaining = Math.round(neededSilenceSec * this.sampleRate);
+      this.onSilenceEnd = endAction;
+      this.trailingSilenceSamples = 0;
+
+      if (this.silenceSamplesRemaining <= 0) {
+        this.silenceSamplesRemaining = 0;
+        this.onSilenceEnd = null;
+        endAction();
+      }
+    } else {
+      this.trailingSilenceSamples = 0;
+      endAction();
+    }
+  }
+
   suspend() {
     this.stopped = true;
     this.paused = true;
+    this.silenceSamplesRemaining = 0;
+    this.onSilenceEnd = null;
+    this.trailingSilenceSamples = 0;
   }
 
   processAudio(output) {
@@ -298,9 +340,69 @@ export default class Player extends EventEmitter {
       this.renderHoldUntil = 0;
     }
 
+    if (this.silenceSamplesRemaining > 0) {
+      for (let ch = 0; ch < output.length; ch++) {
+        output[ch].fill(0);
+      }
+      if (!this.paused) {
+        this.silenceSamplesRemaining -= this.bufferSize;
+        if (this.silenceSamplesRemaining <= 0) {
+          this.silenceSamplesRemaining = 0;
+          const cb = this.onSilenceEnd;
+          this.onSilenceEnd = null;
+          if (cb) {
+            cb();
+          } else {
+            this.stop();
+          }
+        }
+      }
+      return;
+    }
+
     const start = performance.now();
     this.processAudioInner(output);
     const end = performance.now();
+
+    if (this.silenceSamplesRemaining > 0) {
+      for (let ch = 0; ch < output.length; ch++) {
+        output[ch].fill(0);
+      }
+    } else if (this.silenceDuration >= 0 && !this.paused && !this.looping && !this.fadingOut && output.length > 0) {
+      const duration = this.durationMs;
+      const position = this.getPositionMs();
+
+      if (duration > 0) {
+        const inFinalFiveSeconds = position >= (duration - 5000);
+        if (inFinalFiveSeconds) {
+          const threshold = 0.001; // -60 dB
+          let isSilent = true;
+          const left = output[0];
+          const right = output[1] || output[0];
+          const len = left.length;
+          for (let i = 0; i < len; i++) {
+            if (Math.abs(left[i]) > threshold || Math.abs(right[i]) > threshold) {
+              isSilent = false;
+              break;
+            }
+          }
+          this.trailingSilenceSamples = isSilent ? (this.trailingSilenceSamples + this.bufferSize) : 0;
+        } else {
+          this.trailingSilenceSamples = 0;
+        }
+
+        const reachedEarlySilence = inFinalFiveSeconds && this.trailingSilenceSamples >= (0.4 * this.sampleRate);
+        const reachedDuration = position >= duration;
+
+        if (reachedEarlySilence || reachedDuration) {
+          this.handleSongEnd();
+          for (let ch = 0; ch < output.length; ch++) {
+            output[ch].fill(0);
+          }
+          return;
+        }
+      }
+    }
 
     if (this.debug) {
       this.renderTime += end - start;

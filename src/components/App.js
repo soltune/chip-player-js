@@ -36,6 +36,8 @@ import MIDIPlayer from '../players/MIDIPlayer';
 import V2MPlayer from '../players/V2MPlayer';
 import XMPPlayer from '../players/XMPPlayer';
 import N64Player from '../players/N64Player';
+// Fork: upstream's GSFPlayer (viogsf) is not registered; .gsf/.minigsf use GBAPlayer.
+// import GSFPlayer from '../players/GSFPlayer';
 import MDXPlayer from '../players/MDXPlayer';
 import VGMPlayer from '../players/VGMPlayer';
 import SIDPlayer from '../players/SIDPlayer';
@@ -61,9 +63,11 @@ import Toast, { ToastLevels } from './Toast';
 import MessageBox from './MessageBox';
 import Settings from './Settings';
 import LocalFiles from './LocalFiles';
+import TopCharts from './TopCharts';
 import { UserContext } from './UserProvider';
 import { ToastContext } from './ToastProvider';
 import Announcements from './Announcements';
+import { getDomMetadataText } from '../metadata-inspector';
 
 const BASE_URL = process.env.PUBLIC_URL || document.location.origin;
 const NUMERIC_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
@@ -156,6 +160,7 @@ class App extends React.Component {
       currentSongSubtune: 0,
       currentSongDurationMs: 1,
       currentSongPositionMs: 0,
+      currentSongBuffer: null,
       tempo: 1,
       voiceMask: Array(MAX_VOICES).fill(true),
       voiceNames: Array(MAX_VOICES).fill(''),
@@ -163,6 +168,7 @@ class App extends React.Component {
       imageUrl: null,
       infoTexts: [],
       showInfo: false,
+      metadataText: null,
       songPath: null,
       songId: null,
       volume: 100,
@@ -174,6 +180,7 @@ class App extends React.Component {
       paramValues: {},
       // Special playable contexts
       localFiles: [],
+      theaterMode: false,
     };
 
     this.initChipCore(audioCtx, playerNode, bufferSize);
@@ -191,9 +198,10 @@ class App extends React.Component {
     };
   }
 
-  componentDidUpdate(prevProps) {
-    // Fork: global settings can change from the Settings tab or arrive from the
-    // server after login; apply them to the audio graph / browse cache in one place.
+  // Fork: called from componentDidUpdate. Global settings can change from the
+  // Settings tab or arrive from the server after login; apply them to the audio
+  // graph / browse cache in one place.
+  applyGlobalSettings(prevProps) {
     const prev = App.getGlobalSettings(prevProps.userContext);
     const curr = App.getGlobalSettings(this.props.userContext);
     if (prev.volumeBoost !== curr.volumeBoost) {
@@ -243,6 +251,7 @@ class App extends React.Component {
       XMPPlayer,
       V2MPlayer,
       N64Player,
+      // GSFPlayer, // Fork: see import above
       MDXPlayer,
       // Fork players. S98Player precedes VGMPlayer: .s98 is served by webS98, not libvgm.
       S98Player,
@@ -256,6 +265,7 @@ class App extends React.Component {
       SIDPlayer,
       StreamPlayer,
     ].map(P => new P(this.chipCore, audioCtx.sampleRate, bufferSize, debug));
+    const initialSilence = this.props.userContext?.settings?.silenceDuration ?? -1;
     players.forEach(p => {
       p.audioNode = this.playerNode;
       // Fork: used by Player.muteAudioDuringCall to mute stale in-flight audio.
@@ -266,14 +276,18 @@ class App extends React.Component {
       // Fork: StreamPlayer also feeds the visualizer mix here, since its audio
       // bypasses playerNode.
       p.vizNode = this.vizNode;
+      p.setSilenceDuration(initialSilence);
     });
+    this.players = players;
     this.midiPlayer = players[0];
 
     // Set up the central audio processing callback. This is where the magic happens.
     playerNode.onaudioprocess = (e) => {
       const channels = [];
       for (let i = 0; i < e.outputBuffer.numberOfChannels; i++) {
-        channels.push(e.outputBuffer.getChannelData(i));
+        const chData = e.outputBuffer.getChannelData(i);
+        chData.fill(0);
+        channels.push(chData);
       }
       let rendered = false;
       for (let player of players) {
@@ -345,6 +359,21 @@ class App extends React.Component {
     this.setState({ loading: false });
   }
 
+  componentDidUpdate(prevProps) {
+    this.applyGlobalSettings(prevProps); // Fork
+
+    const prevSilence = prevProps.userContext?.settings?.silenceDuration;
+    const currSilence = this.props.userContext?.settings?.silenceDuration;
+    if (prevSilence !== currSilence && this.players) {
+      this.players.forEach(p => p.setSilenceDuration(currSilence ?? -1));
+    }
+
+    if (prevProps.location?.pathname !== this.props.location?.pathname && this.state.theaterMode) {
+      const { updateSettings } = this.props.userContext;
+      updateSettings({ showVisualizer: false });
+    }
+  }
+
   static mapSequencerStateToAppState(sequencerState) {
     const map = {
       ejected: 'isEjected',
@@ -354,6 +383,7 @@ class App extends React.Component {
       currentSongPositionMs: 'positionMs',
       currentSongDurationMs: 'durationMs',
       currentSongNumSubtunes: 'numSubtunes',
+      currentSongBuffer: 'songBuffer',
       tempo: 'tempo',
       voiceNames: 'voiceNames',
       voiceMask: 'voiceMask',
@@ -404,6 +434,13 @@ class App extends React.Component {
 
       switch (e.key) {
         case 'Escape':
+          if (this.state.theaterMode) {
+            this.setState({ theaterMode: false });
+            e.preventDefault();
+          }
+          if (this.state.metadataText) {
+            this.setState({ metadataText: null });
+          }
           this.setState({ showInfo: false });
           e.target.blur();
           break;
@@ -411,6 +448,12 @@ class App extends React.Component {
       }
 
       if (e.target.tagName === 'INPUT' && e.target.type === 'text') return; // text input has focus
+
+      if (e.shiftKey && (e.key === 'M' || e.key === 'm')) {
+        this.setState(s => ({ metadataText: s.metadataText ? null : getDomMetadataText() }));
+        e.preventDefault();
+        return;
+      }
 
       switch (e.key) {
         case ' ':
@@ -451,7 +494,7 @@ class App extends React.Component {
   updateMediaSessionPositionState() {
     if (!('mediaSession' in navigator) || !this.sequencer.getPlayer()) return;
 
-    const duration = this.sequencer.getPlayer().getDurationMs();
+    const duration = this.state.currentSongDurationMs || 0;
     const position = this.sequencer.getPlayer().getPositionMs();
     const positionState = {
       duration: duration / 1000,
@@ -493,6 +536,7 @@ class App extends React.Component {
         currentSongPositionMs: 0,
         currentSongDurationMs: 1,
         currentSongNumSubtunes: 0,
+        currentSongBuffer: null,
         imageUrl: null,
         songPath: null,
       });
@@ -591,6 +635,18 @@ class App extends React.Component {
       }
     }
     this.setState({ paused: paused });
+  }
+
+  handleAuditionChord(pitches, isNoteOn) {
+    if (this.audioCtx && this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume();
+    }
+    if (!this.midiPlayer) return;
+    if (isNoteOn) {
+      this.midiPlayer.auditionNoteOn(pitches);
+    } else {
+      this.midiPlayer.auditionNoteOff(pitches);
+    }
   }
 
   handleTimeSliderChange(event) {
@@ -698,11 +754,13 @@ class App extends React.Component {
     this.updateMediaSessionPositionState();
   }
 
-  handleShufflePlay(path) {
+  handleShufflePlay(path, customContext) {
     if (path === 'favorites') {
       this.sequencer.playContext(shuffle(this.props.userContext.favesContext));
     } else if (path === 'local') {
       this.sequencer.playContext(shuffle(this.playContexts['local']));
+    } else if (path === 'top') {
+      this.sequencer.playContext(shuffle(customContext || this.playContexts['top'] || []));
     } else {
       // This is more like a synthetic recursive shuffle.
       // Response of this API is an array of *paths*.
@@ -959,6 +1017,12 @@ class App extends React.Component {
     updateSettings({ showPlayerSettings: !showPlayerSettings });
   }
 
+  handleToggleTheaterMode = () => {
+    this.setState(prevState => ({
+      theaterMode: !prevState.theaterMode,
+    }));
+  }
+
   render() {
     // TODO: Consolidate imageUrl under metadata.
     const metadata = this.state.currentSongMetadata;
@@ -970,6 +1034,13 @@ class App extends React.Component {
     const { settings } = this.props.userContext;
     const globalSettings = App.getGlobalSettings(this.props.userContext);
     const showPlayerSettings = settings?.showPlayerSettings;
+    const showVisualizer = settings?.showVisualizer;
+    const midiData = (
+      (this.state.songPath && /\.(mid|midi|smf)$/i.test(this.state.songPath)) ||
+      this.sequencer?.getPlayer()?.fileExtensions?.includes('mid')
+    ) ? (this.state.currentSongBuffer || this.sequencer?.getCurrSongBuffer()) : null;
+    const isMidi = Boolean(midiData);
+    const activeTheaterMode = Boolean(isMidi && this.state.theaterMode && showVisualizer);
 
     return (
       <Dropzone
@@ -981,9 +1052,12 @@ class App extends React.Component {
           <MessageBox showInfo={this.state.showInfo}
                       infoTexts={this.state.infoTexts}
                       toggleInfo={this.toggleInfo}/>
+          <MessageBox showInfo={Boolean(this.state.metadataText)}
+                      infoTexts={[this.state.metadataText || '']}
+                      toggleInfo={() => this.setState({ metadataText: null })}/>
           <Toast/>
           <AppHeader/>
-          <div className="App-main">
+          <div className={`App-main ${activeTheaterMode ? 'theater-mode' : ''} ${showPlayerSettings ? 'has-settings' : ''}`}>
             <div className="App-main-inner">
               <div className="tab-container">
                 <NavLink className="tab" activeClassName="tab-selected" to={{ pathname: "/", ...search }}
@@ -994,6 +1068,8 @@ class App extends React.Component {
                          to={{ pathname: "/favorites", ...search }}>Favorites</NavLink>
                 <NavLink className="tab" activeClassName="tab-selected"
                          to={{ pathname: "/local", ...search }}>Local</NavLink>
+                <NavLink className="tab" activeClassName="tab-selected"
+                         to={{ pathname: "/top", ...search }}>Top</NavLink>
                 {/* this.sequencer?.players?.map((p, i) => `p${i}:${p.stopped?'off':'on'}`).join(' ') */}
                 <button className={`tab tab-settings ${showPlayerSettings ? 'tab-selected' : ''}`}
                         onClick={this.handleToggleSettings}>Settings</button>
@@ -1002,6 +1078,14 @@ class App extends React.Component {
               <div className="App-main-content-area"
                    ref={this.contentAreaRef}>
                 <Switch>
+                  <Route path="/top" render={() => (
+                    <TopCharts
+                      scrollContainerRef={this.contentAreaRef}
+                      handleShufflePlay={this.handleShufflePlay}
+                      onSongClick={this.handleSongClick}
+                      currContext={currContext}
+                      currIdx={currIdx}/>
+                  )}/>
                   <Route path="/favorites" render={() => (
                     <Favorites
                       scrollContainerRef={this.contentAreaRef}
@@ -1093,7 +1177,18 @@ class App extends React.Component {
               <Visualizer audioCtx={this.audioCtx}
                           sourceNode={this.vizNode}
                           chipCore={this.chipCore}
-                          paused={this.state.ejected || this.state.paused}/>}
+                          paused={this.state.ejected || this.state.paused}
+                          songPath={this.state.songPath}
+                          midiData={midiData}
+                          getCurrentPositionMs={() => this.sequencer?.getPlayer()?.getPositionMs() || 0}
+                          getPlaybackRate={() => this.sequencer?.getPlayer()?.getTempo?.() || 1.0}
+                          getIsPlaying={() => this.sequencer?.getPlayer()?.isPlaying() ?? false}
+                          voiceMask={this.state.voiceMask}
+                          sequencer={this.sequencer}
+                          visible={Boolean(showVisualizer)}
+                          theaterMode={activeTheaterMode}
+                          onToggleTheaterMode={this.handleToggleTheaterMode}
+                          onAuditionChord={this.handleAuditionChord}/>}
           </div>
           <AppFooter
             currentSongDurationMs={this.state.currentSongDurationMs}

@@ -53,6 +53,7 @@
     "react": "^16.8.0",
     "react-dom": "^16.8.0",
     "react-dropzone": "7.0.0",
+    "react-ga4": "^3.0.1",
     "react-router-dom": "^5.2.0",
     "react-virtual-list": "git+https://github.com/glebcha/react-virtual-list.git#544bc7",
     "react-virtualized": "^9.22.5",
@@ -119,7 +120,9 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build",
     "deploy-lite": "npm run build-lite; gh-pages -d build",
-    "fixvgm": "node $NODE_DEBUG_OPTION scripts/fixvgm.js"
+    "fixvgm": "node $NODE_DEBUG_OPTION scripts/fixvgm.js",
+    "build:sitemap": "node scripts/build-sitemap.js",
+    "test:seo": "node scripts/test-seo.js"
   },
   "eslintConfig": {
     "extends": "react-app",

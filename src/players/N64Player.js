@@ -1,11 +1,13 @@
 import Player from "./Player.js";
 import { ensureEmscFileWithData, ensureEmscFileWithUrl, pathJoin } from '../util';
 import { CATALOG_PREFIX } from '../config';
+import { parsePSF } from '../psf';
 import pathe from 'pathe';
 import autoBind from 'auto-bind';
 
 const fileExtensions = [
   'miniusf',
+  'usf',
 ];
 const MOUNTPOINT = '/n64';
 // Fork: 32768 (not 32767) is the correct normalization divisor for signed 16-bit (-32768..+32767).
@@ -43,23 +45,17 @@ export default class N64Player extends Player {
     // internal buffer, which then leak into the start of the new song.
     this.core._n64_shutdown();
 
-    // N64Player reads song data from the Emscripten filesystem,
-    // rather than loading bytes from memory like other players.
     let err;
     this.filepathMeta = Player.metadataFromFilepath(filename);
 
-    const decoder = new TextDecoder('latin1');
-    const miniusfStr = decoder.decode(data);
-    const usflibs = miniusfStr.match(/_lib=([^\n]+)/).slice(1);
-    if (usflibs.length === 0) {
-      throw new Error(`No .usflib references found`);
-    }
+    const psf = parsePSF(data, { filename, defaultSystem: 'Nintendo 64' });
+    this.metadata = psf;
 
     const dir = pathe.dirname(filename);
     const fsFilename = pathJoin(MOUNTPOINT, filename);
     const filePromises = [
       ensureEmscFileWithData(this.core, fsFilename, data),
-      ...usflibs.map(usflib => {
+      ...psf.libraries.map(usflib => {
         const fsUsflibFilename = pathJoin(MOUNTPOINT, dir, usflib);
         const url = pathJoin(CATALOG_PREFIX, dir, usflib);
         return ensureEmscFileWithUrl(this.core, fsUsflibFilename, url);
@@ -83,7 +79,6 @@ export default class N64Player extends Player {
           }
 
           this.resolveParamValues(persistedSettings);
-          this.metadata = { title: pathe.basename(filename) };
 
           this.resume();
           this.emit('playerStateUpdate', {
@@ -106,7 +101,8 @@ export default class N64Player extends Player {
 
     const samplesWritten = this.core._n64_render_audio(this.buffer, this.bufferSize);
     if (samplesWritten <= 0) {
-      this.stop();
+      this.handleSongEnd();
+      return;
     }
 
     for (ch = 0; ch < channels.length; ch++) {

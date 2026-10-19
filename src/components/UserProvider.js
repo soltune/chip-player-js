@@ -13,6 +13,7 @@ const UserContext = createContext({
   faves: [],
   favesContext: [],
   showPlayerSettings: false,
+  showVisualizer: false,
   handleLogin: () => {},
   handleLogout: () => {},
   handleToggleFavorite: () => {},
@@ -23,12 +24,14 @@ const UserContext = createContext({
 
 const DEFAULT_SETTINGS = {
   showPlayerSettings: false,
+  showVisualizer: false,
   theme: 'msdos',
   // Fork: global params shown in the Settings tab (see GlobalParams.js).
   volumeBoost: 1.0,
   reverbModel: '',
   reverbGain: 0.7,
   browseOrder: 'orderByTitle',
+  silenceDuration: -1,
 };
 
 const UserProvider = ({ children }) => {

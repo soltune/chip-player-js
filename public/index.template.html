@@ -42,21 +42,14 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=%REACT_APP_GOOGLE_ANALYTICS_ID%"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', '%REACT_APP_GOOGLE_ANALYTICS_ID%');
-    </script>
     <!-- <link rel="preload" ...> managed by @vue/preload-webpack-plugin -->
+    __SCHEMA_JSON_LD__
 </head>
 <body>
 <!--do not remove the line below - used for server hydration-->
 <chip-config></chip-config>
 <noscript>
-    You need to enable JavaScript to run this app.
+__NOSCRIPT_CONTENT__
 </noscript>
 <div id="root"></div>
 </body>

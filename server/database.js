@@ -9,6 +9,7 @@ console.log(`Connected to database at ${CATALOG_DB_PATH}`);
 
 const USER_DB_PATH = path.resolve(__dirname, 'users.db');
 db.exec(`ATTACH DATABASE '${USER_DB_PATH}' AS user_db`);
+db.exec(`CREATE INDEX IF NOT EXISTS user_db.idx_playbacks_played_at ON playbacks(played_at)`);
 console.log(`Attached user database at ${USER_DB_PATH}`);
 
 const CSDB_DB_PATH = path.resolve(__dirname, 'csdb.db');
@@ -27,17 +28,17 @@ const dbStatements = {
   `),
   getDirIdStmt: db.prepare('SELECT id FROM directories WHERE path = ?'),
   getDirChildrenStmt: db.prepare(`
-      SELECT name as path, NULL as song_id, 'directory' as type, 0 as sort_order, total_size as size, mtime, count
+      SELECT name as path, NULL as song_id, 'directory' as type, sort_order, total_size as size, mtime, count
       FROM directories
       WHERE parent_id = ?
       UNION ALL
       SELECT filename as path, song_id, 'file' as type, sort_order, file_size as size, mtime, 0 as count
       FROM music
       WHERE directory_id = ?
-      ORDER BY type, sort_order, path
+      ORDER BY type, sort_order, path COLLATE NOCASE
   `),
   getMetadataStmt: db.prepare(`
-      SELECT m.song_id, m.image_id, m.text_ids, m.soundfont, m.md5, i.path as image_path
+      SELECT m.song_id, m.image_id, m.text_ids, m.soundfont, m.md5, m.contributor, i.path as image_path
       FROM music m
                LEFT JOIN images i ON m.image_id = i.id
       WHERE m.path = ?
@@ -50,7 +51,7 @@ const dbStatements = {
       SELECT * FROM hvsc_files WHERE fullname = ? LIMIT 1
   `),
   getSongByPathStmt: db.prepare(`
-      SELECT m.song_id, m.path, m.title, m.artist, m.game, m.system, m.copyright, i.path as image_path
+      SELECT m.song_id, m.path, m.title, m.artist, m.contributor, m.game, m.system, m.copyright, i.path as image_path
       FROM music m
                LEFT JOIN images i ON m.image_id = i.id
       WHERE m.path = ?
@@ -58,7 +59,7 @@ const dbStatements = {
   `),
   // Used to populate meta tags. Favor entries with images
   getSongByIdStmt: db.prepare(`
-      SELECT m.song_id, m.path, m.title, m.artist, m.game, m.system, m.copyright, i.path as image_path
+      SELECT m.song_id, m.path, m.title, m.artist, m.contributor, m.game, m.system, m.copyright, i.path as image_path
       FROM music m
                LEFT JOIN images i ON m.image_id = i.id
       WHERE m.song_id LIKE ?
@@ -165,12 +166,112 @@ const dbStatements = {
       LIMIT 1
   `),
 
-  getCsdbSidStmt: db.prepare('SELECT xml FROM csdb_db.sids WHERE csdbid = ? LIMIT 1'),
-  insertCsdbSidStmt: db.prepare(`
+  getCsdbXmlStmt: db.prepare('SELECT xml FROM csdb_db.sids WHERE csdbid = ? LIMIT 1'),
+  insertCsdbXmlStmt: db.prepare(`
       INSERT INTO csdb_db.sids (csdbid, xml, fetched_at)
       VALUES (@csdbid, @xml, @now)
   `),
 
+  // Top Charts
+  getGlobalTopStmt: db.prepare(`
+      SELECT
+        top.song_id,
+        top.plays,
+        m.path,
+        m.file_size,
+        m.mtime
+      FROM (
+        SELECT song_id, COUNT(*) as plays
+        FROM user_db.playbacks
+        WHERE played_at >= ?
+        GROUP BY song_id
+        ORDER BY plays DESC
+        LIMIT ?
+      ) top
+      JOIN music m ON m.rowid = (
+        SELECT rowid FROM music WHERE song_id = top.song_id ORDER BY mtime LIMIT 1
+      )
+      LIMIT ?
+  `),
+
+  getUserTopStmt: db.prepare(`
+      SELECT
+        top.song_id,
+        top.plays,
+        m.path,
+        m.file_size,
+        m.mtime
+      FROM (
+        SELECT song_id, COUNT(*) as plays
+        FROM user_db.playbacks
+        WHERE user_id = ? AND played_at >= ?
+        GROUP BY song_id
+        ORDER BY plays DESC
+        LIMIT ?
+      ) top
+      JOIN music m ON m.rowid = (
+        SELECT rowid FROM music WHERE song_id = top.song_id ORDER BY mtime LIMIT 1
+      )
+      LIMIT ?
+  `),
+
+  getTopFavoritesStmt: db.prepare(`
+      SELECT
+        top.song_id,
+        top.favorites as count,
+        top.favorites as plays,
+        m.path,
+        m.file_size,
+        m.mtime
+      FROM (
+        SELECT
+          json_extract(je.value, '$.songId') as song_id,
+          COUNT(DISTINCT p.user_id) as favorites
+        FROM user_db.playlists p, json_each(p.items) je
+        WHERE p.type = 'favorites' AND json_extract(je.value, '$.songId') IS NOT NULL
+        GROUP BY song_id
+        ORDER BY favorites DESC
+        LIMIT ?
+      ) top
+      JOIN music m ON m.rowid = (
+        SELECT rowid FROM music WHERE song_id = top.song_id ORDER BY mtime LIMIT 1
+      )
+      LIMIT ?
+  `),
+
+  // Directory Metadata for SEO
+  getDirMetadataStmt: db.prepare(`
+      SELECT d.id, d.name, d.path, d.count, d.total_size, i.path as image_path
+      FROM directories d
+      LEFT JOIN images i ON d.image_id = i.id
+      WHERE d.path = ?
+      LIMIT 1
+  `),
+  getDirSampleSongsStmt: db.prepare(`
+      SELECT title, artist, game, system, extension, filename, song_id
+      FROM music
+      WHERE directory_id = ?
+      ORDER BY sort_order, path
+      LIMIT 8
+  `),
+  getDirSampleSubdirsStmt: db.prepare(`
+      SELECT name, count
+      FROM directories
+      WHERE parent_id = ?
+      ORDER BY count DESC
+      LIMIT 6
+  `),
+  getDirDirectExtensionsStmt: db.prepare(`
+      SELECT DISTINCT extension
+      FROM music
+      WHERE directory_id = ?
+  `),
+  getDirSubtreeExtensionsStmt: db.prepare(`
+      SELECT DISTINCT extension
+      FROM music
+      WHERE path >= ? AND path < ?
+      LIMIT 6
+  `),
 }
 
 module.exports = {

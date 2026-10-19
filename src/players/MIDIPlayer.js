@@ -142,6 +142,16 @@ export default class MIDIPlayer extends Player {
       hint: 'Send a General MIDI Reset sysex and reset all controllers on all channels.',
       type: 'button',
     },
+    {
+      id: 'clearusersoundfonts',
+      label: 'Clear User Soundfonts',
+      hint: 'Delete all uploaded user SoundFonts.',
+      type: 'button',
+      dependsOn: {
+        param: 'synthengine',
+        value: MIDI_ENGINE_LIBFLUIDLITE,
+      },
+    },
   ];
 
   constructor(...args) {
@@ -158,13 +168,12 @@ export default class MIDIPlayer extends Player {
     this.playerKey = 'midi';
     this.name = 'MIDI Player';
     this.fileExtensions = fileExtensions;
-    this.activeChannels = [];
     this.buffer = core._malloc(this.bufferSize * 4 * 2); // f32 * 2 channels
     this.filepathMeta = {};
     this.midiFilePlayer = new MIDIFilePlayer({
       // playerStateUpdate is debounced to prevent flooding program change events
       programChangeCb: debounce(() => this.emit('playerStateUpdate', {
-        voiceNames: range(this.activeChannels.length).map(this.getVoiceName)
+        voiceNames: range(16).map(ch => this.getVoiceName(ch))
       }), 200),
       output: dummyMidiOutput,
       skipSilence: true,
@@ -211,6 +220,10 @@ export default class MIDIPlayer extends Player {
     // They are reset when another song is loaded.
     this.transientParams = {};
     this.paramDefs.filter(p => p.id !== 'soundfont').forEach(p => this.setParameter(p.id, p.defaultValue));
+    this.activeAuditionPitches = [];
+    this.auditionTailTimeout = null;
+    this._wasStoppedBeforeAudition = false;
+    this.auditionChannel = 15;
   }
 
   handleFileSystemReady() {
@@ -240,7 +253,8 @@ export default class MIDIPlayer extends Player {
           }
         }
       } else {
-        this.stop();
+        this.handleSongEnd();
+        return;
       }
     }
   }
@@ -302,6 +316,11 @@ export default class MIDIPlayer extends Player {
   }
 
   async loadData(data, filepath, persistedSettings) {
+    if (this.midiFilePlayer) {
+      this.midiFilePlayer.stop();
+      this.midiFilePlayer.position = 0;
+      this.midiFilePlayer.elapsedTime = 0;
+    }
     this.ensureWebMidiInitialized();
     this.filepathMeta = this.metadataFromFilepath(filepath);
 
@@ -362,12 +381,7 @@ export default class MIDIPlayer extends Player {
     // Checking filepath doesn't work for dragged files. Force to true during development.
     const useTrackLoops = filepath.includes('SoundFont MIDI');
     this.midiFilePlayer.load(midiFile, useTrackLoops);
-    this.midiFilePlayer.play(() => this.emit('playerStateUpdate', { isStopped: true }));
-
-    this.activeChannels = [];
-    for (let i = 0; i < 16; i++) {
-      if (this.midiFilePlayer.getChannelInUse(i)) this.activeChannels.push(i);
-    }
+    this.midiFilePlayer.play(() => this.handleSongEnd());
 
     this.resume();
     this.emit('playerStateUpdate', {
@@ -439,9 +453,92 @@ export default class MIDIPlayer extends Player {
   }
 
   stop() {
+    if (this.auditionTailTimeout) {
+      clearTimeout(this.auditionTailTimeout);
+      this.auditionTailTimeout = null;
+    }
+    this.activeAuditionPitches = [];
+    this._wasStoppedBeforeAudition = false;
+    if (this.midiFilePlayer) {
+      this.midiFilePlayer.isAuditioning = false;
+    }
     this.suspend();
     console.debug('MIDIPlayer.stop()');
     this.emit('playerStateUpdate', { isStopped: true });
+  }
+
+  getAuditionChannel() {
+    const candidates = [15, 14, 13, 12, 11, 8, 7, 6, 5, 4, 3, 2, 1, 0];
+    const unused = candidates.find(ch => !this.midiFilePlayer?.channelsInUse[ch]);
+    return unused !== undefined ? unused : 15;
+  }
+
+  auditionNoteOn(pitches) {
+    if (!pitches || !pitches.length) return;
+    const synth = this.midiFilePlayer?.synth;
+    if (!synth) return;
+
+    if (this.auditionTailTimeout) {
+      clearTimeout(this.auditionTailTimeout);
+      this.auditionTailTimeout = null;
+    }
+
+    if (this.activeAuditionPitches?.length) {
+      this.auditionNoteOff(this.activeAuditionPitches);
+    }
+
+    const ch = this.getAuditionChannel();
+    this.auditionChannel = ch;
+    this.activeAuditionPitches = [...pitches];
+
+    if (this.stopped) {
+      this._wasStoppedBeforeAudition = true;
+      this.stopped = false;
+    }
+    if (this.midiFilePlayer) {
+      this.midiFilePlayer.isAuditioning = true;
+      this.midiFilePlayer.setChannelMute(ch, false);
+    }
+
+    synth.programChange(ch, 0); // Acoustic Grand Piano
+    synth.controlChange(ch, 7, 100); // Channel Volume
+    synth.controlChange(ch, 11, 127); // Expression
+    synth.controlChange(ch, 10, 64); // Pan Center
+    synth.controlChange(ch, 64, 0); // Sustain off
+    synth.pitchBend(ch, 8192); // Pitch bend center
+
+    for (const pitch of pitches) {
+      synth.noteOn(ch, pitch, 90);
+    }
+  }
+
+  auditionNoteOff(pitches) {
+    const synth = this.midiFilePlayer?.synth;
+    const ch = this.auditionChannel ?? 15;
+    if (synth && pitches && pitches.length) {
+      for (const pitch of pitches) {
+        synth.noteOff(ch, pitch);
+      }
+    }
+    this.activeAuditionPitches = [];
+
+    if (this._wasStoppedBeforeAudition) {
+      if (this.auditionTailTimeout) {
+        clearTimeout(this.auditionTailTimeout);
+      }
+      this.auditionTailTimeout = setTimeout(() => {
+        this.auditionTailTimeout = null;
+        if (this._wasStoppedBeforeAudition && !this.activeAuditionPitches.length) {
+          this.stopped = true;
+          this._wasStoppedBeforeAudition = false;
+          if (this.midiFilePlayer) {
+            this.midiFilePlayer.isAuditioning = false;
+          }
+        }
+      }, 1500);
+    } else if (this.midiFilePlayer) {
+      this.midiFilePlayer.isAuditioning = false;
+    }
   }
 
   togglePause() {
@@ -468,19 +565,18 @@ export default class MIDIPlayer extends Player {
     this.midiFilePlayer.setSpeed(tempo);
   }
 
-  getVoiceName(index) {
-    const ch = this.activeChannels[index];
+  getVoiceName(ch) {
+    if (!this.midiFilePlayer.getChannelInUse(ch)) return '--';
     const pgm = this.midiFilePlayer.channelProgramNums[ch];
-    return ch === 9 ? (GM_DRUM_KITS[pgm] || GM_DRUM_KITS[0]) : GM_INSTRUMENTS[pgm]
+    return ch === 9 ? (GM_DRUM_KITS[pgm] || GM_DRUM_KITS[0]) : GM_INSTRUMENTS[pgm];
   }
 
   getVoiceMask() {
-    return this.activeChannels.map(ch => this.midiFilePlayer.channelMask[ch]);
+    return [...this.midiFilePlayer.channelMask];
   }
 
   setVoiceMask(voiceMask) {
-    voiceMask.forEach((isEnabled, i) => {
-      const ch = this.activeChannels[i];
+    voiceMask.forEach((isEnabled, ch) => {
       this.midiFilePlayer.setChannelMute(ch, !isEnabled);
     });
   }
@@ -515,6 +611,34 @@ export default class MIDIPlayer extends Player {
         }
       }
       return paramDef;
+    });
+  }
+
+  clearUserSoundfonts() {
+    const userSoundfontPath = `${SOUNDFONT_MOUNTPOINT}/user`;
+    if (core.FS.analyzePath(userSoundfontPath).exists) {
+      const files = core.FS.readdir(userSoundfontPath).filter(f => f !== '.' && f !== '..');
+      for (const file of files) {
+        core.FS.unlink(`${userSoundfontPath}/${file}`);
+      }
+      core.FS.syncfs(false, (err) => {
+        if (err) {
+          console.error('Error synchronizing soundfonts to indexeddb.', err);
+        } else {
+          console.debug('Synchronized soundfonts to indexeddb.');
+        }
+      });
+    }
+
+    this.updateSoundfontParamDefs();
+
+    if (this.getParameter('soundfont')?.startsWith('user/')) {
+      this.setParameter('soundfont', this.getParamDefault('soundfont'));
+    }
+
+    this.emit('playerStateUpdate', {
+      paramDefs: this.getParamDefs(),
+      paramValues: this.getParamValues(),
     });
   }
 
@@ -593,6 +717,9 @@ export default class MIDIPlayer extends Player {
         break;
       case 'gmreset':
         this.midiFilePlayer.reset();
+        break;
+      case 'clearusersoundfonts':
+        this.clearUserSoundfonts();
         break;
       default:
         console.warn('MIDIPlayer has no parameter with id "%s".', id);

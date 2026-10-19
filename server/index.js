@@ -22,6 +22,7 @@ const axiosRetry = require('axios-retry').default;
 const { XMLParser } = require('fast-xml-parser');
 
 const { dbStatements } = require('./database.js');
+const { resolveDirectoryMetadata } = require('./directory-metadata');
 const { requireAuth, optionalAuth } = require('./middleware/auth.js');
 const { validate } = require('./middleware/validate');
 const { SettingsSchema, FavoriteSchema, PlaybackSchema } = require('./schemas');
@@ -48,8 +49,12 @@ const {
   replaceUserSettingsStmt,
   insertPlaybackStmt,
 
-  getCsdbSidStmt,
-  insertCsdbSidStmt,
+  getCsdbXmlStmt,
+  insertCsdbXmlStmt,
+
+  getGlobalTopStmt,
+  getUserTopStmt,
+  getTopFavoritesStmt,
 } = dbStatements;
 
 // --- Configuration ---
@@ -455,7 +460,7 @@ axiosRetry(axiosCsdb, {
 });
 
 async function getCsdbSidXml(csdbid) {
-  let xml = getCsdbSidStmt.pluck().get(csdbid);
+  let xml = getCsdbXmlStmt.pluck().get(csdbid);
   if (xml) {
     console.log(`Found cached CSdb entry for ${csdbid}.`);
   } else {
@@ -464,7 +469,7 @@ async function getCsdbSidXml(csdbid) {
     const response = await axiosCsdb.get(csdbUrl);
     xml = response.data;
     const now = Math.floor(Date.now() / 1000);
-    insertCsdbSidStmt.run({ csdbid, xml, now });
+    insertCsdbXmlStmt.run({ csdbid, xml, now });
     console.log(`Wrote CSdb entry for ${csdbid}.`);
   }
   return xml;
@@ -534,6 +539,7 @@ router.get('/metadata', cache1Hour, (req, res, next) => {
       imageUrl: imageUrl,
       infoTexts: infoTexts,
       soundfont: soundfont,
+      contributor: meta.contributor,
       md5: meta.md5,
     });
   } else {
@@ -556,6 +562,66 @@ router.post('/playback',
     console.error('Error logging playback:', e);
     res.status(500).json({ error: 'Failed to log playback' });
   }
+});
+
+const topCache = new LRUCache({
+  max: 10,
+  ttl: 1000 * 60 * 60, // 60 minutes
+});
+
+/**
+ * Returns: { items: [ { song_id, plays, title, artist, game, system, path, file_size, mtime }, ... ], total }
+ */
+router.get('/top', optionalAuth, (req, res) => {
+  const metric = req.query.metric || 'plays';
+  const scope = req.query.scope || 'global';
+  const range = req.query.range || 'all';
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
+
+  const now = Math.floor(Date.now() / 1000);
+  const sinceTimestamp = range === 'month' ? now - 30 * 24 * 60 * 60 : 0;
+  const overFetch = limit + 50;
+
+  if (metric === 'favorites') {
+    const cacheKey = `favorites-${limit}`;
+    const cached = topCache.get(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
+    const items = getTopFavoritesStmt.all(overFetch, limit);
+    const responseData = {
+      items,
+      total: items.length,
+    };
+    topCache.set(cacheKey, responseData);
+    return res.json(responseData);
+  }
+
+  if (scope === 'user') {
+    if (!req.userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const items = getUserTopStmt.all(req.userId, sinceTimestamp, overFetch, limit);
+    return res.json({
+      items,
+      total: items.length,
+    });
+  }
+
+  const cacheKey = `${range}-${limit}`;
+  const cached = topCache.get(cacheKey);
+  if (cached) {
+    return res.json(cached);
+  }
+
+  const items = getGlobalTopStmt.all(sinceTimestamp, overFetch, limit);
+  const responseData = {
+    items,
+    total: items.length,
+  };
+  topCache.set(cacheKey, responseData);
+  return res.json(responseData);
 });
 
 /**
@@ -693,6 +759,7 @@ const clientRoutes = [
   '/index.html',
   '/browse{/*path}',
   '/favorites',
+  '/top',
   '/local'
 ];
 app.get(clientRoutes, cache1Hour, async (req, res) => {
@@ -712,14 +779,28 @@ app.get(clientRoutes, cache1Hour, async (req, res) => {
     return res.status(404).send(`${indexFilename} not found`);
   }
 
-  const { title, description, url, image, songId, scriptTag } = getHtmlInjectionsForRequest(req);
+  const {
+    title,
+    description,
+    url,
+    image,
+    songId,
+    scriptTag,
+    schemaJsonLd,
+    noscriptContent,
+  } = getHtmlInjectionsForRequest(req);
+
   const previewImage = songId ? `https://chiptune.app/preview?s=${encodeURIComponent(songId)}` : image;
+  const defaultNoscript = 'You need to enable JavaScript to run this app.';
+
   const finalHtml = html
     .replace(/__TITLE__/g, title)
     .replace(/__DESCRIPTION__/g, description)
     .replace(/__URL__/g, url)
     .replace(/__IMAGE__/g, previewImage)
-    .replace(/<chip-config><\/chip-config>/g, scriptTag);
+    .replace(/<chip-config><\/chip-config>/g, scriptTag)
+    .replace(/__SCHEMA_JSON_LD__/g, schemaJsonLd || '')
+    .replace(/__NOSCRIPT_CONTENT__/g, noscriptContent || defaultNoscript);
 
   res.send(finalHtml);
 });
@@ -734,14 +815,45 @@ app.listen(port, hostname, () => {
 });
 
 function getHtmlInjectionsForRequest(req) {
+  // 1. Dedicated isolation for /top (prevent query param title/canonical leakage)
+  if (req.path === '/top') {
+    return {
+      title: 'Top Charts - Most Played & Favorited Chiptunes',
+      description: 'Explore the all-time and monthly most played and most favorited chiptune tracks and video game music on Chip Player JS.',
+      url: 'https://chiptune.app/top',
+      image: 'https://chiptune.app/chip-player-1200x640.png',
+      songId: null,
+      scriptTag: '',
+      schemaJsonLd: '',
+      noscriptContent: '<div class="seo-crawler-content"><h1>Top Charts</h1><p>Most played and most favorited chiptune tracks on Chip Player JS.</p></div>',
+    };
+  }
+
+  // 2. Directory browse pages (/browse and /browse/*)
+  if (req.path === '/browse' || req.path.startsWith('/browse/')) {
+    const dirMeta = resolveDirectoryMetadata(req.path);
+    return {
+      title: dirMeta.title,
+      description: dirMeta.description,
+      url: dirMeta.url,
+      image: dirMeta.image,
+      songId: null,
+      scriptTag: '',
+      schemaJsonLd: dirMeta.schemaJsonLd,
+      noscriptContent: dirMeta.noscriptContent,
+    };
+  }
+
   let url = `https://chiptune.app${req.path}`;
   let song;
-  let image = 'https://chiptune.app/chip-player.png';
+  let image = 'https://chiptune.app/chip-player-1200x640.png';
   let title = 'Chip Player JS';
-  let description = 'An online MIDI and VGM music player with SoundFont support. Over 300,000 songs, focused on performance and nostalgia. Play VGM, SPC, NSF, S3M, XM, MOD and more.';
+  let description = 'An online MIDI and VGM music player with SoundFont support. Over 380,000 songs, focused on performance and nostalgia. Play VGM, SPC, NSF, S3M, XM, MOD and more.';
 
   let songId = null;
   let scriptTag = '';
+  let schemaJsonLd = '';
+  let noscriptContent = '';
 
   // Extract 'play' param from query string
   const play = req.query.play;
@@ -752,8 +864,8 @@ function getHtmlInjectionsForRequest(req) {
       song = getSongByIdStmt.get(`${play}%`);
 
       // more HVSC hacks ···
-      if (song.path.endsWith('.sid')) {
-        const sidMeta = getSidMetadataByPathStmt.get('_'+song.path);
+      if (song && song.path.endsWith('.sid')) {
+        const sidMeta = getSidMetadataByPathStmt.get('_' + song.path);
         if (sidMeta) {
           song.title = sidMeta.name;
           song.artist = sidMeta.author;
@@ -773,7 +885,7 @@ function getHtmlInjectionsForRequest(req) {
       const chipConfig = {
         songId: song.song_id,
         songPath: song.path,
-      }
+      };
       scriptTag = `<script>window.__chipConfig = ${JSON.stringify(chipConfig)};</script>`;
 
       if (song.title) {
@@ -781,7 +893,7 @@ function getHtmlInjectionsForRequest(req) {
         if (song.artist) title += ` - ${song.artist}`;
         else if (song.game) title += ` - ${song.game}`;
       } else {
-        title = path.basename(reqPath);
+        title = path.basename(song.path || play);
       }
 
       const parts = [];
@@ -796,13 +908,23 @@ function getHtmlInjectionsForRequest(req) {
         image = `https://chiptune.app/catalog/${encodedPath}`;
       }
       songId = song.song_id;
-    }
-  } else {
-    if (req.path.startsWith('/browse/')) {
-      // Use up to last 2 path segments for title
-      const pathSegments = req.path.replace(/^\/browse\/+/, '').split('/').filter(s => s);
-      const pathSegment = pathSegments.slice(-2).join('/');
-      title = `Chip Player JS - ${decodeURIComponent(pathSegment)}`;
+
+      // MusicRecording structured data
+      const songSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'MusicRecording',
+        name: song.title || path.basename(song.path || play),
+        url: url,
+      };
+      if (song.artist) {
+        songSchema.byArtist = { '@type': 'MusicGroup', name: song.artist };
+      }
+      if (song.game) {
+        songSchema.inAlbum = { '@type': 'MusicAlbum', name: song.game };
+      }
+      schemaJsonLd = `<script type="application/ld+json">${JSON.stringify(songSchema)}</script>`;
+
+      noscriptContent = `<div class="seo-crawler-content"><h1>${title}</h1><p>${description}</p><p><a href="${url}">Play track</a></p></div>`;
     }
   }
 
@@ -813,5 +935,7 @@ function getHtmlInjectionsForRequest(req) {
     image,
     songId,
     scriptTag,
+    schemaJsonLd,
+    noscriptContent,
   };
 }

@@ -8,21 +8,15 @@ import MIDIEvents from './midi/MIDIEvents';
  *
  * A lot of complexity was introduced in the MIDIFilePlayer in an effort to
  * play nicely with hardware MIDI devices. Behaviors that are deterministic
- * in a softsynth can be nondeterministic on a hardware device, such as
- * skipping silence at the beginning of a MIDI file, or seeking through the
- * file. Non-note events must be replayed in these cases, and throttled for
- * hardware devices, especially in the case of sysex commands that might make
- * the hardware busy for 0.5 seconds, such as a GM reset command sent to a
- * Roland SC-55. The time allowed for these events is a best-guess - so your
- * mileage may vary.
+ * in a softsynth can be nondeterministic on a hardware device, such as seeking
+ * through the file. Non-note events must be replayed in these cases, and
+ * throttled for hardware devices.
  */
 
 // Constants
 const BUFFER_AHEAD = 33;
 const DELAY_MS_PER_CC_EVENT = 2;
-// const DELAY_MS_PER_SYSEX_EVENT = 15;
-const DELAY_MS_PER_SYSEX_BYTE = 0.5;
-const DELAY_MS_PER_XG_SYSTEM_EVENT = 500;
+const SKIP_SILENCE_THRESHOLD_MS = 50;
 
 const CC_SUSTAIN_PEDAL = 64;
 const CC_ALL_SOUND_OFF = 120;
@@ -56,13 +50,14 @@ function MIDIPlayer(options) {
   this.lastSendTimestamp = 0;
   this.events = [];
   this.paused = true;
-  this.useWebMIDI = false;
+  this.useWebMIDI = options.useWebMIDI || false;
   this.sampleRate = options.sampleRate || 44100;
 
   this.channelsInUse = [];
   this.channelMask = [];
   this.channelProgramNums = [];
   this.textInfo = [];
+  this.isAuditioning = false;
 
   // Disabled due to "Page prevented back/forward cache restoration".
   // window.addEventListener('unload', this.stop);
@@ -84,60 +79,11 @@ MIDIPlayer.prototype.load = function (midiFile, useTrackLoops = false) {
 };
 
 MIDIPlayer.prototype.doSkipSilence = function () {
-  let firstNoteDelay = 0;
-  let messageDelay = 0;
-  let numSysexEvents = 0;
+  if (this.useWebMIDI) return;
+
   const firstNote = this.events.find(e => e.subtype === MIDIEvents.EVENT_MIDI_NOTE_ON);
-  if (firstNote && firstNote.playTime > 0) {
-    // Accelerated playback of all events prior to first note
-    if (this.useWebMIDI) {
-      let message;
-      const eventList = [];
-      while (this.events[this.position] !== firstNote) {
-        const event = this.events[this.position];
-        this.position++;
-
-        // Throttle sysex events
-        // (In some cases this may actually increase the time to first note)
-        if (event.type === MIDIEvents.EVENT_SYSEX || event.type === MIDIEvents.EVENT_DIVSYSEX) {
-          console.debug("Sysex event at %s ms:", Math.floor(event.playTime), printSysex(event.data));
-          if (event.data && event.data[3] === 0 && event.data[4] === 0) {
-            firstNoteDelay += DELAY_MS_PER_XG_SYSTEM_EVENT;
-            messageDelay += DELAY_MS_PER_XG_SYSTEM_EVENT;
-          } else {
-            const delay = DELAY_MS_PER_SYSEX_BYTE * event.length;
-            firstNoteDelay += delay;
-            messageDelay += delay;
-          }
-          numSysexEvents++;
-          message = [event.type, ...event.data];
-        } else if (MIDIEvents.MIDI_1PARAM_EVENTS.indexOf(event.subtype) !== -1) {
-          firstNoteDelay += DELAY_MS_PER_CC_EVENT;
-          messageDelay += DELAY_MS_PER_CC_EVENT;
-          message = [(event.subtype << 4) + event.channel, event.param1];
-        } else if (MIDIEvents.MIDI_2PARAMS_EVENTS.indexOf(event.subtype) !== -1) {
-          firstNoteDelay += DELAY_MS_PER_CC_EVENT;
-          messageDelay += DELAY_MS_PER_CC_EVENT;
-          message = [(event.subtype << 4) + event.channel, event.param1, (event.param2 || 0x00)];
-        } else {
-          continue;
-        }
-        eventList.push({
-          message: message,
-          timestamp: this.lastProcessPlayTimestamp + messageDelay,
-        });
-      }
-
-      eventList.forEach(({ message, timestamp }) => {
-        this.send(message, timestamp);
-      });
-      // Set lastProcessPlayTimestamp to a point in the past so that the first note event plays immediately.
-      console.log("Time to first note %s ms was updated to %s ms; %s sysex events",
-        Math.round(firstNote.playTime), firstNoteDelay, numSysexEvents);
-      this.lastProcessPlayTimestamp += (firstNoteDelay - firstNote.playTime);
-    } else {
-      this.setPosition(firstNote.playTime - 50);
-    }
+  if (firstNote && firstNote.playTime > SKIP_SILENCE_THRESHOLD_MS) {
+    this.setPosition(firstNote.playTime - SKIP_SILENCE_THRESHOLD_MS);
   }
 };
 
@@ -147,7 +93,7 @@ MIDIPlayer.prototype.play = function (endCallback) {
     this.reset();
 
     this.lastProcessPlayTimestamp = performance.now();
-    if (this.skipSilence) {
+    if (this.skipSilence && !this.useWebMIDI) {
       this.doSkipSilence();
     }
 
@@ -217,7 +163,7 @@ MIDIPlayer.prototype.processPlaySynth = function (buffer, bufferSize) {
     bytesWritten += batchSize;
   }
 
-  if (this.position >= this.events.length) {
+  if (!this.paused && !this.isAuditioning && this.position >= this.events.length) {
     // Last MIDI event has been processed.
     // Continue synthesis until silence is detected.
     // This allows voices with a long release tail to complete.
@@ -345,9 +291,10 @@ MIDIPlayer.prototype.panic = function (timestamp) {
       this.send([(MIDIEvents.EVENT_MIDI_CONTROLLER << 4) + ch, CC_RESET_ALL_CONTROLLERS, 0], timestamp);
     }
   } else {
-    // Release sustain pedal on all channels
+    // Release sustain pedal and reset pitch bend on all channels
     for (let ch = 0; ch < 16; ch++) {
       this.synth.controlChange(ch, CC_SUSTAIN_PEDAL, 0);
+      this.synth.pitchBend(ch, 8192);
     }
     this.synth.panic();
   }
@@ -499,7 +446,7 @@ MIDIPlayer.prototype.summarizeMidiEvents = function () {
     const event = this.events[j];
     switch (event.subtype) {
       case MIDIEvents.EVENT_MIDI_NOTE_ON:
-        channelsInUse[event.channel] = 1;
+        if (event.param2 > 0) channelsInUse[event.channel] = 1;
         break;
       case MIDIEvents.EVENT_MIDI_PROGRAM_CHANGE:
         if (!channelProgramNums[event.channel]) this.handleProgramChange(event.channel, event.param1);

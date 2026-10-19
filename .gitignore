@@ -25,3 +25,4 @@ libxmp/lite/Makefile.in
 .env
 *.backup/
 _ignore/
+public/sitemap*.xml

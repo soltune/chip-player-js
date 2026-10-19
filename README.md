@@ -96,7 +96,7 @@ $ emmake make clean && emmake make fluidlite-static
 
 ![Screen Shot 2019-11-19 at 1 21 04 PM](https://user-images.githubusercontent.com/946117/69187458-80955600-0acf-11ea-9a1f-e090032dcb00.png)
 
-Play online: [Chip Player JS](https://mmontag.github.io/chip-player-js). Feature requests? [Create an issue](https://github.com/mmontag/chip-player-js/issues/new).
+Play online: [Chip Player JS](https://chiptune.app). Feature requests? [Create an issue](https://github.com/mmontag/chip-player-js/issues/new).
 
 ### Features
 
@@ -109,7 +109,7 @@ Play online: [Chip Player JS](https://mmontag.github.io/chip-player-js). Feature
 - Track sequencer with player controls and shuffle mode
 - Media key support in Chrome
 - High performance
-   - Time-to-audio under 500 ms (i.e. https://mmontag.github.io/chip-player-js/?play=ModArchives/aryx.s3m)
+   - Time-to-audio under 500 ms (i.e. https://chiptune.app/?play=ModArchives/aryx.s3m)
    - Instant search results
    - CPU usage under 25% in most circumstances
 
@@ -130,14 +130,49 @@ The C/C++ code is compiled by [scripts/build-chip-core.js](scripts/build-chip-co
 * **tinyplayer.c**: a super light MIDI file reader/player
 * **showcqtbar.c**: a modified [FFMPEG plugin](https://github.com/mfcc64/html5-showcqtbar) providing lovely [constant Q](https://en.wikipedia.org/wiki/Constant-Q_transform#Comparison_with_the_Fourier_transform) spectrum analysis for the visualizer.
 
-The music catalog is created by [scripts/build-catalog.js](scripts/build-catalog.js). **This script looks for a ./catalog folder to build a music index.** This location is untracked, so put a symlink here that points to your local music archive. TODO: Document the corresponding public location (`CATALOG_PREFIX`).
+The music catalog is indexed by [scripts/build-music.js](scripts/build-music.js) into `server/catalog.db` (SQLite). **This script looks for a `./catalog` folder to build a music index.** This location is untracked, so put a symlink here that points to your local music archive:
+
+```sh
+ln -s /path/to/music/archive catalog
+node scripts/build-music.js
+```
+
+#### HVSC and CSdb SQL Dumps
+
+For Commodore 64 SID files, the server looks up SID files by hash and path to query CSdb and HVSC for STIL metadata, tune lengths, and release cover artwork.
+
+This requires two SQLite dump files located in the `scripts/` directory:
+- `scripts/hvsc_files_sqlite.sql`: High Voltage SID Collection database dump (`hvsc_files` table).
+- `scripts/sid_release_map_sqlite.sql`: SID to CSdb release mapping dump (`sid_release_map` table).
+
+These files are untracked due to their size. They originate from the MySQL database dumps maintained by [DeepSID](https://github.com/Chordian/deepsid) (available in [DeepSID_Database.zip](https://chordian.net/files/deepsid/DeepSID_Database.zip), which contains `files.sql` and `release_map.sql`).
+
+To generate the SQLite files, download the zip and convert the MySQL dumps using [`scripts/mysql2sqlite`](scripts/mysql2sqlite):
+
+```sh
+curl -O https://chordian.net/files/deepsid/DeepSID_Database.zip
+unzip DeepSID_Database.zip
+
+./scripts/mysql2sqlite files.sql > scripts/hvsc_files_sqlite.sql
+./scripts/mysql2sqlite release_map.sql > scripts/sid_release_map_sqlite.sql
+```
+
+`build-music.js` will automatically import them when:
+- Creating a new database (`server/catalog.db`)
+- Resetting the database (`node scripts/build-music.js -r` or `--reset-db`)
+- Triggered explicitly (`node scripts/build-music.js --import-hvsc`)
+
+To import or update only the HVSC/CSdb tables without re-indexing music files:
+```sh
+node scripts/build-music.js --hvsc-only
+```
 
 ### Local Development Setup
 
 [!WARNING]
 This is a difficult project to self host. My instructions are probably out of date. You have been warned.
 
-Prerequisites: npm, cmake, emsdk.
+Prerequisites: npm, cmake, emsdk, sqlite-rsync (optional, for catalog deployment).
 
 * Clone the repository. 
 * Run `npm install`.
@@ -238,6 +273,20 @@ emcmake cmake ..                 # Cmake will generate a Makefile
 emmake make
 ```
 
+#### External project: libgsf
+
+Our goal is to produce **../libgsf/build/libviogsf.a** (assumes you have cloned **libgsf** side-by-side with chip-player-js).
+
+```sh
+git clone https://github.com/joshbarrass/viogsf.git libgsf
+cd libgsf/
+source ~/src/emsdk/emsdk_env.sh  # load the emscripten environment variables
+mkdir build                      # create a build folder for Cmake output
+cd build
+emcmake cmake ..                 # Cmake will generate a Makefile
+emmake make
+```
+
 #### External project: libvgm
 
 Our goal is to produce **../libvgm/build/bin/libvgm-emu.a**, **../libvgm/build/bin/libvgm-player.a**, and **../libvgm/build/bin/libvgm-util.a** (assumes you have cloned **libvgm** side-by-side with chip-player-js.
@@ -283,11 +332,12 @@ ccmake -DCMAKE_TOOLCHAIN_FILE="$(dirname $(which emcc))/cmake/Modules/Platform/E
 
 Our goal is to produce **../libsidplayfp/src/.libs/libsidplayfp.a** (assumes you have cloned **libsidplayfp** side-by-side with chip-player-js).
 
+Prerequisites: `xa` (6502 cross-assembler) is needed if driver binaries need to be regenerated (`brew install xa` on macOS or `apt install xa65` on Linux).
+
 ```sh
-git clone git@github.com:mmontag/libsidplayfp # my libsidplayfp fork
+git clone --recurse-submodules -b montag-dev-2.14 https://github.com/mmontag/libsidplayfp.git
 cd libsidplayfp
-git checkout montag-dev-2.14                  # my modified branch
-git submodule update --init --recursive       # this repo uses submodules
+# In an existing clone: git checkout montag-dev-2.14 && git submodule update --init --recursive
 autoreconf -vfi                               # optional
 make distclean || true                        # optional
 source ~/src/emsdk/emsdk_env.sh               # load the emscripten environment variables
@@ -331,6 +381,24 @@ Deploy to Github Pages without rebuilding chip-core.wasm:
 ```sh
 npm deploy-lite
 ```
+
+#### Production Deployment (`deploy.js`)
+
+To deploy to production (server, client static build, and/or music catalog):
+
+```sh
+node deploy.js
+# Or specify targets directly:
+node deploy.js --catalog
+node deploy.js --client
+node deploy.js --server
+node deploy.js --dry-run
+```
+
+**Requirement for Catalog Deployment:**
+Deploying the SQLite music catalog (`server/catalog.db`) uses [`sqlite3_rsync`](https://www.sqlite.org/rsync.html) for fast, transactional page-level synchronization. Both the local machine and the remote server must have `sqlite3_rsync` installed and available in `$PATH`:
+- **macOS**: `brew install sqlite-rsync`
+- **Linux**: Download from [SQLite Tools](https://www.sqlite.org/download.html) (packaged in `sqlite-tools-linux-*.zip`) and place the `sqlite3_rsync` binary in `/usr/local/bin/`.
 
 ## Related Projects
 
