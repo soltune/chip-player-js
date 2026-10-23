@@ -85,6 +85,7 @@ const std::map<int, VoiceInfo> deviceToVoiceInfo = {
   {DEVID_YM3526,   {9,  0, "FM"}},
   {DEVID_YM3812,   {9,  0, "FM"}},
   {DEVID_YMF262,   {18, 0, "FM"}},
+  {DEVID_YM2414,   {8,  0, "FM"}},
   {DEVID_YMF271,   {24, 0, "FM"}},
   {DEVID_YMF278B,  {24, 18, "", {
     "PCM 1", "PCM 2", "PCM 3", "PCM 4", "PCM 5", "PCM 6", "PCM 7", "PCM 8",
@@ -93,7 +94,9 @@ const std::map<int, VoiceInfo> deviceToVoiceInfo = {
     "FM 1", "FM 2", "FM 3", "FM 4", "FM 5", "FM 6", "FM 7", "FM 8", "FM 9",
     "FM 10", "FM 11", "FM 12", "FM 13", "FM 14", "FM 15", "FM 16", "FM 17", "FM 18"}, " (PCM)", " (FM)"}},
   {DEVID_YMW258,   {28, 0, "PCM"}},
-  {DEVID_YMZ280B,  {8,  0}}};
+  {DEVID_YMZ280B,  {8,  0}},
+  // 48 voices: mute bits 32-47 go through chnMute[1] (see lvgm_set_voice_mask)
+  {DEVID_ZSG2,     {48, 0, "PCM"}}};
 
 struct Chip {
   size_t type;
@@ -252,6 +255,8 @@ std::string getNiceChipName(UINT8 type, const char* devName) {
     case DEVID_POKEY:     return "Atari POKEY";
     case DEVID_MIKEY:     return "Atari MIKEY";
     case DEVID_GA20:      return "Irem GA20";
+    case DEVID_ZSG2:      return "Zoom ZSG-2";
+    case DEVID_YM2414:    return "Yamaha YM2414 (OPZ)";
     default:              return devName;
   }
 }
@@ -393,6 +398,8 @@ UINT8 lvgm_load_data(lvgm_player *player, const UINT8 *data, const UINT32 size) 
   for (const auto& chip : chips) {
     if (base->GetDeviceOptions(chip.idx, devOpts) == 0) {
       devOpts.muteOpts.chnMute[chip.linkedIdx] = 0;
+      if (chip.voiceCount > 32)
+        devOpts.muteOpts.chnMute[1] = 0;
       base->SetDeviceMuting(chip.idx, devOpts.muteOpts);
     }
   }
@@ -542,8 +549,11 @@ void lvgm_set_voice_mask(lvgm_player *player, UINT64 mask) {
   size_t bitOffset = 0;
   for (const auto& chip : chips) {
     PLR_DEV_OPTS devOpts;
-    if (base->GetDeviceOptions(chip.idx, devOpts) == 0) {
+    if (bitOffset < 64 && base->GetDeviceOptions(chip.idx, devOpts) == 0) {
       devOpts.muteOpts.chnMute[chip.linkedIdx] = (UINT32)(mask >> bitOffset);
+      // Chips with more than 32 voices (and no linked device) take voices 32+ in chnMute[1]
+      if (chip.voiceCount > 32 && bitOffset + 32 < 64)
+        devOpts.muteOpts.chnMute[1] = (UINT32)(mask >> (bitOffset + 32));
       base->SetDeviceMuting(chip.idx, devOpts.muteOpts);
     }
     bitOffset += chip.voiceCount;
@@ -558,9 +568,14 @@ UINT64 lvgm_get_voice_mask(lvgm_player *player) {
   UINT64 mask = 0;
   size_t bitOffset = 0;
   for (const auto& chip : chips) {
+    if (bitOffset >= 64) break;
     PLR_MUTE_OPTS muteOpts = {};
     base->GetDeviceMuting(chip.idx, muteOpts);
     mask |= (UINT64)muteOpts.chnMute[chip.linkedIdx] << bitOffset;
+    if (chip.voiceCount > 32 && bitOffset + 32 < 64) {
+      UINT64 hiMask = (1ULL << (chip.voiceCount - 32)) - 1;
+      mask |= ((UINT64)muteOpts.chnMute[1] & hiMask) << (bitOffset + 32);
+    }
     bitOffset += chip.voiceCount;
   }
 
