@@ -87,9 +87,8 @@ MIDIPlayer.prototype.doSkipSilence = function () {
   }
 };
 
-MIDIPlayer.prototype.play = function (endCallback) {
+MIDIPlayer.prototype.play = function () {
   if (0 === this.position) {
-    this.endCallback = endCallback;
     this.reset();
 
     this.lastProcessPlayTimestamp = performance.now();
@@ -192,7 +191,7 @@ MIDIPlayer.prototype.processPlay = function () {
   const deltaTime = (now - this.lastProcessPlayTimestamp) * this.speed;
   this.lastProcessPlayTimestamp = now;
 
-  if (this.paused) return;
+  if (this.paused) return 1;
 
   let throttleDelayMs = 0;
   let delay = 0;
@@ -236,19 +235,25 @@ MIDIPlayer.prototype.processPlay = function () {
     }
     if (message) {
       const scaledPlayTime = (event.playTime - this.elapsedTime) / this.speed + this.lastProcessPlayTimestamp;
-      this.send(message, scaledPlayTime + throttleDelayMs);
+      const sendTimestamp = scaledPlayTime + throttleDelayMs;
+      this.send(message, sendTimestamp);
       throttleDelayMs += delay;
-      this.lastSendTimestamp = scaledPlayTime;
+      this.lastSendTimestamp = Math.max(this.lastSendTimestamp, sendTimestamp);
     }
     this.position++;
     event = this.events[this.position];
   }
 
-  if (this.position >= this.events.length) {
-    setTimeout(this.endCallback, BUFFER_AHEAD + 100);
+  // MIDI messages are scheduled ahead. Finish after the last event and a short
+  // tail, rather than advancing while queued messages are still in flight.
+  if (this.position >= this.events.length &&
+      this.elapsedTime >= this.getDuration() + 100 * this.speed &&
+      now >= this.lastSendTimestamp + 100) {
     this.position = 0;
     this.paused = true;
+    return 0;
   }
+  return 1;
 };
 
 MIDIPlayer.prototype.handleProgramChange = function (channel, program) {
@@ -349,6 +354,9 @@ MIDIPlayer.prototype.setPositionSynth = function (eventList) {
         // handleProgramChange() is called in setPosition()
         synth.programChange(event.channel, event.param1);
         break;
+      case MIDIEvents.EVENT_MIDI_PITCH_BEND:
+        synth.pitchBend(event.channel, (event.param2 << 7) + event.param1);
+        break;
       case MIDIEvents.EVENT_MIDI_CONTROLLER:
       default:
         synth.controlChange(event.channel, event.param1, event.param2);
@@ -366,7 +374,8 @@ MIDIPlayer.prototype.setPositionWebMidi = function (ms, eventList) {
     if (event.subtype === MIDIEvents.EVENT_MIDI_PROGRAM_CHANGE) {
       // handleProgramChange() is called in setPosition()
       message = [(event.subtype << 4) + event.channel, event.param1];
-    } else if (event.subtype === MIDIEvents.EVENT_MIDI_CONTROLLER) {
+    } else if (event.subtype === MIDIEvents.EVENT_MIDI_CONTROLLER ||
+               event.subtype === MIDIEvents.EVENT_MIDI_PITCH_BEND) {
       message = [(event.subtype << 4) + event.channel, event.param1, event.param2];
     }
     this.send(message, this.lastSendTimestamp + 20 + i * DELAY_MS_PER_CC_EVENT);
@@ -387,6 +396,12 @@ MIDIPlayer.prototype.setPosition = function (ms) {
   this.panic(this.lastSendTimestamp + 10);
   let eventMap = {};
   let eventList = [];
+  const pitchBends = {};
+  // Panic resets pitch bend, so restore the latest value at the target position.
+  for (const event of this.events) {
+    if (event.playTime >= ms) break;
+    if (event.subtype === MIDIEvents.EVENT_MIDI_PITCH_BEND) pitchBends[event.channel] = event;
+  }
   let pos = this.position;
 
   if (ms < this.elapsedTime) {
@@ -411,7 +426,7 @@ MIDIPlayer.prototype.setPosition = function (ms) {
     pos++;
   }
 
-  eventList = Object.values(eventMap).concat(eventList);
+  eventList = Object.values(eventMap).concat(eventList, Object.values(pitchBends));
 
   if (this.useWebMIDI) {
     this.setPositionWebMidi(ms, eventList);
@@ -471,11 +486,13 @@ MIDIPlayer.prototype.summarizeMidiEvents = function () {
 MIDIPlayer.prototype.setChannelMute = function (ch, isMuted) {
   this.channelMask[ch] = !isMuted;
   if (isMuted) {
-    // TODO separate synth from webMidi
-    const timestamp = this.lastSendTimestamp + 10;
-    this.send([(MIDIEvents.EVENT_MIDI_CONTROLLER << 4) + ch, CC_SUSTAIN_PEDAL, 0], timestamp);
-    this.send([(MIDIEvents.EVENT_MIDI_CONTROLLER << 4) + ch, CC_ALL_SOUND_OFF, 0], timestamp);
-    this.synth.panicChannel(ch);
+    if (this.useWebMIDI) {
+      const timestamp = this.lastSendTimestamp + 10;
+      this.send([(MIDIEvents.EVENT_MIDI_CONTROLLER << 4) + ch, CC_SUSTAIN_PEDAL, 0], timestamp);
+      this.send([(MIDIEvents.EVENT_MIDI_CONTROLLER << 4) + ch, CC_ALL_SOUND_OFF, 0], timestamp);
+    } else {
+      this.synth.panicChannel(ch);
+    }
   }
 };
 

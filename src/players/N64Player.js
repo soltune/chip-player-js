@@ -45,6 +45,7 @@ export default class N64Player extends Player {
     // internal buffer, which then leak into the start of the new song.
     this.core._n64_shutdown();
 
+    const loadSignal = this.beginLoad();
     let err;
     this.filepathMeta = Player.metadataFromFilepath(filename);
 
@@ -64,9 +65,13 @@ export default class N64Player extends Player {
 
     return Promise.all(filePromises)
       .then(() => {
+        if (loadSignal.aborted) return;
         // Heavy synchronous init blocks the main thread; suspend the audio
         // context so the output doesn't glitch meanwhile.
         return this.muteAudioDuringCall(this.audioNode, () => {
+          // The mute waits for the output to ramp down, so a newer song may
+          // have been selected in the meantime.
+          if (loadSignal.aborted) return;
           err = this.core.ccall(
             'n64_load_file', 'number',
             ['string', 'number', 'number', 'number'],

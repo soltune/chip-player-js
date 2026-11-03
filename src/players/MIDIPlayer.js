@@ -239,7 +239,10 @@ export default class MIDIPlayer extends Player {
     // Notes are allowed to ring out, and the MIDI synth behaves more like external hardware.
 
     if (useWebMIDI) {
-      this.midiFilePlayer.processPlay();
+      if (this.midiFilePlayer.processPlay() === 0) {
+        this.handleSongEnd();
+        return;
+      }
     } else {
       if (this.midiFilePlayer.processPlaySynth(this.buffer, this.bufferSize)) {
         for (let ch = 0; ch < channels.length; ch++) {
@@ -294,7 +297,7 @@ export default class MIDIPlayer extends Player {
     console.debug('Requesting MIDI output devices.');
     if (typeof navigator.requestMIDIAccess === 'function') {
       navigator.requestMIDIAccess({ sysex: true }).then((access) => {
-        if (access.outputs.length === 0) {
+        if (access.outputs.size === 0) {
           console.warn('No MIDI output devices found.');
         } else {
           [...access.outputs.values()].forEach(midiOutput => {
@@ -316,6 +319,7 @@ export default class MIDIPlayer extends Player {
   }
 
   async loadData(data, filepath, persistedSettings) {
+    const loadSignal = this.beginLoad();
     if (this.midiFilePlayer) {
       this.midiFilePlayer.stop();
       this.midiFilePlayer.position = 0;
@@ -343,6 +347,7 @@ export default class MIDIPlayer extends Player {
       let useMelodicChannel10 = false;
       // This should be cached by a preceding fetch in App.js.
       const { data: { soundfont: soundfontPath } } = await axios.get(metadataUrl);
+      if (loadSignal.aborted) return;
       const soundfontUrl = soundfontPath ? getUrlFromFilepath(soundfontPath) : null;
       if (soundfontUrl) {
         const soundfontBasename = pathe.basename(soundfontPath);
@@ -350,6 +355,7 @@ export default class MIDIPlayer extends Player {
         newTransientParams['soundfont'] = sf2Path;
         if (this.getParameter('soundfont') !== sf2Path) {
           await ensureEmscFileWithUrl(core, `${SOUNDFONT_MOUNTPOINT}/${sf2Path}`, soundfontUrl);
+          if (loadSignal.aborted) return;
           this.updateSoundfontParamDefs();
         }
         // Melodic mode mean CH 10 becomes like any other channel, using SoundFont bank 0 by default.
@@ -381,7 +387,7 @@ export default class MIDIPlayer extends Player {
     // Checking filepath doesn't work for dragged files. Force to true during development.
     const useTrackLoops = filepath.includes('SoundFont MIDI');
     this.midiFilePlayer.load(midiFile, useTrackLoops);
-    this.midiFilePlayer.play(() => this.handleSongEnd());
+    this.midiFilePlayer.play();
 
     this.resume();
     this.emit('playerStateUpdate', {

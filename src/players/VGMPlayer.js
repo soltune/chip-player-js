@@ -53,6 +53,7 @@ export default class VGMPlayer extends Player {
   }
 
   async loadData(data, filepath, persistedSettings) {
+    const loadSignal = this.beginLoad();
     const dataPtr = this.copyToHeap(data);
     const err = this.core._lvgm_load_data(this.vgmCtx, dataPtr, data.byteLength);
     this.core._free(dataPtr);
@@ -90,6 +91,7 @@ export default class VGMPlayer extends Player {
     if (hasOpl4) {
       console.debug(`${filepath} uses Yamaha OPL4 chip.`);
       await ensureEmscFileWithUrl(this.core, YRW801_ROM_PATH, `${SOUNDFONT_URL_PATH}/yrw801.rom`);
+      if (loadSignal.aborted) return;
     }
 
     this.core._lvgm_start(this.vgmCtx);

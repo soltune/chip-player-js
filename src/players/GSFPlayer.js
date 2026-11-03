@@ -49,6 +49,7 @@ export default class GSFPlayer extends Player {
   }
 
   loadData(data, filename, persistedSettings) {
+    const loadSignal = this.beginLoad();
     let err;
     this.filepathMeta = Player.metadataFromFilepath(filename);
 
@@ -68,6 +69,7 @@ export default class GSFPlayer extends Player {
 
     return Promise.all(filePromises)
       .then(() => {
+        if (loadSignal.aborted) return;
         err = this.core.ccall(
           'gsf_load_file', 'number',
           ['string', 'number', 'number', 'number'],
