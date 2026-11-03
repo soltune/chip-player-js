@@ -494,6 +494,8 @@ export default class NDSPlayer extends Player {
 
   loadData(data, filepath, persistedSettings = {}) {
     this.suspend();
+    // After suspend(), which cancels any pending load.
+    const loadSignal = this.beginLoad();
 
     if (!this.lib.isClosed()) {
       this.lib.teardown();
@@ -521,6 +523,9 @@ export default class NDSPlayer extends Player {
     // nds_init blocks the main thread for a long time on heavy 2sf data;
     // suspend the audio context so the output doesn't glitch meanwhile.
     return this.muteAudioDuringCall(this.audioNode, () => {
+      // The mute waits for the output to ramp down, so a newer song may have
+      // been selected in the meantime.
+      if (loadSignal.aborted) return;
       if (this.lib.loadMusicData(this.sampleRate, path, filename) === 0) {
         this.voiceMask = Array(this.getNumVoices()).fill(true);
         this.init();
@@ -676,12 +681,15 @@ export default class NDSPlayer extends Player {
       .then(buffer => {
         this.pendingFileRequests.delete(fullFilename);
         this.lib.registerFileData(path, filename, buffer);
-        if (!this.lastLoadedFilename) {
-          // no load is waiting on this file anymore (a later init already
-          // succeeded and cleared it); don't tear down the playing song
+        if (!this.lastLoadedFilename || !this.pendingLoad) {
+          // no load is waiting on this file anymore: a later init already
+          // succeeded and cleared it (don't tear down the playing song), or
+          // the song was replaced or stopped and suspend() dropped the pending
+          // load (don't start this player under another one)
           return;
         }
         this.suspend();
+        const loadSignal = this.beginLoad();
 
         this.resampleBuffer = this.allocResampleBuffer(0);
         this.sourceBuffer = null;
@@ -698,6 +706,7 @@ export default class NDSPlayer extends Player {
         }
 
         return this.muteAudioDuringCall(this.audioNode, () => {
+          if (loadSignal.aborted) return;
           if (this.lib.loadMusicData(this.sampleRate, path, this.lastLoadedFilename) === 0) {
             this.init();
             this.resolveParamValues(this.persistedSettings);

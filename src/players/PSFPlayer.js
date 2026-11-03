@@ -454,6 +454,7 @@ export default class PSFPlayer extends Player {
   }
 
   loadData(data, filepath, persistedSettings = {}) {
+    const loadSignal = this.beginLoad();
     if (!this.lib.isClosed()) {
       this.lib.teardown();
     }
@@ -467,6 +468,9 @@ export default class PSFPlayer extends Player {
     // Heavy synchronous init blocks the main thread; suspend the audio
     // context so the output doesn't glitch meanwhile.
     return this.muteAudioDuringCall(this.audioNode, () => {
+      // The mute waits for the output to ramp down, so a newer song may have
+      // been selected in the meantime.
+      if (loadSignal.aborted) return;
       if (this.lib.loadMusicData(this.sampleRate, path, filename) === 0) {
         this.voiceMask = Array(this.getNumVoices()).fill(true);
         this.init();
@@ -616,7 +620,16 @@ export default class PSFPlayer extends Player {
       return 0;
     }
     Promise.all(fetchTasks).then(() => {
+      // Reload only while a load still waits on these files. Otherwise a later
+      // init already succeeded (it clears lastLoadedFilename), or the song was
+      // replaced or stopped (suspend() drops pendingLoad): reloading would
+      // start this player under another one.
+      if (!this.lastLoadedFilename || !this.pendingLoad) {
+        return;
+      }
+      const loadSignal = this.beginLoad();
       return this.muteAudioDuringCall(this.audioNode, () => {
+        if (loadSignal.aborted) return;
         if (this.lib.loadMusicData(this.sampleRate, basePath, this.lastLoadedFilename) === 0) {
           this.init();
           this.resume();

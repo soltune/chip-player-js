@@ -136,7 +136,9 @@ class FMPLibWrapper {
     return hasPcm;
   }
 
-  async loadMusicData(sampleRate, path, filename, data, onMusicLoadFinished) {
+  // signal: the player's load signal. A newer song may be loaded while the PCM
+  // files are fetched; its PCM must not be overwritten with this song's.
+  async loadMusicData(sampleRate, path, filename, data, signal) {
     let buf = this.fmplib._malloc(data.length);
     this.fmplib.HEAPU8.set(data, buf);
     const result = this.fmplib.ccall('fmp_load_file', 'number',
@@ -150,12 +152,16 @@ class FMPLibWrapper {
     console.log('pvi: ' + pviFilename);
     console.log('ppz: ' + ppzFilename);
     if (pviFilename) {
-      if (await this.fetchAndStorePcm(path, pviFilename)) {
+      const hasPvi = await this.fetchAndStorePcm(path, pviFilename);
+      if (signal && signal.aborted) return result;
+      if (hasPvi) {
         this.loadPvi(this.getAbsolutePath([internalPCMPath, pviFilename]));
       }
     }
     if (ppzFilename) {
-      if (await this.fetchAndStorePcm(path, ppzFilename)) {
+      const hasPpz = await this.fetchAndStorePcm(path, ppzFilename);
+      if (signal && signal.aborted) return result;
+      if (hasPpz) {
         this.loadPpz(this.getAbsolutePath([internalPCMPath, ppzFilename]));
       }
     }
@@ -523,14 +529,16 @@ export default class FMPPlayer extends Player {
 
   loadData(data, filepath, persistedSettings = {}) {
     this.suspend();
+    // After suspend(), which cancels any pending load.
+    const loadSignal = this.beginLoad();
     if (!this.lib.isClosed()) {
       this.lib.teardown();
     }
 
     const [path, filename] = this.lib.getPathAndFilename(filepath); // eslint-disable-line
-    this.lib.loadMusicData(this.sampleRate, path, filepath, data)
+    this.lib.loadMusicData(this.sampleRate, path, filepath, data, loadSignal)
       .then((status) => {
-        if (status !== 0) {
+        if (loadSignal.aborted || status !== 0) {
           return;
         }
         this.init(filepath, data);

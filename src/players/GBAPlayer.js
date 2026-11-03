@@ -606,6 +606,7 @@ export default class GBAPlayer extends Player {
   }
 
   loadData(data, filepath, persistedSettings = {}) {
+    const loadSignal = this.beginLoad();
     if (!this.lib.isClosed()) {
       this.lib.teardown();
     }
@@ -634,6 +635,9 @@ export default class GBAPlayer extends Player {
     // Heavy synchronous init blocks the main thread; suspend the audio
     // context so the output doesn't glitch meanwhile.
     return this.muteAudioDuringCall(this.audioNode, () => {
+      // The mute waits for the output to ramp down, so a newer song may have
+      // been selected in the meantime.
+      if (loadSignal.aborted) return;
       if (this.lib.loadMusicData(this.sampleRate, path, filename) === 0) {
         this.voiceMask = Array(this.getNumVoices()).fill(true);
         this.init();
@@ -775,7 +779,16 @@ export default class GBAPlayer extends Player {
         return response.arrayBuffer();
       })
       .then(buffer => {
+        this.lib.registerFileData(path, filename, buffer);
+        // Reload only while a load still waits on this file. Otherwise a later
+        // init already succeeded (it clears lastLoadedFilename), or the song was
+        // replaced or stopped (suspend() drops pendingLoad): reloading would cut
+        // off the playing song or start this player under another one.
+        if (!this.lastLoadedFilename || !this.pendingLoad) {
+          return;
+        }
         this.suspend();
+        const loadSignal = this.beginLoad();
 
         this.resampleBuffer = this.allocResampleBuffer(0);
         this.numberOfSamplesToRender = 0;
@@ -792,8 +805,8 @@ export default class GBAPlayer extends Player {
           }
         }
 
-        this.lib.registerFileData(path, filename, buffer);
         return this.muteAudioDuringCall(this.audioNode, () => {
+          if (loadSignal.aborted) return;
           if (this.lib.loadMusicData(this.sampleRate, path, this.lastLoadedFilename) === 0) {
             this.init();
 
