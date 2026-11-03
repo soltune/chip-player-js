@@ -13,10 +13,11 @@ test('unfavoriting removes duplicate paths and keeps other favorites', () => {
     db.prepare('INSERT INTO playlists VALUES (?, ?, ?, ?)').run('user', 'favorites', JSON.stringify([
       { path: 'same.mid' }, { path: 'other.mid' }, { path: 'same.mid' },
     ]), 0);
-    const result = db.prepare(match[1]).run({ userId: 'user', path: 'same.mid', now: 1 });
+    // Fork: the statement also matches by songId, so it needs the parameter.
+    const result = db.prepare(match[1]).run({ userId: 'user', path: 'same.mid', songId: null, now: 1 });
     assert.equal(result.changes, 1);
     assert.deepEqual(JSON.parse(db.prepare('SELECT items FROM playlists').get().items), [{ path: 'other.mid' }]);
-    assert.equal(db.prepare(match[1]).run({ userId: 'missing', path: 'same.mid', now: 2 }).changes, 0);
+    assert.equal(db.prepare(match[1]).run({ userId: 'missing', path: 'same.mid', songId: null, now: 2 }).changes, 0);
   } finally {
     db.close();
   }

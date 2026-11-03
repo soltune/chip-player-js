@@ -245,7 +245,8 @@ export default class Sequencer extends EventEmitter {
     this.player = player;
     this.player.setLooping(this.repeat === REPEAT_ONE);
 
-    if (this.player.isStreaming()) {
+    // Optional call: upstream's lifecycle tests use plain player doubles.
+    if (this.player.isStreaming?.()) {
       // Fork: StreamPlayer consumes the URL directly instead of a fetched buffer.
       const url = filepath.startsWith('http') ? filepath : getUrlFromFilepath(filepath);
       this.currSongPath = filepath;
