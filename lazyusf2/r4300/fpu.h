@@ -100,70 +100,94 @@ M64P_FPU_INLINE void cvt_s_d(usf_state_t * state, double *source,float *dest)
   *dest = (float) *source;
 }
 
+/* Float-to-integer conversion with x86 semantics.
+ *
+ * A plain C cast is undefined for NaN and for values outside the target
+ * range, and the result differs per CPU: x86 returns the "integer
+ * indefinite" value (0x80000000 / 0x8000000000000000), while ARM and
+ * WebAssembly saturate. USF rips were made and verified on x86 emulators,
+ * and some of them (e.g. Yoshi's Story) depend on the x86 result: the game
+ * logic left running behind the music takes a different branch otherwise
+ * and crashes the game's main thread, leaving only silence.
+ * Always return the x86 result so that every platform behaves the same.
+ */
+M64P_FPU_INLINE int fpu_to_int32(double value)
+{
+  if (value >= -2147483648.0 && value < 2147483648.0)
+    return (int) value;
+  return (int) 0x80000000U;
+}
+M64P_FPU_INLINE long long fpu_to_int64(double value)
+{
+  if (value >= -9223372036854775808.0 && value < 9223372036854775808.0)
+    return (long long) value;
+  return (long long) 0x8000000000000000ULL;
+}
+
 M64P_FPU_INLINE void round_l_s(float *source,long long *dest)
 {
-  *dest = (long long) roundf(*source);
+  *dest = fpu_to_int64(roundf(*source));
 }
 M64P_FPU_INLINE void round_w_s(float *source,int *dest)
 {
-  *dest = (int) roundf(*source);
+  *dest = fpu_to_int32(roundf(*source));
 }
 M64P_FPU_INLINE void trunc_l_s(float *source,long long *dest)
 {
-  *dest = (long long) truncf(*source);
+  *dest = fpu_to_int64(truncf(*source));
 }
 M64P_FPU_INLINE void trunc_w_s(float *source,int *dest)
 {
-  *dest = (int) truncf(*source);
+  *dest = fpu_to_int32(truncf(*source));
 }
 M64P_FPU_INLINE void ceil_l_s(float *source,long long *dest)
 {
-  *dest = (long long) ceilf(*source);
+  *dest = fpu_to_int64(ceilf(*source));
 }
 M64P_FPU_INLINE void ceil_w_s(float *source,int *dest)
 {
-  *dest = (int) ceilf(*source);
+  *dest = fpu_to_int32(ceilf(*source));
 }
 M64P_FPU_INLINE void floor_l_s(float *source,long long *dest)
 {
-  *dest = (long long) floorf(*source);
+  *dest = fpu_to_int64(floorf(*source));
 }
 M64P_FPU_INLINE void floor_w_s(float *source,int *dest)
 {
-  *dest = (int) floorf(*source);
+  *dest = fpu_to_int32(floorf(*source));
 }
 
 M64P_FPU_INLINE void round_l_d(double *source,long long *dest)
 {
-  *dest = (long long) round(*source);
+  *dest = fpu_to_int64(round(*source));
 }
 M64P_FPU_INLINE void round_w_d(double *source,int *dest)
 {
-  *dest = (int) round(*source);
+  *dest = fpu_to_int32(round(*source));
 }
 M64P_FPU_INLINE void trunc_l_d(double *source,long long *dest)
 {
-  *dest = (long long) trunc(*source);
+  *dest = fpu_to_int64(trunc(*source));
 }
 M64P_FPU_INLINE void trunc_w_d(double *source,int *dest)
 {
-  *dest = (int) trunc(*source);
+  *dest = fpu_to_int32(trunc(*source));
 }
 M64P_FPU_INLINE void ceil_l_d(double *source,long long *dest)
 {
-  *dest = (long long) ceil(*source);
+  *dest = fpu_to_int64(ceil(*source));
 }
 M64P_FPU_INLINE void ceil_w_d(double *source,int *dest)
 {
-  *dest = (int) ceil(*source);
+  *dest = fpu_to_int32(ceil(*source));
 }
 M64P_FPU_INLINE void floor_l_d(double *source,long long *dest)
 {
-  *dest = (long long) floor(*source);
+  *dest = fpu_to_int64(floor(*source));
 }
 M64P_FPU_INLINE void floor_w_d(double *source,int *dest)
 {
-  *dest = (int) floor(*source);
+  *dest = fpu_to_int32(floor(*source));
 }
 
 M64P_FPU_INLINE void cvt_w_s(usf_state_t * state, float *source,int *dest)
