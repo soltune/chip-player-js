@@ -247,6 +247,7 @@ export default class NDSPlayer extends Player {
     this.fifoHeadOffset = 0;
     this.queuedFrames = 0;
     this.producerFinished = false;
+    this.fillGeneration = 0; // bumped by flushPrebuffer; cancels fills in progress
 
     this.params = {};
     this.persistedSettings = {};
@@ -260,6 +261,7 @@ export default class NDSPlayer extends Player {
     this.fifoHeadOffset = 0;
     this.queuedFrames = 0;
     this.producerFinished = false;
+    this.fillGeneration++;
   }
 
   queuedMs() {
@@ -321,7 +323,36 @@ export default class NDSPlayer extends Player {
     }
   }
 
+  // Initial fill after a load. A blocking prefill inside the muted section
+  // would add its full cost (hundreds of ms for heavy streaming titles) to the
+  // time until the song starts, while the output is held silent for about as
+  // long right afterwards (Player.renderHoldUntil). So the queue is filled
+  // during that hold instead, from the audio callbacks (see processAudio);
+  // whatever is still missing when the hold ends is rebuilt by the regular
+  // refill in processAudioInner.
+  fillAfterLoad(generation) {
+    if (generation !== this.fillGeneration || this.stopped || this.lib.isClosed()) {
+      return; // superseded by a newer load/seek/stop, or the load failed
+    }
+    if (!this.renderHoldUntil) {
+      // no hold (the context was not running): nothing to overlap with
+      this.prefillAudio();
+    }
+  }
+
   // ---- audio callback (consumer side) ----
+
+  processAudio(output) {
+    super.processAudio(output);
+    // Still non-zero after the base call: this callback fell into the
+    // post-load hold and only emitted silence. Use its time budget to fill
+    // the queue. Driven by the audio callback rather than timers, so it keeps
+    // running in background tabs where timers are throttled.
+    if (this.renderHoldUntil && !this.stopped && !this.paused && !this.lib.isClosed()) {
+      const callbackBudget = (output[0].length / this.sampleRate) * 1000 * PREBUFFER_REFILL_UTILIZATION;
+      this.prefillAudio(callbackBudget);
+    }
+  }
 
   // Copies up to wantFrames from the queue head into the output channels.
   consumeFromFifo(channels, destOffset, wantFrames) {
@@ -521,10 +552,11 @@ export default class NDSPlayer extends Player {
     this.lastLoadedFilename = filename;
     this.lastLoadedFilepath = filepath;
     this.persistedSettings = persistedSettings;
+    const generation = this.fillGeneration;
 
     // nds_init blocks the main thread for a long time on heavy 2sf data;
     // suspend the audio context so the output doesn't glitch meanwhile.
-    return this.muteAudioDuringCall(this.audioNode, () => {
+    await this.muteAudioDuringCall(this.audioNode, () => {
       // The mute waits for the output to ramp down, so a newer song may have
       // been selected in the meantime.
       if (loadSignal.aborted) return;
@@ -532,13 +564,13 @@ export default class NDSPlayer extends Player {
         this.voiceMask = Array(this.getNumVoices()).fill(true);
         this.init();
         this.resolveParamValues(persistedSettings);
-        this.prefillAudio();
 
         this.resume();
 
         this.emit('playerStateUpdate', this.getBasePlayerState());
       }
     });
+    this.fillAfterLoad(generation);
   }
 
   createMetadata() {
@@ -704,6 +736,7 @@ export default class NDSPlayer extends Player {
         this.currentPlaytime = 0;
         this.isFadingOut = false;
         this.fadeOutStartMs = 0;
+        const generation = this.fillGeneration;
 
         if (this.channels) {
           for (let i = 0; i < this.channels.length; i++) {
@@ -711,18 +744,25 @@ export default class NDSPlayer extends Player {
           }
         }
 
+        // Re-init with the song's own directory, exactly as loadData passed
+        // it. The lib request's directory carries an extra slash (nds_init
+        // joins dir + "/" + file), and the engine's 2sflib cache is keyed by
+        // the resulting path string: initializing with that directory stored
+        // the lib under a key the next song never matches, so the first track
+        // switch in a game decompressed the whole lib again.
+        const [songPath, songFilename] = this.lib.getPathAndFilename(this.lastLoadedFilepath);
+
         return this.muteAudioDuringCall(this.audioNode, () => {
           if (loadSignal.aborted) return;
-          if (this.lib.loadMusicData(this.sampleRate, path, this.lastLoadedFilename) === 0) {
+          if (this.lib.loadMusicData(this.sampleRate, songPath, songFilename) === 0) {
             this.init();
             this.resolveParamValues(this.persistedSettings);
-            this.prefillAudio();
 
             this.resume();
 
             this.emit('playerStateUpdate', this.getBasePlayerState());
           }
-        });
+        }).then(() => this.fillAfterLoad(generation));
       })
       .catch(e => {
         this.pendingFileRequests.delete(fullFilename);
