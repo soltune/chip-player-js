@@ -26,3 +26,6 @@ libxmp/lite/Makefile.in
 *.backup/
 _ignore/
 public/sitemap*.xml
+
+# Build logs (contain local paths)
+make.log

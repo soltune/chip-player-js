@@ -150,4 +150,21 @@ function copyPublicFolder() {
       !file.includes('_ignore')
     ),
   });
+  writeOpenSearchDescription();
+}
+
+// Fork: the site's public URL belongs to the deployment, not the repository.
+// public/opensearch.xml carries a __SITE_URL__ placeholder; set SITE_URL in
+// .env.production.local (e.g. SITE_URL=https://example.com) to fill it in.
+// Without it the description would point nowhere, so it is left out of the build.
+function writeOpenSearchDescription() {
+  const file = path.join(paths.appBuild, 'opensearch.xml');
+  if (!fs.existsSync(file)) return;
+  const siteUrl = (process.env.SITE_URL || '').replace(/\/+$/, '');
+  if (!siteUrl) {
+    fs.removeSync(file);
+    console.log(chalk.yellow('SITE_URL is not set; opensearch.xml was left out of the build.'));
+    return;
+  }
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/__SITE_URL__/g, siteUrl));
 }
