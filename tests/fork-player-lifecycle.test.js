@@ -44,11 +44,13 @@ function holdMutes(player) {
 // like the real cores do for an uncached gsflib / 2sflib / psflib.
 function stubLib(player) {
   const loads = [];
+  const loadPaths = []; // directory argument of each load, in the same order
   let libReady = false;
   const requestLib = () => (player instanceof PSFPlayer
     ? player.fileRequestCallback(0, 1)
     : player.fileRequestCallback(0));
   player.lib = {
+    loadPaths,
     isClosed: () => true,
     teardown() {},
     getPathAndFilename: full => {
@@ -59,8 +61,9 @@ function stubLib(player) {
     existsFileData: () => libReady,
     getAbsolutePath: parts => parts.join('/'),
     getDelegate: () => ({ HEAP32: Int32Array.of(0), UTF8ToString: () => 'game/game.lib' }),
-    loadMusicData: (_rate, _path, filename) => {
+    loadMusicData: (_rate, path, filename) => {
       loads.push(filename);
+      loadPaths.push(path);
       if (!filename) return -1;
       if (!libReady) {
         requestLib();
@@ -93,6 +96,28 @@ function holdFetches() {
       await settle();
     },
   };
+}
+
+// gba_init / nds_init join directory + "/" + file, so the lib request the
+// engine sends back carries one slash more than the directory the song was
+// loaded with. The engines key their decompressed-lib cache by that path
+// string: a retry that passes the lib's directory on stores the lib under a key
+// the next song of the game never matches.
+for (const PlayerClass of [GBAPlayer, NDSPlayer]) {
+  test(`${PlayerClass.name} retries with the song's own directory once the lib arrives`, async () => {
+    const player = new PlayerClass(makeCore(), 44100);
+    const loads = stubLib(player);
+    player.lib.getDelegate = () => ({ UTF8ToString: () => 'game//game.lib' });
+    const mutes = holdMutes(player);
+    const fetches = holdFetches();
+    playSong(player, 'game/a.x');
+    await mutes.releaseAll();
+    await fetches.respondNext();
+    await mutes.releaseAll();
+    assert.deepEqual(loads, ['a.x', 'a.x']);
+    assert.deepEqual(player.lib.loadPaths, ['game/', 'game/']);
+    assert.equal(player.stopped, false);
+  });
 }
 
 for (const PlayerClass of [GBAPlayer, NDSPlayer, PSFPlayer]) {

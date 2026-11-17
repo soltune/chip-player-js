@@ -810,9 +810,18 @@ export default class GBAPlayer extends Player {
           }
         }
 
+        // Re-init with the song's own directory, exactly as loadData passed
+        // it. The lib request's directory carries an extra slash (gba_init
+        // joins dir + "/" + file), and the engine's gsflib cache is keyed by
+        // the resulting path string: initializing with that directory stored
+        // the lib under a key the next song never matches, so the first track
+        // switch in a game decompressed the whole lib again. (Same fix as
+        // NDSPlayer.)
+        const [songPath, songFilename] = this.lib.getPathAndFilename(this.lastLoadedFilepath);
+
         return this.muteAudioDuringCall(this.audioNode, () => {
           if (loadSignal.aborted) return;
-          if (this.lib.loadMusicData(this.sampleRate, path, this.lastLoadedFilename) === 0) {
+          if (this.lib.loadMusicData(this.sampleRate, songPath, songFilename) === 0) {
             this.voiceMask = Array(this.getNumVoices()).fill(true);
             this.init();
 
