@@ -369,7 +369,7 @@ export default class NDSPlayer extends Player {
           for (let i = 0; i < channels.length; i++) {
             channels[i].fill(0, rendered);
           }
-          this.stop();
+          this.handleSongEnd();
           return;
         }
         // queue underrun: render synchronously (pre-queue behavior)
@@ -492,10 +492,11 @@ export default class NDSPlayer extends Player {
     this.resume();
   }
 
-  loadData(data, filepath, persistedSettings = {}) {
-    this.suspend();
-    // After suspend(), which cancels any pending load.
-    const loadSignal = this.beginLoad();
+  async loadData(data, filepath, persistedSettings = {}) {
+    const loadSignal = this.pendingLoad?.signal || this.beginLoad();
+    // No rendering while the emulator is torn down and re-initialized.
+    this.stopped = true;
+    this.paused = true;
 
     if (!this.lib.isClosed()) {
       this.lib.teardown();
@@ -518,6 +519,7 @@ export default class NDSPlayer extends Player {
     const [path, filename] = this.lib.getPathAndFilename(filepath);
     this.lib.registerFileData(path, filename,  data);
     this.lastLoadedFilename = filename;
+    this.lastLoadedFilepath = filepath;
     this.persistedSettings = persistedSettings;
 
     // nds_init blocks the main thread for a long time on heavy 2sf data;
@@ -534,10 +536,7 @@ export default class NDSPlayer extends Player {
 
         this.resume();
 
-        this.emit('playerStateUpdate', {
-          ...this.getBasePlayerState(),
-          isStopped: false,
-        });
+        this.emit('playerStateUpdate', this.getBasePlayerState());
       }
     });
   }
@@ -572,10 +571,6 @@ export default class NDSPlayer extends Player {
     return this.lib.getMaxPlaybackPosition();
   }
 
-  getMetadata() {
-    return this.metadata;
-  }
-
   getParameter(id) {
     return this.params[id];
   }
@@ -602,6 +597,14 @@ export default class NDSPlayer extends Player {
   setFadeout(startMs) {
     this.isFadingOut = true;
     this.fadeOutStartMs = startMs;
+  }
+
+  getVoiceGroups() {
+    const voices = [];
+    for (let i = 0; i < this.getNumVoices(); i++) {
+      voices.push({ idx: i, name: this.getVoiceName(i) });
+    }
+    return voices.length > 0 ? [{ name: 'Voices', voices }] : [];
   }
 
   getVoiceName(index) {
@@ -637,6 +640,7 @@ export default class NDSPlayer extends Player {
     // and can block for many seconds); without suspending the context, the
     // ScriptProcessor callbacks queued during the block fire in a burst
     // afterwards and skip playback far past the seek target.
+    super.seekMs(positionMs);
     return this.muteAudioDuringCall(this.audioNode, () => {
       this.flushPrebuffer(); // queued chunks are pre-seek audio
       this.lib.seekPlaybackPosition(positionMs);
@@ -645,12 +649,15 @@ export default class NDSPlayer extends Player {
   }
 
   stop() {
-    this.suspend();
+    super.stop();
     this.flushPrebuffer();
-    this.lib.teardown();
+    // The Sequencer stops a player again before the next song, right after a
+    // natural end already stopped it; tear the engine down only once.
+    if (!this.lib.isClosed()) {
+      this.lib.teardown();
+    }
 
     console.debug('NDSPlayer.stop()');
-    this.emit('playerStateUpdate', { isStopped: true });
   }
 
   // called from twosf_request_file (webDS/emscripten/twosfplug.cpp, EM_JS) via core.ndsFileRequestCallback
@@ -684,12 +691,11 @@ export default class NDSPlayer extends Player {
         if (!this.lastLoadedFilename || !this.pendingLoad) {
           // no load is waiting on this file anymore: a later init already
           // succeeded and cleared it (don't tear down the playing song), or
-          // the song was replaced or stopped and suspend() dropped the pending
+          // the song was replaced or stopped and stop() dropped the pending
           // load (don't start this player under another one)
           return;
         }
-        this.suspend();
-        const loadSignal = this.beginLoad();
+        const loadSignal = this.restartLoad(this.lastLoadedFilepath);
 
         this.resampleBuffer = this.allocResampleBuffer(0);
         this.sourceBuffer = null;
@@ -714,10 +720,7 @@ export default class NDSPlayer extends Player {
 
             this.resume();
 
-            this.emit('playerStateUpdate', {
-              ...this.getBasePlayerState(),
-              isStopped: false,
-            });
+            this.emit('playerStateUpdate', this.getBasePlayerState());
           }
         });
       })

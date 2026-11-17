@@ -38,14 +38,8 @@ export default class N64Player extends Player {
     this.buffer = this.core._malloc(this.bufferSize * 4); // 2 ch, 16-bit
   }
 
-  loadData(data, filename, persistedSettings) {
-    // Fork: the Sequencer calls suspend() (not stop()) between songs, so
-    // _n64_shutdown() would not otherwise run. Without this, the emulator
-    // keeps accumulating audio samples from the previous song into its
-    // internal buffer, which then leak into the start of the new song.
-    this.core._n64_shutdown();
-
-    const loadSignal = this.beginLoad();
+  async loadData(data, filename, persistedSettings) {
+    const loadSignal = this.pendingLoad?.signal || this.beginLoad();
     let err;
     this.filepathMeta = Player.metadataFromFilepath(filename);
 
@@ -86,10 +80,7 @@ export default class N64Player extends Player {
           this.resolveParamValues(persistedSettings);
 
           this.resume();
-          this.emit('playerStateUpdate', {
-            ...this.getBasePlayerState(),
-            isStopped: false,
-          });
+          this.emit('playerStateUpdate', this.getBasePlayerState());
         });
       });
   }
@@ -130,10 +121,6 @@ export default class N64Player extends Player {
     return this.core._n64_get_duration_ms();
   }
 
-  getMetadata() {
-    return this.metadata;
-  }
-
   isPlaying() {
     return !this.isPaused();
   }
@@ -154,9 +141,8 @@ export default class N64Player extends Player {
   }
 
   stop() {
-    this.suspend();
+    super.stop();
     this.core._n64_shutdown();
     console.debug('N64Player.stop()');
-    this.emit('playerStateUpdate', { isStopped: true });
   }
 }

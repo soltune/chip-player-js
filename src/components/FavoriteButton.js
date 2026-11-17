@@ -1,26 +1,43 @@
 import React, { useContext, useCallback, memo } from "react";
 import { UserContext } from './UserProvider';
+import { ToastContext } from './ToastProvider';
+import { ToastLevels } from './Toast';
 
 const FavoriteButton = ({ item }) => {
   const {
     user,
     faves,
     handleToggleFavorite: toggleFavorite,
+    handleLogin,
   } = useContext(UserContext);
-
-  const { path, songId } = item;
+  const { enqueueToast, clearCurrentToast } = useContext(ToastContext);
 
   const handleClick = useCallback((e) => {
-    if (!user) {
-      // TODO: prompt user "Login to save favorites" with ToastManager.
-      return;
-    }
     e.preventDefault();
     e.stopPropagation();
-    toggleFavorite(path, songId);
-  }, [toggleFavorite, path, songId, user]);
+    if (!user) {
+      enqueueToast?.(
+        <span>
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              clearCurrentToast?.();
+              handleLogin();
+            }}
+          >
+            Login/Sign Up
+          </a>{' '}
+          to Save Favorites
+        </span>,
+        ToastLevels.INFO
+      );
+      return;
+    }
+    toggleFavorite(item);
+  }, [clearCurrentToast, enqueueToast, handleLogin, toggleFavorite, item, user]);
 
-  const isFavorite = faves.find(fave => fave.path === path);
+  const isFavorite = faves.find(fave => fave.path === item?.path);
   const className = `FavoriteButton ${isFavorite ? 'isFavorite' : ''}`;
 
   return (

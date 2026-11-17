@@ -22,6 +22,7 @@ const axiosRetry = require('axios-retry').default;
 const { XMLParser } = require('fast-xml-parser');
 
 const { dbStatements } = require('./database.js');
+const { getDashboardStats } = require('./dashboard-stats');
 const { resolveDirectoryMetadata, escapeHtml, safeJsonLd } = require('./directory-metadata');
 const { requireAuth, optionalAuth } = require('./middleware/auth.js');
 const { validate } = require('./middleware/validate');
@@ -108,7 +109,14 @@ if (isDev) {
         pathname.startsWith('/sockjs-node') ||
         /\.hot-update\.(json|js)(\.map)?$/.test(pathname)
       );
-    }
+    },
+    on: {
+      proxyRes: (proxyRes, req) => {
+        if (req.url.match(/\.(ttf|woff|woff2|eot|mp3)$/)) {
+          proxyRes.headers['cache-control'] = 'public, max-age=31536000, immutable';
+        }
+      },
+    },
   });
 
   app.use(devProxy);
@@ -161,6 +169,11 @@ app.use((req, res, next) => {
 
 const cache1Hour = (req, res, next) => {
   res.header('Cache-Control', 'public, max-age=3600');
+  next();
+};
+
+const cache15Min = (req, res, next) => {
+  res.header('Cache-Control', 'public, max-age=900');
   next();
 };
 
@@ -438,6 +451,7 @@ router.get('/browse', cache1Hour, async (req, res) => {
         mtime: typeof child.mtime === 'string' ? new Date(child.mtime).getTime() / 1000 : 0,
         idx: child.type === 'directory' ? null : (idx++),
         count: child.count || 0,
+        songId: child.song_id,
         url: child.type === 'directory' ? null : `/?play=${encodeURIComponent(child.song_id)}`,
       }));
 
@@ -597,8 +611,14 @@ const topCache = new LRUCache({
   ttl: 1000 * 60 * 60, // 60 minutes
 });
 
+const formatTopItem = ({ song_id, file_size, ...rest }) => ({
+  ...rest,
+  songId: song_id,
+  size: file_size,
+});
+
 /**
- * Returns: { items: [ { song_id, plays, title, artist, game, system, path, file_size, mtime }, ... ], total }
+ * Returns: { items: [ { songId, plays, title, artist, game, system, path, size, mtime }, ... ], total }
  */
 router.get('/top', optionalAuth, (req, res) => {
   const metric = req.query.metric || 'plays';
@@ -617,7 +637,7 @@ router.get('/top', optionalAuth, (req, res) => {
       return res.json(cached);
     }
 
-    const items = getTopFavoritesStmt.all(overFetch, limit);
+    const items = getTopFavoritesStmt.all(overFetch, limit).map(formatTopItem);
     const responseData = {
       items,
       total: items.length,
@@ -630,7 +650,7 @@ router.get('/top', optionalAuth, (req, res) => {
     if (!req.userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    const items = getUserTopStmt.all(req.userId, sinceTimestamp, overFetch, limit);
+    const items = getUserTopStmt.all(req.userId, sinceTimestamp, overFetch, limit).map(formatTopItem);
     return res.json({
       items,
       total: items.length,
@@ -643,7 +663,7 @@ router.get('/top', optionalAuth, (req, res) => {
     return res.json(cached);
   }
 
-  const items = getGlobalTopStmt.all(sinceTimestamp, overFetch, limit);
+  const items = getGlobalTopStmt.all(sinceTimestamp, overFetch, limit).map(formatTopItem);
   const responseData = {
     items,
     total: items.length,
@@ -701,7 +721,16 @@ router.post(
         path: songPath,
         now: mtime,
       });
-      res.json({ success: true });
+      res.json({
+        success: true,
+        favorite: {
+          songId: song.song_id,
+          path: song.path,
+          size: song.file_size,
+          mtime,
+          href: `https://gifx.co/music/${song.path}`,
+        },
+      });
     } catch (e) {
       console.error('Error adding favorite:', e);
       res.status(500).json({ error: 'Failed to add favorite' });
@@ -769,6 +798,18 @@ router.post(
 
 // Chrome dev tools requests this for the "Workspace" feature.
 app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => res.sendStatus(404));
+
+// Analytics Dashboard Stats API
+router.get('/dashboard/stats', cache1Hour, (req, res) => {
+  const stats = getDashboardStats(req.query);
+  res.json(stats);
+});
+
+// Standalone Analytics Dashboard Web App
+app.use('/dashboard/assets', express.static(path.join(__dirname, 'dashboard/assets')));
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard/index.html'));
+});
 
 // Static file fallback - should be handled by Nginx in production
 // Assets under /static/ have content-hashed filenames, so they can be

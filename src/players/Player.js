@@ -1,4 +1,6 @@
 import EventEmitter from 'events';
+import axios from 'redaxios';
+import { getMetadataUrlForFilepath, getUrlFromFilepath } from '../util';
 //
 // Player can be viewed as a state machine with
 // 3 states (playing, paused, stopped) and 5 transitions
@@ -32,6 +34,8 @@ export default class Player extends EventEmitter {
     this.paused = true;
     this.stopped = true;
     this.pendingLoad = null;
+    this.catalogMeta = {};
+    this.catalogMetaPromise = null;
     this.fileExtensions = [];
     this.metadata = null;
     this.sampleRate = sampleRate;
@@ -48,9 +52,13 @@ export default class Player extends EventEmitter {
     this.renderHoldUntil = 0; // audio-clock time; processAudio emits silence until then
     this.silenceDuration = -1;
     this.silenceSamplesRemaining = 0;
-    this.onSilenceEnd = null;
     this.trailingSilenceSamples = 0;
     this.durationMs = 0;
+    this.hostFade = false;
+    this.fading = false;
+    this.fadeStartMs = null;
+    this.fadeDurationMs = 5000;
+    this.seekTargetMs = null;
   }
 
   /**
@@ -89,19 +97,82 @@ export default class Player extends EventEmitter {
   beginLoad() {
     if (this.pendingLoad) this.pendingLoad.abort();
     this.pendingLoad = new AbortController();
+    this.catalogMeta = {};
+    this.catalogMetaPromise = null;
+    this.resetFade();
     return this.pendingLoad.signal;
+  }
+
+  // Fork: restarts the current song's load, for players whose library files
+  // arrive after loadData() (GBA/NDS/PSF). Rendering stops until the reload
+  // resumes it. beginLoad() cancels the previous attempt but also drops the
+  // song's catalog metadata, so that is requested again.
+  restartLoad(filepath) {
+    this.stopped = true;
+    this.paused = true;
+    const loadSignal = this.beginLoad();
+    this.fetchCatalogMetadata(filepath, loadSignal);
+    return loadSignal;
+  }
+
+  fetchCatalogMetadata(filepath, loadSignal = this.pendingLoad?.signal) {
+    if (!filepath || filepath.startsWith('local/')) {
+      return Promise.resolve({});
+    }
+    if (this.catalogMetaPromise) {
+      return this.catalogMetaPromise;
+    }
+    const metadataUrl = getMetadataUrlForFilepath(filepath);
+    this.catalogMetaPromise = axios.get(metadataUrl, {
+        fetch: (url, options) => fetch(url, { ...options, signal: loadSignal }),
+      })
+      .then(response => {
+        if (loadSignal?.aborted) return {};
+        const { imageUrl: imagePath, infoTexts = [], md5 = null, songId = null, soundfont = null } = response.data || {};
+        this.catalogMeta = {
+          imageUrl: imagePath ? getUrlFromFilepath(imagePath) : null,
+          infoTexts,
+          md5,
+          songId,
+          soundfont,
+        };
+        if (!this.stopped) {
+          this.emit('playerStateUpdate', this.getCatalogState());
+        }
+        return this.catalogMeta;
+      })
+      .catch(e => {
+        if (!loadSignal?.aborted) console.warn('Could not load metadata:', e);
+        return {};
+      });
+    return this.catalogMetaPromise;
   }
 
   /**
    * @param {ArrayBuffer} data - File contents
    * @param {string} filename - Filename for metadata fallback
    */
-  loadData(data, filename) {
+  async loadData(data, filename) {
     throw Error('Player.loadData() must be implemented.');
   }
 
+  /**
+   * Stops audio rendering and resets playback state.
+   * Cancels in-flight loads and silences audio output.
+   */
   stop() {
-    throw Error('Player.stop() must be implemented.');
+    if (this.pendingLoad) {
+      this.pendingLoad.abort();
+      this.pendingLoad = null;
+    }
+    this.catalogMeta = {};
+    this.catalogMetaPromise = null;
+    this.stopped = true;
+    this.paused = true;
+    this.silenceSamplesRemaining = 0;
+    this.trailingSilenceSamples = 0;
+    this.seekTargetMs = null;
+    this.resetFade();
   }
 
   isPlaying() {
@@ -117,8 +188,19 @@ export default class Player extends EventEmitter {
     console.debug(`Player.setTempo() not implemented for ${this.constructor.name}.`);
   }
 
-  setFadeout(startMs) {
-    console.debug(`Player.setFadeout() not implemented for ${this.constructor.name}.`);
+  setFadeDuration(ms) {
+    this.fadeDurationMs = Math.max(0, Number(ms) || 0);
+  }
+
+  startFade(startMs = this.getPositionMs()) {
+    this.fading = true;
+    this.fadeStartMs = startMs;
+  }
+
+  resetFade() {
+    this.fading = false;
+    this.fadeStartMs = null;
+    this.trailingSilenceSamples = 0;
   }
 
   getDurationMs() {
@@ -133,23 +215,10 @@ export default class Player extends EventEmitter {
 
   seekMs(ms) {
     this.silenceSamplesRemaining = 0;
-    this.onSilenceEnd = null;
     this.trailingSilenceSamples = 0;
+    this.seekTargetMs = null;
+    this.resetFade();
     console.debug(`Player.seekMs() not implemented for ${this.constructor.name}.`);
-  }
-
-  // Deprecated in favor of getVoiceGroups
-  getVoiceName(index) {
-    return 'Voice ' + (index + 1);
-  }
-
-  // Deprecated in favor of getVoiceGroups
-  getVoiceNames() {
-    const names = [];
-    for (let i = 0; i < this.getVoiceMask().length; i++) {
-      names.push(this.getVoiceName(i));
-    }
-    return names;
   }
 
   getVoiceMask() {
@@ -191,9 +260,16 @@ export default class Player extends EventEmitter {
     },
   ]
    */
-  // a nice replacement for getNumVoices and getVoiceName.
   getVoiceGroups() {
-    return [];
+    const mask = this.getVoiceMask();
+    if (!mask || mask.length === 0) return [];
+    return [{
+      name: 'Voices',
+      voices: mask.map((_, i) => ({
+        idx: i,
+        name: `Voice ${i + 1}`,
+      })),
+    }];
   }
 
   getNumSubtunes() {
@@ -204,13 +280,18 @@ export default class Player extends EventEmitter {
     return 0;
   }
 
-  playSubtune() {}
+  playSubtune(subtune) {
+    this.silenceSamplesRemaining = 0;
+    this.trailingSilenceSamples = 0;
+    this.resetFade();
+  }
 
   getMetadata() {
+    const metadata = this.metadata || { title: null, author: null };
     return {
-      title: null,
-      author: null,
-    }
+      ...metadata,
+      imageUrl: metadata.imageUrl || this.catalogMeta?.imageUrl || null,
+    };
   }
 
   getInfoTexts() {
@@ -232,6 +313,18 @@ export default class Player extends EventEmitter {
 
   setParameter(paramId, value) {
     this.params[paramId] = value;
+    if (paramId === 'indefinitePlayback') {
+      if (value) {
+        this.resetFade();
+        this.trailingSilenceSamples = 0;
+      } else if (this.hostFade && !this.looping) {
+        const duration = this.durationMs || this.getDurationMs();
+        const pos = this.getPositionMs();
+        if (duration > 0 && pos >= duration && !this.fading) {
+          this.startFade(pos);
+        }
+      }
+    }
   }
 
   resolveParamValue(paramId, transientValue, persistedSettings) {
@@ -272,10 +365,19 @@ export default class Player extends EventEmitter {
     return paramValues;
   }
 
+  getCatalogState() {
+    return {
+      metadata: this.getMetadata(),
+      infoTexts: [...this.getInfoTexts(), ...(this.catalogMeta?.infoTexts || [])],
+      md5: this.catalogMeta?.md5 || null,
+      songId: this.catalogMeta?.songId || null,
+    };
+  }
+
   getBasePlayerState() {
     this.durationMs = this.getDurationMs() || 0;
     return {
-      metadata: this.getMetadata(),
+      ...this.getCatalogState(),
       durationMs: this.durationMs,
       positionMs: this.getPositionMs(),
       numSubtunes: this.getNumSubtunes(),
@@ -284,16 +386,14 @@ export default class Player extends EventEmitter {
       paramValues: this.getParamValues(),
       tempo: this.getTempo(),
       voiceMask: this.getVoiceMask(),
-      voiceNames: this.getVoiceNames(),
       voiceGroups: this.getVoiceGroups(),
-      infoTexts: this.getInfoTexts(),
-      isStopped: this.stopped,
-      isPaused: this.paused,
+      paused: this.paused,
     };
   }
 
   setLooping(looping) {
     this.looping = looping;
+    if (looping) this.resetFade();
   }
 
   setSilenceDuration(seconds) {
@@ -301,41 +401,61 @@ export default class Player extends EventEmitter {
     this.silenceDuration = isNaN(val) ? -1 : val;
   }
 
-  handleSongEnd(onSilenceEnd = null) {
-    let defaultCallback = null;
-    if (this.getSubtune() + 1 < this.getNumSubtunes()) {
-      defaultCallback = () => this.playSubtune(this.getSubtune() + 1);
-    }
-    const endAction = onSilenceEnd || defaultCallback || (() => this.stop());
-
+  handleSongEnd() {
     if (this.silenceDuration >= 0) {
       const trailingSilenceSec = this.trailingSilenceSamples / this.sampleRate;
       const neededSilenceSec = Math.max(0, this.silenceDuration - trailingSilenceSec);
       this.silenceSamplesRemaining = Math.round(neededSilenceSec * this.sampleRate);
-      this.onSilenceEnd = endAction;
       this.trailingSilenceSamples = 0;
 
       if (this.silenceSamplesRemaining <= 0) {
         this.silenceSamplesRemaining = 0;
-        this.onSilenceEnd = null;
-        endAction();
+        this.advanceOrEnd();
       }
     } else {
       this.trailingSilenceSamples = 0;
-      endAction();
+      this.advanceOrEnd();
     }
   }
 
-  suspend() {
-    if (this.pendingLoad) {
-      this.pendingLoad.abort();
-      this.pendingLoad = null;
+  advanceOrEnd() {
+    if (this.getSubtune() + 1 < this.getNumSubtunes()) {
+      const res = this.playSubtune(this.getSubtune() + 1);
+      if (res !== undefined && res !== 0) {
+        this.stop();
+        this.emit('playerSongEnd');
+      }
+    } else {
+      this.stop();
+      this.emit('playerSongEnd');
     }
-    this.stopped = true;
-    this.paused = true;
-    this.silenceSamplesRemaining = 0;
-    this.onSilenceEnd = null;
-    this.trailingSilenceSamples = 0;
+  }
+
+  checkTrailingSilence(output) {
+    const duration = this.durationMs || this.getDurationMs();
+    const position = this.getPositionMs();
+
+    if (duration > 0 && position >= (duration - 5000)) {
+      const threshold = 0.001; // -60 dB
+      let isSilent = true;
+      const left = output[0];
+      const right = output[1] || output[0];
+      const len = left.length;
+      for (let i = 0; i < len; i++) {
+        if (Math.abs(left[i]) > threshold || Math.abs(right[i]) > threshold) {
+          isSilent = false;
+          break;
+        }
+      }
+      this.trailingSilenceSamples = isSilent ? (this.trailingSilenceSamples + this.bufferSize) : 0;
+
+      if (this.trailingSilenceSamples >= (0.4 * this.sampleRate)) {
+        return true;
+      }
+    } else {
+      this.trailingSilenceSamples = 0;
+    }
+    return false;
   }
 
   processAudio(output) {
@@ -361,13 +481,7 @@ export default class Player extends EventEmitter {
         this.silenceSamplesRemaining -= this.bufferSize;
         if (this.silenceSamplesRemaining <= 0) {
           this.silenceSamplesRemaining = 0;
-          const cb = this.onSilenceEnd;
-          this.onSilenceEnd = null;
-          if (cb) {
-            cb();
-          } else {
-            this.stop();
-          }
+          this.advanceOrEnd();
         }
       }
       return;
@@ -377,42 +491,56 @@ export default class Player extends EventEmitter {
     this.processAudioInner(output);
     const end = performance.now();
 
-    if (this.silenceSamplesRemaining > 0) {
+    if (this.stopped || this.paused) return;
+
+    // Apply anti-pop smoothing and attenuation during seek
+    if (this.seekTargetMs) {
+      const fadeLength = Math.min(256, Math.floor(this.bufferSize / 2));
       for (let ch = 0; ch < output.length; ch++) {
-        output[ch].fill(0);
-      }
-    } else if (this.silenceDuration >= 0 && !this.paused && !this.looping && !this.fadingOut && output.length > 0) {
-      const duration = this.durationMs;
-      const position = this.getPositionMs();
-
-      if (duration > 0) {
-        const inFinalFiveSeconds = position >= (duration - 5000);
-        if (inFinalFiveSeconds) {
-          const threshold = 0.001; // -60 dB
-          let isSilent = true;
-          const left = output[0];
-          const right = output[1] || output[0];
-          const len = left.length;
-          for (let i = 0; i < len; i++) {
-            if (Math.abs(left[i]) > threshold || Math.abs(right[i]) > threshold) {
-              isSilent = false;
-              break;
-            }
-          }
-          this.trailingSilenceSamples = isSilent ? (this.trailingSilenceSamples + this.bufferSize) : 0;
-        } else {
-          this.trailingSilenceSamples = 0;
+        const channel = output[ch];
+        for (let i = 0; i < fadeLength; i++) {
+          const fade = i / fadeLength;
+          channel[i] *= fade;
+          channel[this.bufferSize - (i + 1)] *= fade;
         }
+        for (let i = 0; i < this.bufferSize; i++) {
+          channel[i] *= 0.2;
+        }
+      }
+    }
 
-        const reachedEarlySilence = inFinalFiveSeconds && this.trailingSilenceSamples >= (0.4 * this.sampleRate);
-        const reachedDuration = position >= duration;
+    // Early silence cutoff (for gapless transitions and dead-air trimming)
+    if (!this.fading && !this.looping && !this.params.indefinitePlayback) {
+      if (this.checkTrailingSilence(output)) {
+        this.handleSongEnd();
+        for (let ch = 0; ch < output.length; ch++) output[ch].fill(0);
+        return;
+      }
+    }
 
-        if (reachedEarlySilence || reachedDuration) {
+    // Host Fade (for engines without native fadeout, e.g. GME and SID)
+    if (this.hostFade && !this.looping && !this.params.indefinitePlayback) {
+      const duration = this.durationMs || this.getDurationMs();
+      const pos = this.getPositionMs();
+
+      if (!this.fading && duration > 0 && pos >= duration) {
+        this.startFade(pos);
+      }
+
+      if (this.fading && this.fadeStartMs !== null) {
+        const elapsed = pos - this.fadeStartMs;
+        if (elapsed >= this.fadeDurationMs || this.fadeDurationMs === 0) {
+          this.resetFade();
           this.handleSongEnd();
-          for (let ch = 0; ch < output.length; ch++) {
-            output[ch].fill(0);
-          }
+          for (let ch = 0; ch < output.length; ch++) output[ch].fill(0);
           return;
+        }
+        const fadeFactor = Math.pow(0.025, elapsed / this.fadeDurationMs);
+        for (let ch = 0; ch < output.length; ch++) {
+          const channel = output[ch];
+          for (let i = 0; i < channel.length; i++) {
+            channel[i] *= fadeFactor;
+          }
         }
       }
     }

@@ -30,8 +30,8 @@ export default class MDXPlayer extends Player {
     this.buffer = this.core._malloc(this.bufferSize * 4); // 2 ch, 16-bit
   }
 
-  loadData(data, filename, persistedSettings) {
-    const loadSignal = this.beginLoad();
+  async loadData(data, filename, persistedSettings) {
+    const loadSignal = this.pendingLoad?.signal || this.beginLoad();
     // MDXPlayer reads song data from the Emscripten filesystem,
     // rather than loading bytes from memory like other players.
     let err;
@@ -75,6 +75,7 @@ export default class MDXPlayer extends Player {
             console.error("mdx_load_file failed. error code: %d", err);
             throw Error('mdx_load_file failed');
           }
+          this.mdxOpen = true;
 
           // Metadata
           const ptr = this.core._malloc(256);
@@ -87,10 +88,7 @@ export default class MDXPlayer extends Player {
           this.resolveParamValues(persistedSettings);
           this.setTempo(persistedSettings.tempo || 1);
           this.resume();
-          this.emit('playerStateUpdate', {
-            ...this.getBasePlayerState(),
-            isStopped: false,
-          });
+          this.emit('playerStateUpdate', this.getBasePlayerState());
         });
       });
   }
@@ -140,16 +138,8 @@ export default class MDXPlayer extends Player {
     return this.core._mdx_get_length(this.mdxCtx) * 1000;
   }
 
-  getMetadata() {
-    return this.metadata;
-  }
-
   isPlaying() {
     return !this.isPaused();
-  }
-
-  getVoiceName(index) {
-    if (this.mdxCtx) return this.core.UTF8ToString(this.core._mdx_get_track_name(this.mdxCtx, index));
   }
 
   getVoiceGroups() {
@@ -209,9 +199,14 @@ export default class MDXPlayer extends Player {
   }
 
   stop() {
-    this.suspend();
-    this.core._mdx_close(this.mdxCtx);
+    super.stop();
+    // Fork: mdx_close() frees the song; calling it twice, or before mdx_open(),
+    // crashes the wasm heap. The Sequencer stops a player again before the next
+    // song, right after a natural end already stopped it.
+    if (this.mdxOpen) {
+      this.mdxOpen = false;
+      this.core._mdx_close(this.mdxCtx);
+    }
     console.debug('MDXPlayer.stop()');
-    this.emit('playerStateUpdate', { isStopped: true });
   }
 }

@@ -32,6 +32,7 @@ export default class SIDPlayer extends Player {
     this.bufferR = this.core._malloc(this.bufferSize * 4);
     this.subtuneDurations = [];
     this.initialized = false;
+    this.hostFade = true;
   }
 
   getSidMetadata(md5, loadSignal) {
@@ -52,14 +53,18 @@ export default class SIDPlayer extends Player {
           subtitle: `${author} - ${copyright}`,
         },
       };
-      this.emit('playerStateUpdate', this.getBasePlayerState());
+      this.durationMs = this.subtuneDurations[this.core._sid_get_subtune?.() || 0];
+      this.emit('playerStateUpdate', {
+        metadata: this.getMetadata(),
+        durationMs: this.durationMs,
+      });
     }).catch(e => {
       if (!loadSignal.aborted) console.warn('Could not load SID metadata:', e);
     });
   }
 
-  loadData(data, filepath, persistedSettings) {
-    const loadSignal = this.beginLoad();
+  async loadData(data, filepath, persistedSettings) {
+    const loadSignal = this.pendingLoad?.signal || this.beginLoad();
     if (!this.initialized) {
       this.core._sid_init(this.sampleRate);
       this.initialized = true;
@@ -85,10 +90,7 @@ export default class SIDPlayer extends Player {
     this.resolveParamValues(persistedSettings);
     this.setTempo(persistedSettings.tempo || 1);
     this.resume();
-    this.emit('playerStateUpdate', {
-      ...this.getBasePlayerState(),
-      isStopped: false
-    });
+    this.emit('playerStateUpdate', this.getBasePlayerState());
   }
 
   processAudioInner(channels) {
@@ -106,16 +108,11 @@ export default class SIDPlayer extends Player {
     }
 
     const samplesWritten = this.core._sid_render(this.bufferL, this.bufferR, this.bufferSize);
-    if (samplesWritten === 0 || this.getPositionMs() > this.subtuneDurations[this.getSubtune()]) {
-      // TODO: consolidate with GMEPlayer subtune sequencing
-      const subtune = this.getSubtune() + 1;
-      if (subtune >= this.getNumSubtunes()) {
-        this.handleSongEnd();
-        return;
-      } else {
-        this.handleSongEnd(() => this.playSubtune(subtune));
-        return;
-      }
+    if (samplesWritten === 0) {
+      this.handleSongEnd();
+      channels[0].fill(0);
+      channels[1].fill(0);
+      return;
     }
 
     channels[0].set(this.wasmViewL);
@@ -131,13 +128,9 @@ export default class SIDPlayer extends Player {
   }
 
   playSubtune(subtune) {
-    this.silenceSamplesRemaining = 0;
-    this.onSilenceEnd = null;
+    super.playSubtune(subtune);
     this.core._sid_set_subtune(subtune);
-    this.emit('playerStateUpdate', {
-      ...this.getBasePlayerState(),
-      isStopped: false,
-    });
+    this.emit('playerStateUpdate', this.getBasePlayerState());
   }
 
   getTempo() {
@@ -155,10 +148,6 @@ export default class SIDPlayer extends Player {
 
   getDurationMs() {
     return this.subtuneDurations[this.getSubtune()];
-  }
-
-  getMetadata() {
-    return this.metadata;
   }
 
   isPlaying() {
@@ -193,9 +182,8 @@ export default class SIDPlayer extends Player {
   }
 
   stop() {
-    this.suspend();
+    super.stop();
     this.core._sid_stop();
     console.debug('SIDPlayer.stop()');
-    this.emit('playerStateUpdate', { isStopped: true });
   }
 }

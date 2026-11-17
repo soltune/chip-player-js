@@ -192,7 +192,7 @@ export default class S98Player extends Player {
         if ((detectLoop === -1 && this.currentPlaytime >= this.getDurationMs() )                // without loop
            || (!indefinite && this.currentPlaytime >= (this.getDurationMs() + fadeoutTimeMs)) ) {  // with loop
           this.fillEmpty(outSize);
-          this.stop();
+          this.handleSongEnd();
           return;
         }
 
@@ -437,7 +437,7 @@ export default class S98Player extends Player {
     this.resume();
   }
 
-  loadData(data, filepath, persistedSettings = {}) {
+  async loadData(data, filepath, persistedSettings = {}) {
     if (this.s98lib.currentFile) {
       this.s98lib.close();
     }
@@ -450,10 +450,7 @@ export default class S98Player extends Player {
     this.init(filepath, data, persistedSettings);
     this.resume();
 
-    this.emit('playerStateUpdate', {
-      ...this.getBasePlayerState(),
-      isStopped: false,
-    });
+    this.emit('playerStateUpdate', this.getBasePlayerState());
   }
 
   createMetadata(data) {
@@ -550,10 +547,6 @@ export default class S98Player extends Player {
     return this.s98lib.getMaxPlaybackPosition();
   }
 
-  getMetadata() {
-    return this.metadata;
-  }
-
   getParameter(id) {
     return this.params[id];
   }
@@ -629,6 +622,14 @@ export default class S98Player extends Player {
     return _channels;
   }
 
+  getVoiceGroups() {
+    const voices = [];
+    for (let i = 0; i < this.getNumVoices(); i++) {
+      voices.push({ idx: i, name: this.getVoiceName(i) });
+    }
+    return voices.length > 0 ? [{ name: 'Voices', voices }] : [];
+  }
+
   getVoiceName(index) {
     return this.getAvailableChannels()[index];
   }
@@ -659,14 +660,18 @@ export default class S98Player extends Player {
   }
 
   seekMs(positionMs) {
+    super.seekMs(positionMs);
     this.s98lib.seekPlaybackPosition(positionMs);
   }
 
   stop() {
-    this.suspend();
-    this.s98lib.close();
+    super.stop();
+    // The Sequencer stops a player again before the next song, right after a
+    // natural end already stopped it; tear the engine down only once.
+    if (this.s98lib.currentFile) {
+      this.s98lib.close();
+    }
 
     console.debug('S98Player.stop()');
-    this.emit('playerStateUpdate', { isStopped: true });
   }
 }

@@ -60,7 +60,7 @@ export default class KSSPlayer extends Player {
     return new TextDecoder('shift-jis').decode(heap.subarray(ptr, end));
   }
 
-  loadData(data, filepath, persistedSettings) {
+  async loadData(data, filepath, persistedSettings) {
     const dataPtr = this.copyToHeap(data);
     const pathPtr = this.core.stringToNewUTF8(filepath);
     const err = this.core._lkss_load_data(this.kssCtx, dataPtr, data.byteLength, pathPtr);
@@ -91,10 +91,7 @@ export default class KSSPlayer extends Player {
     this.resolveParamValues(persistedSettings);
 
     this.resume();
-    this.emit('playerStateUpdate', {
-      ...this.getBasePlayerState(),
-      isStopped: false,
-    });
+    this.emit('playerStateUpdate', this.getBasePlayerState());
   }
 
   buildVoiceGroups() {
@@ -164,7 +161,7 @@ export default class KSSPlayer extends Player {
       for (ch = 0; ch < channels.length; ch++) {
         channels[ch].fill(0);
       }
-      this.stop();
+      this.handleSongEnd();
       return;
     }
 
@@ -176,7 +173,7 @@ export default class KSSPlayer extends Player {
         for (ch = 0; ch < channels.length; ch++) {
           channels[ch].fill(0);
         }
-        this.stop();
+        this.handleSongEnd();
         return;
       }
     }
@@ -204,14 +201,11 @@ export default class KSSPlayer extends Player {
   }
 
   seekMs(seekMs) {
+    super.seekMs(seekMs);
     if (this.kssCtx) {
       this.core._lkss_seek_ms(this.kssCtx, Math.max(0, Math.floor(seekMs)));
       this.isFadingOut = false;
     }
-  }
-
-  getMetadata() {
-    return this.metadata;
   }
 
   isPlaying() {
@@ -232,9 +226,8 @@ export default class KSSPlayer extends Player {
   }
 
   stop() {
-    this.suspend();
+    super.stop();
     if (this.kssCtx) this.core._lkss_stop(this.kssCtx);
     console.debug('KSSPlayer.stop()');
-    this.emit('playerStateUpdate', { isStopped: true });
   }
 }

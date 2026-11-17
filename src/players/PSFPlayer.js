@@ -252,7 +252,7 @@ export default class PSFPlayer extends Player {
         if (finished) {
           // no frame left
           this.fillEmpty(outSize);
-          this.stop();
+          this.handleSongEnd();
           return;
         }
 
@@ -453,8 +453,8 @@ export default class PSFPlayer extends Player {
     this.resume();
   }
 
-  loadData(data, filepath, persistedSettings = {}) {
-    const loadSignal = this.beginLoad();
+  async loadData(data, filepath, persistedSettings = {}) {
+    const loadSignal = this.pendingLoad?.signal || this.beginLoad();
     if (!this.lib.isClosed()) {
       this.lib.teardown();
     }
@@ -464,6 +464,7 @@ export default class PSFPlayer extends Player {
     const [path, filename] = this.lib.getPathAndFilename(filepath);
     this.lib.registerFileData(path, filename,  data);
     this.lastLoadedFilename = filename;
+    this.lastLoadedFilepath = filepath;
 
     // Heavy synchronous init blocks the main thread; suspend the audio
     // context so the output doesn't glitch meanwhile.
@@ -476,10 +477,7 @@ export default class PSFPlayer extends Player {
         this.init();
         this.resume();
 
-        this.emit('playerStateUpdate', {
-          ...this.getBasePlayerState(),
-          isStopped: false,
-        });
+        this.emit('playerStateUpdate', this.getBasePlayerState());
       }
     });
   }
@@ -515,10 +513,6 @@ export default class PSFPlayer extends Player {
     return samples * 1000 / this.sampleRate;
   }
 
-  getMetadata() {
-    return this.metadata;
-  }
-
   getParameter(id) {
     return this.params[id];
   }
@@ -547,6 +541,14 @@ export default class PSFPlayer extends Player {
     this.fadeOutStartMs = startMs;
   }
 
+  getVoiceGroups() {
+    const voices = [];
+    for (let i = 0; i < this.getNumVoices(); i++) {
+      voices.push({ idx: i, name: this.getVoiceName(i) });
+    }
+    return voices.length > 0 ? [{ name: 'Voices', voices }] : [];
+  }
+
   getVoiceName(index) {
     return "Ch " + (index + 1);
   }
@@ -573,16 +575,20 @@ export default class PSFPlayer extends Player {
   }
 
   seekMs(positionMs) {
+    super.seekMs(positionMs);
     const frames = Math.floor(positionMs / 1000 * this.sampleRate);
     this.lib.seekPlaybackPosition(frames);
   }
 
   stop() {
-    this.suspend();
-    this.lib.teardown();
+    super.stop();
+    // The Sequencer stops a player again before the next song, right after a
+    // natural end already stopped it; tear the engine down only once.
+    if (!this.lib.isClosed()) {
+      this.lib.teardown();
+    }
 
     console.debug('PSFPlayer.stop()');
-    this.emit('playerStateUpdate', { isStopped: true });
   }
 
   // called from psx_request_file (webpsx/emscripten/heplug.c, EM_JS) via core.psxFileRequestCallback
@@ -622,22 +628,20 @@ export default class PSFPlayer extends Player {
     Promise.all(fetchTasks).then(() => {
       // Reload only while a load still waits on these files. Otherwise a later
       // init already succeeded (it clears lastLoadedFilename), or the song was
-      // replaced or stopped (suspend() drops pendingLoad): reloading would
+      // replaced or stopped (stop() drops pendingLoad): reloading would
       // start this player under another one.
       if (!this.lastLoadedFilename || !this.pendingLoad) {
         return;
       }
-      const loadSignal = this.beginLoad();
+      const loadSignal = this.restartLoad(this.lastLoadedFilepath);
       return this.muteAudioDuringCall(this.audioNode, () => {
         if (loadSignal.aborted) return;
         if (this.lib.loadMusicData(this.sampleRate, basePath, this.lastLoadedFilename) === 0) {
+          this.voiceMask = Array(this.getNumVoices()).fill(true);
           this.init();
           this.resume();
 
-          this.emit('playerStateUpdate', {
-            ...this.getBasePlayerState(),
-            isStopped: false,
-          });
+          this.emit('playerStateUpdate', this.getBasePlayerState());
         }
       });
     });

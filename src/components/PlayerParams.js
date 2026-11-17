@@ -8,60 +8,29 @@ export default class PlayerParams extends React.PureComponent {
     autoBindReact(this);
   }
 
-  // Voicename polling implementation left here for reference.
-  //
-  // Polling for voice updates is only useful for MIDIPlayer
-  // because MIDI Player is the only player where voice names can update
-  // in the middle of a song. Polling is probably a bad pattern.
-  // This forces the player to keep a copy of voices in an array.
-  //
-  // Instead, the player should probably emit an event when voices have updated.
-  //
-  // Right now the only way for players to notify the UI is to invoke the
-  // 'onPlayerStateUpdate' callback, which is really coarse and brittle.
-  // It will trigger a setstate on the App level.
-  //
-  // A better way to bridge between the player engines and the
-  // React UI is probably with an Event Bus (pubsub).
-  //
-  // The event bus can be passed down to children at arbitrary depth,
-  // and each child can subscribe to events it cares about.
-  //
-  // componentDidMount() {
-  //   const updateVoiceNames = () => {
-  //     const voiceNames = this.props.getVoiceNames();
-  //     if (voiceNames !== this.state.voiceNames) {
-  //       console.debug("Updated voice names.");
-  //       this.setState({
-  //         voiceNames,
-  //       });
-  //     }
-  //   };
-  //   updateVoiceNames();
-  //   this.timer = setInterval(updateVoiceNames, UPDATE_INTERVAL_MS);
-  // }
-  //
-  // componentWillUnmount() {
-  //   clearInterval(this.timer);
-  // }
-
-  handleVoiceToggle(e, index, group) {
-    const { onVoiceMaskChange } = this.props;
+  handleVoiceToggle(e, index) {
+    const { onVoiceMaskChange, voiceGroups } = this.props;
     if (!onVoiceMaskChange) return;
 
     const voiceMask = [...this.props.voiceMask];
-    e = e.nativeEvent || {};
+    e = e.nativeEvent || e || {};
     if (e.altKey || e.shiftKey || e.metaKey) {
-      if (group) {
-        console.log('foo');
-        this.handleVoiceGroupToggle(e, group);
-        return;
-      }
-      if (voiceMask.every((enabled, i) => (i === index) === enabled)) {
-        voiceMask.fill(true);
+      const allActiveVoiceIndices = voiceGroups && voiceGroups.length > 0
+        ? voiceGroups.flatMap(group => group.voices.map(voice => voice.idx))
+        : voiceMask.map((_, i) => i);
+
+      const isCurrentlySoloed = allActiveVoiceIndices.every(idx =>
+        (idx === index) ? Boolean(voiceMask[idx]) : !voiceMask[idx]
+      );
+
+      if (isCurrentlySoloed) {
+        allActiveVoiceIndices.forEach(idx => {
+          voiceMask[idx] = true;
+        });
       } else {
-        voiceMask.fill(false);
-        voiceMask[index] = true;
+        allActiveVoiceIndices.forEach(idx => {
+          voiceMask[idx] = (idx === index);
+        });
       }
     } else {
       voiceMask[index] = !voiceMask[index];
@@ -70,12 +39,42 @@ export default class PlayerParams extends React.PureComponent {
   }
 
   handleVoiceGroupToggle(e, group) {
-    const { onVoiceMaskChange } = this.props;
+    const { onVoiceMaskChange, voiceGroups } = this.props;
+    if (!onVoiceMaskChange) return;
+
     const voiceMask = [...this.props.voiceMask];
-    // New state should be the opposite of current average voice state
-    const numEnabled = group.voices.reduce((acc, cur) => acc + (voiceMask[cur.idx] ? 1 : 0), 0);
-    const newState = numEnabled < (group.voices.length / 2);
-    group.voices.forEach(voice => voiceMask[voice.idx] = newState);
+    const event = e.nativeEvent || e || {};
+
+    if (event.altKey || event.shiftKey || event.metaKey) {
+      const allActiveVoiceIndices = voiceGroups && voiceGroups.length > 0
+        ? voiceGroups.flatMap(g => g.voices.map(v => v.idx))
+        : group.voices.map(v => v.idx);
+      const groupVoiceIndices = new Set(group.voices.map(v => v.idx));
+
+      // Check if this group is already the only active unmuted group (i.e. already soloed)
+      const isCurrentlySoloed = allActiveVoiceIndices.every(idx =>
+        groupVoiceIndices.has(idx) ? Boolean(voiceMask[idx]) : !voiceMask[idx]
+      );
+
+      if (isCurrentlySoloed) {
+        // Unmute all active voices across all groups
+        allActiveVoiceIndices.forEach(idx => {
+          voiceMask[idx] = true;
+        });
+      } else {
+        // Solo this group: enable all voices in this group, mute all voices outside this group
+        allActiveVoiceIndices.forEach(idx => {
+          voiceMask[idx] = groupVoiceIndices.has(idx);
+        });
+      }
+    } else {
+      // New state should be the opposite of current average voice state
+      const numEnabled = group.voices.reduce((acc, cur) => acc + (voiceMask[cur.idx] ? 1 : 0), 0);
+      const newState = numEnabled < (group.voices.length / 2);
+      group.voices.forEach(voice => {
+        voiceMask[voice.idx] = newState;
+      });
+    }
     onVoiceMaskChange(voiceMask);
   }
 
@@ -107,11 +106,23 @@ export default class PlayerParams extends React.PureComponent {
       ejected,
       voiceGroups,
       voiceMask,
-      voiceNames,
     } = this.props;
 
     const { isPinned } = this;
     const isMidi = playerKey === 'midi';
+
+    const groups = (voiceGroups && voiceGroups.length > 0)
+      ? voiceGroups
+      : (voiceMask && voiceMask.length > 0
+          ? [{
+              name: isMidi ? 'Channels' : 'Voices',
+              voices: voiceMask.map((_, i) => ({
+                idx: i,
+                name: `Voice ${i + 1}`,
+                color: isMidi ? CHANNEL_COLORS[i % CHANNEL_COLORS.length] : undefined,
+              })).filter(v => !isMidi || (v.name && v.name.trim() !== '--'))
+            }]
+          : []);
 
     return (
       <div className='PlayerParams'>
@@ -138,66 +149,41 @@ export default class PlayerParams extends React.PureComponent {
           {' '}
           {tempo.toFixed(2)}
         </span>
-        {voiceGroups.length > 0 ?
-          voiceGroups.map((group, i) => {
-            return (
-              <span className='PlayerParams-param PlayerParams-group' key={group.name+i}>
-                  <label className="PlayerParams-group-title" title="Sound chip" onClick={(e) => this.handleVoiceGroupToggle(e, group)}>
-                    {group.icon && <span className='inline-icon dim-icon icon-chip'/>}{' '}
-                    {group.name}:
-                  </label>
-                  <div className="PlayerParams-voiceList">
-                    {group.voices.map((voice, j) => (
-                      <div key={voice.idx} className='App-voice-label'><input
+        {groups.map((group, i) => {
+          return (
+            <span className='PlayerParams-param PlayerParams-group' key={group.name + i}>
+              <label
+                className="PlayerParams-group-title"
+                title="Click to toggle group. Alt+click to solo."
+                onClick={(e) => this.handleVoiceGroupToggle(e, group)}
+              >
+                {group.icon && <span className='inline-icon dim-icon icon-chip'/>}{' '}
+                {group.name}:
+              </label>
+              <div className="PlayerParams-voiceList">
+                {group.voices.map((voice) => {
+                  const color = voice.color || (isMidi ? CHANNEL_COLORS[voice.idx % CHANNEL_COLORS.length] : null);
+                  const displayName = voice.name ? voice.name.trim() : '';
+                  return (
+                    <div key={voice.idx} className='App-voice-label' title={displayName}>
+                      <input
                         title='Alt+click to solo. Alt+click again to unmute all.'
                         type='checkbox'
-                        id={'v_'+i+j}
-                        onChange={(e) => this.handleVoiceToggle(e, voice.idx, group)}
-                        checked={!!voiceMask[voice.idx]}/>
-                      <label htmlFor={'v_'+i+j}>
-                        {voice.name}
-                      </label></div>
-                    ))}
-                  </div>
-              </span>
-            )
-          })
-          :
-          voiceMask.length > 0 &&
-          <span className='PlayerParams-param PlayerParams-group'>
-            <label className="PlayerParams-group-title">
-              { isMidi ? 'Channels' : 'Voices' }:
-            </label>
-            <div className="PlayerParams-voiceList">
-              {voiceMask.map((val, i) => {
-                const name = voiceNames[i];
-                if (isMidi && (!name || name.trim() === '--')) {
-                  return null;
-                }
-                const color = CHANNEL_COLORS[i % CHANNEL_COLORS.length];
-                const displayName = name ? name.trim() : '';
-                return (
-                  <div key={i} className='App-voice-label' title={displayName}><input
-                    title='Alt+click to solo. Alt+click again to unmute all.'
-                    type='checkbox'
-                    id={'v_'+i}
-                    onChange={(e) => this.handleVoiceToggle(e, i)}
-                    checked={!!val}/>
-                  <label htmlFor={'v_'+i}>
-                    {isMidi ? (
-                      <>
-                        <span className="PlayerParams-color-chip" style={{ color }}>■</span>
+                        id={'v_' + voice.idx}
+                        onChange={(e) => this.handleVoiceToggle(e, voice.idx)}
+                        checked={!!voiceMask[voice.idx]}
+                      />
+                      <label htmlFor={'v_' + voice.idx}>
+                        {color && <span className="PlayerParams-color-chip" style={{ color }}>■</span>}
                         {displayName}
-                      </>
-                    ) : (
-                      name
-                    )}
-                  </label></div>
-                )
-              })}
-            </div>
-          </span>
-        }
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+            </span>
+          );
+        })}
 
         {paramDefs && paramValues && paramDefs.map(param => {
           const value = paramValues[param.id];

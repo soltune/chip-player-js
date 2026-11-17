@@ -5,6 +5,7 @@ import WindowScroller from 'react-virtualized/dist/es/WindowScroller';
 import 'react-virtualized/styles.css';
 import { findDOMNode } from 'react-dom';
 import { useHistory } from 'react-router-dom';
+import TypeAheadManager from '../TypeAheadManager';
 
 export default VirtualizedList;
 
@@ -19,6 +20,7 @@ function VirtualizedList(props) {
     isSorted,
     scrollContainerRef,
     listRef,
+    resetScrollOnListChange = false,
   } = props;
 
   const arrowKeyStepperRef = useRef();
@@ -27,6 +29,14 @@ function VirtualizedList(props) {
   const [rowHeight, setRowHeight] = useState(20);
   const updateHistoryRef = useRef();
   const selectedRowRef = useRef(selectedRow);
+  const typeAheadRef = useRef();
+  if (!typeAheadRef.current) {
+    typeAheadRef.current = new TypeAheadManager({ onSelect: setSelectedRow });
+  }
+
+  useEffect(() => {
+    return () => typeAheadRef.current.reset();
+  }, [history.location.pathname, itemList]);
 
   /* --- Added by Antigravity */
   const prevPathnameRef = useRef(history.location.pathname);
@@ -41,8 +51,10 @@ function VirtualizedList(props) {
     prevItemListRef.current = itemList;
     lastScrolledRowRef.current = null;
   } else if (itemList !== prevItemListRef.current) {
-    scrollToIndex = 0;
-    lastScrolledRowRef.current = 0;
+    if (resetScrollOnListChange) {
+      scrollToIndex = 0;
+      lastScrolledRowRef.current = 0;
+    }
     prevItemListRef.current = itemList;
   } else if (selectedRow !== lastScrolledRowRef.current) {
     scrollToIndex = selectedRow;
@@ -53,6 +65,12 @@ function VirtualizedList(props) {
   useEffect(() => {
     selectedRowRef.current = selectedRow;
   }, [selectedRow]);
+
+  useEffect(() => {
+    if (itemList.length > 0 && selectedRow >= itemList.length) {
+      setSelectedRow(itemList.length - 1);
+    }
+  }, [itemList.length, selectedRow]);
 
   useEffect(() => {
     if (!scrollContainerRef.current) return;
@@ -94,6 +112,7 @@ function VirtualizedList(props) {
   const onActivate = useCallback((index) => {
     // Song index may differ from item index if there are directories
     const item = itemList[index];
+    if (!item) return () => {};
     const songIndex = item.idx ?? index;
 
     if (item.type === 'directory') {
@@ -140,6 +159,9 @@ function VirtualizedList(props) {
     <div onKeyDown={(e) => {
       // TODO: Possibly remove ArrowKeyStepper and just use this instead.
       if (e.target.tagName === 'INPUT') return;
+      if (isSorted && typeAheadRef.current.handleKeyDown(e, itemList)) {
+        return;
+      }
       if (!e.repeat && (e.key === 'Enter' || e.key === 'Return')) {
         if (e.target.tagName === 'BUTTON') return;
         const index = selectedRow;
@@ -157,27 +179,6 @@ function VirtualizedList(props) {
       } else if (e.key === 'PageDown') {
         e.preventDefault();
         setSelectedRow(Math.min(itemList.length - 1, selectedRow + 10));
-      } else if (isSorted && e.metaKey === false && e.ctrlKey === false && e.altKey === false
-        && 'abcdefghijklmnopqrstuvwxyz0123456789'.includes(e.key)) {
-        e.preventDefault();
-        const char = e.key.toLowerCase();
-        let left = 0;
-        let right = itemList.length - 1;
-        let mid;
-        while (left <= right) {
-          mid = Math.floor((left + right) / 2);
-          const name = itemList[mid].name.toLowerCase();
-          if (name.startsWith(char)) {
-            break;
-          } else if (name.toLowerCase() < char) {
-            left = mid + 1;
-          } else {
-            right = mid - 1;
-          }
-        }
-        // Rewind to first instance of char
-        while (mid > 0 && itemList[mid - 1].name.toLowerCase()[0] === char) mid--;
-        setSelectedRow(mid);
       }
     }}>
       <WindowScroller
@@ -240,6 +241,7 @@ function VirtualizedList(props) {
                       // For these reasons we will use a fake focus instead of the browser built-in.
 
                       const onSelect = (e) => {
+                        typeAheadRef.current.reset();
                         setSelectedRow(index);
                         // Prevent focus on the anchor element
                         e.preventDefault();

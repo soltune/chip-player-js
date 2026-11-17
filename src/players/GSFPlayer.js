@@ -48,8 +48,8 @@ export default class GSFPlayer extends Player {
     this.buffer = this.core._malloc(this.bufferSize * 4); // 2 ch, 16-bit
   }
 
-  loadData(data, filename, persistedSettings) {
-    const loadSignal = this.beginLoad();
+  async loadData(data, filename, persistedSettings) {
+    const loadSignal = this.pendingLoad?.signal || this.beginLoad();
     let err;
     this.filepathMeta = Player.metadataFromFilepath(filename);
 
@@ -93,10 +93,7 @@ export default class GSFPlayer extends Player {
         this.voiceMask = Array(numTracks).fill(true);
 
         this.resume();
-        this.emit('playerStateUpdate', {
-          ...this.getBasePlayerState(),
-          isStopped: false,
-        });
+        this.emit('playerStateUpdate', this.getBasePlayerState());
       });
   }
 
@@ -151,10 +148,6 @@ export default class GSFPlayer extends Player {
     return this.core._gsf_get_duration_ms();
   }
 
-  getMetadata() {
-    return this.metadata;
-  }
-
   isPlaying() {
     return !this.isPaused();
   }
@@ -177,13 +170,6 @@ export default class GSFPlayer extends Player {
     });
   }
 
-  getVoiceName(index) {
-    if (this.core._gsf_get_track_name) {
-      return this.core.UTF8ToString(this.core._gsf_get_track_name(index));
-    }
-    return GBA_VOICE_NAMES[index] || `Channel ${index + 1}`;
-  }
-
   getVoiceGroups() {
     const driverType = this.core._gsf_get_driver_type ? this.core._gsf_get_driver_type() : 0;
     if (driverType === 1) {
@@ -193,9 +179,12 @@ export default class GSFPlayer extends Player {
 
       for (let i = 0; i < numTracks; i++) {
         const type = this.core._gsf_get_track_type ? this.core._gsf_get_track_type(i) : 0;
+        const name = this.core._gsf_get_track_name
+          ? this.core.UTF8ToString(this.core._gsf_get_track_name(i))
+          : (GBA_VOICE_NAMES[i] || `Channel ${i + 1}`);
         const voice = {
           idx: i,
-          name: this.getVoiceName(i),
+          name,
         };
         if (type >= 1 && type <= 4) {
           dmgVoices.push(voice);
@@ -292,9 +281,8 @@ export default class GSFPlayer extends Player {
   }
 
   stop() {
-    this.suspend();
+    super.stop();
     this.core._gsf_shutdown();
     console.debug('GSFPlayer.stop()');
-    this.emit('playerStateUpdate', { isStopped: true });
   }
 }

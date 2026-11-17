@@ -42,6 +42,16 @@ export default class StreamPlayer extends Player {
     }
   }
 
+  processAudio(output) {
+    // Stream audio flows through the MediaElementSource, so `output` is always
+    // silent here. Skip the base class's rendering path (its trailing-silence
+    // detection would end every stream five seconds early) and only run the
+    // countdown of the optional silence between songs.
+    if (this.silenceSamplesRemaining > 0) {
+      super.processAudio(output);
+    }
+  }
+
   processAudioInner(channels) {
     // Intentionally empty: stream audio flows through the MediaElementSource,
     // not the shared ScriptProcessorNode.
@@ -50,10 +60,10 @@ export default class StreamPlayer extends Player {
   setupBufferingListeners() {
     this.audioElement.addEventListener('canplay', () => {
       this.emit('bufferingComplete');
-      // Guard against stale canplay events that arrive after suspend() was
+      // Guard against stale canplay events that arrive after stop()/suspend() was
       // called. this.paused alone cannot be used here because stalled also
       // sets it to true (for UI), yet we must resume after buffering.
-      // this._intentionalPause is only set by suspend() and cleared by
+      // this._intentionalPause is only set by stop()/suspend() and cleared by
       // resume() or when loadedmetadata fires for a new song, so it
       // reliably reflects user/system intent rather than buffering state.
       if (this._intentionalPause) return;
@@ -96,7 +106,7 @@ export default class StreamPlayer extends Player {
     this.params = {};
   }
 
-  loadData(data, filepath, persistedSettings = {}) {
+  async loadData(data, filepath, persistedSettings = {}) {
     this._ensureSourceNode();
     this.init();
     this.loadStream(data, filepath);
@@ -106,9 +116,8 @@ export default class StreamPlayer extends Player {
     this.removeAllEventListeners();
 
     this.currentUrl = url;
-    // Loading counts as "not stopped": anything emitted before loadedmetadata
-    // (e.g. the parallel ID3 fetch) must not carry isStopped=true, or the
-    // Sequencer treats the song as ended and advances through the whole context.
+    // Loading counts as "not stopped", so metadata that arrives before
+    // loadedmetadata (catalog lookup, ID3 tags) is still reported.
     this.stopped = false;
     // Set filename-based metadata immediately as a fallback.
     // _fetchID3Metadata will overwrite this with tag data when the fetch completes.
@@ -145,11 +154,7 @@ export default class StreamPlayer extends Player {
         });
       }
 
-      this.emit('playerStateUpdate', {
-        ...this.getBasePlayerState(),
-        isStopped: false,
-        metadata: this.metadata,
-      });
+      this.emit('playerStateUpdate', this.getBasePlayerState());
     };
 
     const playHandler = () => {
@@ -157,19 +162,14 @@ export default class StreamPlayer extends Player {
     };
 
     const endedHandler = () => {
-      this.paused = true;
-      this.stopped = true;
-
       this.audioElement.pause();
       this.audioElement.currentTime = 0;
       this.audioElement.src = '';
       this.audioElement.load();
-
-      this.emit('playerStateUpdate', {
-        ...this.getBasePlayerState(),
-        isStopped: true,
-        metadata: this.metadata,
-      });
+      // The player stays running: handleSongEnd() counts down the optional
+      // silence between songs in processAudio(), then stops the player and
+      // reports the end of the song to the Sequencer.
+      this.handleSongEnd();
     };
 
     this.audioElement.addEventListener('loadedmetadata', metadataHandler);
@@ -203,18 +203,10 @@ export default class StreamPlayer extends Player {
         track:  tags.track  || undefined,
       };
 
-      // Metadata-only update: never emit while stopped. getBasePlayerState()
-      // reports isStopped from this.stopped, and this fetch usually finishes
-      // before loadedmetadata — emitting isStopped=true here makes the
-      // Sequencer skip to the next song (and chain through entire directories
-      // of streamed files). The merged tags are still delivered by the
-      // loadedmetadata emit or the next state update.
+      // Metadata-only update: nothing to report once the player was stopped.
       if (this.stopped) return;
 
-      this.emit('playerStateUpdate', {
-        ...this.getBasePlayerState(),
-        metadata: this.metadata,
-      });
+      this.emit('playerStateUpdate', this.getBasePlayerState());
     } catch (e) {
       // Network error or parse failure — silently fall back to filename-based metadata
     }
@@ -251,10 +243,6 @@ export default class StreamPlayer extends Player {
     return Math.floor(this.audioElement.duration * 1000);
   }
 
-  getMetadata() {
-    return this.metadata;
-  }
-
   getParameter(id) {
     return this.params[id];
   }
@@ -277,16 +265,6 @@ export default class StreamPlayer extends Player {
 
   setTempo(val) {}
 
-  setFadeout(startMs) {}
-
-  getVoiceName(index) {
-    return "";
-  }
-
-  getNumVoices() {
-    return 0;
-  }
-
   setVoiceMask(voices) {}
 
   getVoiceMask() {
@@ -304,7 +282,6 @@ export default class StreamPlayer extends Player {
       this.emit('playerStateUpdate', {
         ...this.getBasePlayerState(),
         positionMs: positionMs,
-        metadata: this.metadata,
       });
     } catch (error) {
       console.error('Failed to seek:', error);
@@ -317,19 +294,12 @@ export default class StreamPlayer extends Player {
   }
 
   stop() {
+    super.stop();
     if (this.audioElement) {
       this._intentionalPause = true; // block stale canplay/loadedmetadata from restarting audio
       this.audioElement.pause();
       this.audioElement.currentTime = 0;
-      this.paused = true;
-      this.stopped = true;
     }
-    
-    this.emit('playerStateUpdate', {
-      ...this.getBasePlayerState(),
-      isStopped: true,
-      metadata: this.metadata,
-    });
   }
 
   resume() {
@@ -338,7 +308,9 @@ export default class StreamPlayer extends Player {
       if (this.audioCtx.state === 'suspended') {
         this.audioCtx.resume();
       }
-      this.audioElement.play();
+      // play() rejects when no stream is loaded (e.g. during the silence
+      // between songs); there is nothing to resume in that case.
+      this.audioElement.play().catch(() => {});
       this.paused = false;
     }
   }

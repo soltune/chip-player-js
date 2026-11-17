@@ -307,7 +307,7 @@ export default class FMPPlayer extends Player {
         if (this.currentPlaytime > this.getDurationMs() + (fadeoutTimeMs * (this.lib.hasLoop()? 1 : 0))) {
           // no frame left
           this.fillEmpty(outSize);
-          this.stop();
+          this.handleSongEnd();
           return;
         }
         this.lib.computeAudioSamples();
@@ -527,26 +527,24 @@ export default class FMPPlayer extends Player {
     this.resume();
   }
 
-  loadData(data, filepath, persistedSettings = {}) {
-    this.suspend();
-    // After suspend(), which cancels any pending load.
-    const loadSignal = this.beginLoad();
+  async loadData(data, filepath, persistedSettings = {}) {
+    const loadSignal = this.pendingLoad?.signal || this.beginLoad();
+    // No rendering while the driver is torn down and re-initialized.
+    this.stopped = true;
+    this.paused = true;
     if (!this.lib.isClosed()) {
       this.lib.teardown();
     }
 
     const [path, filename] = this.lib.getPathAndFilename(filepath); // eslint-disable-line
-    this.lib.loadMusicData(this.sampleRate, path, filepath, data, loadSignal)
+    return this.lib.loadMusicData(this.sampleRate, path, filepath, data, loadSignal)
       .then((status) => {
         if (loadSignal.aborted || status !== 0) {
           return;
         }
         this.init(filepath, data);
         this.resume();
-        this.emit('playerStateUpdate', {
-          ...this.getBasePlayerState(),
-          isStopped: false,
-        });
+        this.emit('playerStateUpdate', this.getBasePlayerState());
       });
   }
 
@@ -573,10 +571,6 @@ export default class FMPPlayer extends Player {
 
   getDurationMs() {
     return this.lib.getMaxPlaybackPosition();
-  }
-
-  getMetadata() {
-    return this.metadata;
   }
 
   getParameter(id) {
@@ -622,6 +616,14 @@ export default class FMPPlayer extends Player {
     }
   }
 
+  getVoiceGroups() {
+    const voices = [];
+    for (let i = 0; i < this.getNumVoices(); i++) {
+      voices.push({ idx: i, name: this.getVoiceName(i) });
+    }
+    return voices.length > 0 ? [{ name: 'Voices', voices }] : [];
+  }
+
   getVoiceName(index) {
     return this.getChannels()[index];
   }
@@ -651,13 +653,16 @@ export default class FMPPlayer extends Player {
   }
 
   seekMs(positionMs) {
+    super.seekMs(positionMs);
     this.lib.seekPlaybackPosition(positionMs);
   }
 
   stop() {
-    this.suspend();
-    this.lib.teardown();
-
-    this.emit('playerStateUpdate', { isStopped: true });
+    super.stop();
+    // The Sequencer stops a player again before the next song, right after a
+    // natural end already stopped it; tear the engine down only once.
+    if (!this.lib.isClosed()) {
+      this.lib.teardown();
+    }
   }
 }

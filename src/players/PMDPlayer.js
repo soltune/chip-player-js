@@ -323,7 +323,7 @@ export default class PMDPlayer extends Player {
         if (finished) {
           // no frame left
           this.fillEmpty(outSize);
-          this.stop();
+          this.handleSongEnd();
           return;
         }
 
@@ -525,7 +525,8 @@ export default class PMDPlayer extends Player {
     this.resume();
   }
 
-  loadData(data, filepath, persistedSettings = {}) {
+  async loadData(data, filepath, persistedSettings = {}) {
+    const loadSignal = this.pendingLoad?.signal || this.beginLoad();
     if (!this.lib.isClosed()) {
       this.lib.teardown();
     }
@@ -537,15 +538,15 @@ export default class PMDPlayer extends Player {
 
     const _onMusicLoadFinished = (status) => {
       // we will get also PCM asynchronously in `loadMusicData()` so the following impl should be given as a callback
+      // PCM files load asynchronously; the song may have been replaced or
+      // stopped by the time they arrive.
+      if (loadSignal.aborted) return;
       if (status === 0) {
         this.voiceMask = Array(this.getNumVoices()).fill(true);
         this.init(filepath, data);
         this.resume();
 
-        this.emit('playerStateUpdate', {
-          ...this.getBasePlayerState(),
-          isStopped: false,
-        });
+        this.emit('playerStateUpdate', this.getBasePlayerState());
       }
     };
     this.lib.loadMusicData(this.sampleRate, path, filepath, data, _onMusicLoadFinished);
@@ -573,10 +574,6 @@ export default class PMDPlayer extends Player {
 
   getDurationMs() {
     return this.lib.getMaxPlaybackPosition();
-  }
-
-  getMetadata() {
-    return this.metadata;
   }
 
   getParameter(id) {
@@ -610,6 +607,14 @@ export default class PMDPlayer extends Player {
     this.fadeOutStartMs = startMs;
   }
 
+  getVoiceGroups() {
+    const voices = [];
+    for (let i = 0; i < this.getNumVoices(); i++) {
+      voices.push({ idx: i, name: this.getVoiceName(i) });
+    }
+    return voices.length > 0 ? [{ name: 'Voices', voices }] : [];
+  }
+
   getVoiceName(index) {
     return CHANNELS[index];
   }
@@ -634,14 +639,18 @@ export default class PMDPlayer extends Player {
   }
 
   seekMs(positionMs) {
+    super.seekMs(positionMs);
     this.lib.seekPlaybackPosition(positionMs);
   }
 
   stop() {
-    this.suspend();
-    this.lib.teardown();
+    super.stop();
+    // The Sequencer stops a player again before the next song, right after a
+    // natural end already stopped it; tear the engine down only once.
+    if (!this.lib.isClosed()) {
+      this.lib.teardown();
+    }
 
     console.debug('PMDPlayer.stop()');
-    this.emit('playerStateUpdate', { isStopped: true });
   }
 }

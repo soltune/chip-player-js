@@ -1,16 +1,14 @@
 import autoBind from 'auto-bind';
-import axios from 'redaxios';
 import debounce from 'lodash/debounce';
-import range from 'lodash/range';
 import pathe from 'pathe';
 import MIDIFile from './midi/midi-helpers';
 import MIDIFilePlayer from './MIDIFilePlayer';
 import Player from './Player';
 import { SOUNDFONTS, SOUNDFONT_MOUNTPOINT, SOUNDFONT_URL_PATH } from '../config';
 import { GM_DRUM_KITS, GM_INSTRUMENTS } from '../gm-patch-map';
+import { CHANNEL_COLORS } from '../piano-roll/config';
 import {
   ensureEmscFileWithUrl,
-  getMetadataUrlForFilepath,
   getUrlFromFilepath,
   remap01
 } from '../util';
@@ -169,11 +167,10 @@ export default class MIDIPlayer extends Player {
     this.name = 'MIDI Player';
     this.fileExtensions = fileExtensions;
     this.buffer = core._malloc(this.bufferSize * 4 * 2); // f32 * 2 channels
-    this.filepathMeta = {};
     this.midiFilePlayer = new MIDIFilePlayer({
       // playerStateUpdate is debounced to prevent flooding program change events
       programChangeCb: debounce(() => this.emit('playerStateUpdate', {
-        voiceNames: range(16).map(ch => this.getVoiceName(ch))
+        voiceGroups: this.getVoiceGroups(),
       }), 200),
       output: dummyMidiOutput,
       skipSilence: true,
@@ -319,14 +316,14 @@ export default class MIDIPlayer extends Player {
   }
 
   async loadData(data, filepath, persistedSettings) {
-    const loadSignal = this.beginLoad();
+    const loadSignal = this.pendingLoad?.signal || this.beginLoad();
     if (this.midiFilePlayer) {
       this.midiFilePlayer.stop();
       this.midiFilePlayer.position = 0;
       this.midiFilePlayer.elapsedTime = 0;
     }
     this.ensureWebMidiInitialized();
-    this.filepathMeta = this.metadataFromFilepath(filepath);
+    this.metadata = this.metadataFromFilepath(filepath);
 
     this.resolveParamValues(persistedSettings);
     this.setTempo(persistedSettings.tempo || 1);
@@ -343,10 +340,8 @@ export default class MIDIPlayer extends Player {
 
     // Load custom Soundfont if present in the metadata response.
     if (this.getParameter('synthengine') === MIDI_ENGINE_LIBFLUIDLITE) {
-      const metadataUrl = getMetadataUrlForFilepath(filepath);
       let useMelodicChannel10 = false;
-      // This should be cached by a preceding fetch in App.js.
-      const { data: { soundfont: soundfontPath } } = await axios.get(metadataUrl);
+      const { soundfont: soundfontPath } = await this.fetchCatalogMetadata(filepath, loadSignal);
       if (loadSignal.aborted) return;
       const soundfontUrl = soundfontPath ? getUrlFromFilepath(soundfontPath) : null;
       if (soundfontUrl) {
@@ -390,10 +385,7 @@ export default class MIDIPlayer extends Player {
     this.midiFilePlayer.play();
 
     this.resume();
-    this.emit('playerStateUpdate', {
-      ...this.getBasePlayerState(),
-      isStopped: false,
-    });
+    this.emit('playerStateUpdate', this.getBasePlayerState());
   }
 
   getSynthengineBasedOnFilename(filepath) {
@@ -453,11 +445,6 @@ export default class MIDIPlayer extends Player {
     return !this.midiFilePlayer.paused;
   }
 
-  suspend() {
-    super.suspend();
-    this.midiFilePlayer.stop();
-  }
-
   stop() {
     if (this.auditionTailTimeout) {
       clearTimeout(this.auditionTailTimeout);
@@ -467,10 +454,10 @@ export default class MIDIPlayer extends Player {
     this._wasStoppedBeforeAudition = false;
     if (this.midiFilePlayer) {
       this.midiFilePlayer.isAuditioning = false;
+      this.midiFilePlayer.stop();
     }
-    this.suspend();
+    super.stop();
     console.debug('MIDIPlayer.stop()');
-    this.emit('playerStateUpdate', { isStopped: true });
   }
 
   getAuditionChannel() {
@@ -571,10 +558,29 @@ export default class MIDIPlayer extends Player {
     this.midiFilePlayer.setSpeed(tempo);
   }
 
-  getVoiceName(ch) {
+  _getChannelName(ch) {
     if (!this.midiFilePlayer.getChannelInUse(ch)) return '--';
     const pgm = this.midiFilePlayer.channelProgramNums[ch];
     return ch === 9 ? (GM_DRUM_KITS[pgm] || GM_DRUM_KITS[0]) : GM_INSTRUMENTS[pgm];
+  }
+
+  getVoiceGroups() {
+    if (!this.midiFilePlayer) return [];
+    const voices = [];
+    for (let ch = 0; ch < 16; ch++) {
+      const name = this._getChannelName(ch);
+      if (name && name.trim() !== '--') {
+        voices.push({
+          idx: ch,
+          name: name.trim(),
+          color: CHANNEL_COLORS[ch % CHANNEL_COLORS.length],
+        });
+      }
+    }
+    return [{
+      name: 'Channels',
+      voices,
+    }];
   }
 
   getVoiceMask() {
@@ -585,13 +591,6 @@ export default class MIDIPlayer extends Player {
     voiceMask.forEach((isEnabled, ch) => {
       this.midiFilePlayer.setChannelMute(ch, !isEnabled);
     });
-  }
-
-  getMetadata() {
-    return {
-      ...this.filepathMeta,
-      infoTexts: [this.midiFilePlayer.textInfo.join('\n')].filter(text => text !== ''),
-    };
   }
 
   getInfoTexts() {

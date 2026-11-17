@@ -10,6 +10,14 @@ import FMPPlayer from '../src/players/FMPPlayer';
 
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
+// What Sequencer.playSong does around a load: stop the outgoing player (here
+// always the same one), open a new load, then hand over the data.
+function playSong(player, filepath) {
+  player.stop();
+  player.beginLoad();
+  return player.loadData(new Uint8Array([1]), filepath, {});
+}
+
 // Enough of chip-core to construct the players. The tests replace player.lib.
 const makeCore = () => ({ FS: {}, ccall: () => 44100, _malloc: () => 0, _free() {}, HEAPU8: new Uint8Array(16) });
 
@@ -68,6 +76,9 @@ function stubLib(player) {
   player.getBasePlayerState = () => ({});
   player.resolveParamValues = () => {};
   player.prefillAudio = () => {};
+  // A deferred reload asks for the catalog metadata again; keep that request
+  // out of the fetches the tests hand-feed.
+  player.fetchCatalogMetadata = () => Promise.resolve({});
   return loads;
 }
 
@@ -90,8 +101,8 @@ for (const PlayerClass of [GBAPlayer, NDSPlayer, PSFPlayer]) {
     const loads = stubLib(player);
     const mutes = holdMutes(player);
     player.lib.registerFileData('game/', 'game.lib');
-    player.loadData(new Uint8Array([1]), 'game/a.x', {});
-    player.loadData(new Uint8Array([1]), 'game/b.x', {});
+    playSong(player, 'game/a.x');
+    playSong(player, 'game/b.x');
     await mutes.releaseAll();
     assert.deepEqual(loads, ['b.x']);
     assert.equal(player.stopped, false);
@@ -102,8 +113,8 @@ for (const PlayerClass of [GBAPlayer, NDSPlayer, PSFPlayer]) {
     const loads = stubLib(player);
     const mutes = holdMutes(player);
     player.lib.registerFileData('game/', 'game.lib');
-    player.loadData(new Uint8Array([1]), 'game/a.x', {});
-    player.suspend(); // the Sequencer suspends the old player before switching
+    playSong(player, 'game/a.x');
+    player.stop(); // the Sequencer stops the old player before switching
     await mutes.releaseAll();
     assert.deepEqual(loads, []);
     assert.equal(player.stopped, true);
@@ -114,10 +125,10 @@ for (const PlayerClass of [GBAPlayer, NDSPlayer, PSFPlayer]) {
     const loads = stubLib(player);
     const mutes = holdMutes(player);
     const fetches = holdFetches();
-    player.loadData(new Uint8Array([1]), 'game/a.x', {});
+    playSong(player, 'game/a.x');
     await mutes.releaseAll();
     assert.deepEqual(loads, ['a.x']); // waiting for game.lib
-    player.suspend(); // switched to another player's song
+    player.stop(); // switched to another player's song
     await fetches.respondNext();
     await mutes.releaseAll();
     assert.deepEqual(loads, ['a.x']);
@@ -129,10 +140,9 @@ for (const PlayerClass of [GBAPlayer, NDSPlayer, PSFPlayer]) {
     const loads = stubLib(player);
     const mutes = holdMutes(player);
     const fetches = holdFetches();
-    player.loadData(new Uint8Array([1]), 'game/a.x', {});
+    playSong(player, 'game/a.x');
     await mutes.releaseAll();
-    player.suspend(); // the Sequencer suspends before the next song on the same player
-    player.loadData(new Uint8Array([1]), 'game/b.x', {});
+    playSong(player, 'game/b.x'); // stops, then loads the next song on the same player
     await mutes.releaseAll();
     await fetches.respondNext();
     await mutes.releaseAll();
@@ -161,8 +171,8 @@ test('FMPPlayer ignores a load superseded while its PCM is fetched', async () =>
   };
   player.init = filepath => inits.push(filepath);
   player.getBasePlayerState = () => ({});
-  player.loadData(new Uint8Array([1]), 'a.opi', {});
-  player.loadData(new Uint8Array([1]), 'b.opi', {});
+  playSong(player, 'a.opi');
+  playSong(player, 'b.opi');
   pending[1].resolve(0);
   await settle();
   pending[0].resolve(0); // the old song's PCM fetch finishes last

@@ -17,7 +17,7 @@ export default class V2MPlayer extends Player {
     this.buffer = this.core._malloc(this.bufferSize * 8);
   }
 
-  loadData(data, filename, persistedSettings) {
+  async loadData(data, filename, persistedSettings) {
     const dataPtr = this.copyToHeap(data);
     const err = this.core._v2m_open(dataPtr, data.byteLength, this.sampleRate);
     this.core._free(dataPtr);
@@ -32,10 +32,7 @@ export default class V2MPlayer extends Player {
     this.resolveParamValues(persistedSettings);
     this.setTempo(persistedSettings.tempo || 1);
     this.resume();
-    this.emit('playerStateUpdate', {
-      ...this.getBasePlayerState(),
-      isStopped: false
-    });
+    this.emit('playerStateUpdate', this.getBasePlayerState());
   }
 
   processAudioInner(channels) {
@@ -83,10 +80,6 @@ export default class V2MPlayer extends Player {
     return this.core._v2m_get_duration_ms();
   }
 
-  getMetadata() {
-    return this.metadata;
-  }
-
   isPlaying() {
     return !this.isPaused();
   }
@@ -96,9 +89,8 @@ export default class V2MPlayer extends Player {
   }
 
   stop() {
-    this.suspend();
+    super.stop();
     this.core._v2m_close();
     console.debug('V2MPlayer.stop()');
-    this.emit('playerStateUpdate', { isStopped: true });
   }
 }

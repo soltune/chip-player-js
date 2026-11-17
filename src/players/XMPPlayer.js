@@ -70,7 +70,7 @@ export default class XMPPlayer extends Player {
       this.handleSongEnd();
       return;
     } else if (err !== 0) {
-      this.suspend();
+      this.stop();
       console.error("xmp_play_buffer failed. error code: %d", err);
       throw Error('xmp_play_buffer failed');
     }
@@ -143,7 +143,7 @@ export default class XMPPlayer extends Player {
     this.infoTexts = infoText.length ? [ infoText.join('\n\n') ] : [];
   }
 
-  loadData(data, filename, persistedSettings) {
+  async loadData(data, filename, persistedSettings) {
     let err;
     this.filepathMeta = Player.metadataFromFilepath(filename);
 
@@ -167,10 +167,7 @@ export default class XMPPlayer extends Player {
     this.resolveParamValues(persistedSettings);
     this.setTempo(persistedSettings.tempo || 1);
     this.resume();
-    this.emit('playerStateUpdate', {
-      ...this.getBasePlayerState(),
-      isStopped: false
-    });
+    this.emit('playerStateUpdate', this.getBasePlayerState());
   }
 
   getVoiceMask() {
@@ -197,8 +194,19 @@ export default class XMPPlayer extends Player {
     this.tempoScale = val;
   }
 
-  getVoiceName(index) {
-    return `Ch ${index + 1}`;
+  getVoiceGroups() {
+    if (!this.xmpCtx || !this.metadata) return [];
+    const voices = [];
+    for (let i = 0; i < this.metadata.numChannels; i++) {
+      voices.push({
+        idx: i,
+        name: `Ch ${i + 1}`,
+      });
+    }
+    return [{
+      name: 'Channels',
+      voices,
+    }];
   }
 
   getPositionMs() {
@@ -207,10 +215,6 @@ export default class XMPPlayer extends Player {
 
   getDurationMs() {
     return this._durationMs;
-  }
-
-  getMetadata() {
-    return this.metadata;
   }
 
   isPlaying() {
@@ -223,10 +227,9 @@ export default class XMPPlayer extends Player {
   }
 
   stop() {
-    this.suspend();
+    super.stop();
     this.core._xmp_stop_module(this.xmpCtx);
     console.debug('XMPPlayer.stop()');
-    this.emit('playerStateUpdate', { isStopped: true });
   }
 
   getParameter(id) {

@@ -359,7 +359,7 @@ export default class GBAPlayer extends Player {
         if (finished) {
           // no frame left
           this.fillEmpty(outSize);
-          this.stop();
+          this.handleSongEnd();
           return;
         }
 
@@ -605,8 +605,8 @@ export default class GBAPlayer extends Player {
     this.resume();
   }
 
-  loadData(data, filepath, persistedSettings = {}) {
-    const loadSignal = this.beginLoad();
+  async loadData(data, filepath, persistedSettings = {}) {
+    const loadSignal = this.pendingLoad?.signal || this.beginLoad();
     if (!this.lib.isClosed()) {
       this.lib.teardown();
     }
@@ -631,6 +631,7 @@ export default class GBAPlayer extends Player {
     const [path, filename] = this.lib.getPathAndFilename(filepath);
     this.lib.registerFileData(path, filename,  data);
     this.lastLoadedFilename = filename;
+    this.lastLoadedFilepath = filepath;
 
     // Heavy synchronous init blocks the main thread; suspend the audio
     // context so the output doesn't glitch meanwhile.
@@ -643,10 +644,7 @@ export default class GBAPlayer extends Player {
         this.init();
         this.resume();
 
-        this.emit('playerStateUpdate', {
-          ...this.getBasePlayerState(),
-          isStopped: false,
-        });
+        this.emit('playerStateUpdate', this.getBasePlayerState());
       }
     });
   }
@@ -678,10 +676,6 @@ export default class GBAPlayer extends Player {
 
   getDurationMs() {
     return this.lib.getMaxPlaybackPosition();
-  }
-
-  getMetadata() {
-    return this.metadata;
   }
 
   getParameter(id) {
@@ -726,6 +720,14 @@ export default class GBAPlayer extends Player {
     this.fadeOutStartMs = startMs;
   }
 
+  getVoiceGroups() {
+    const voices = [];
+    for (let i = 0; i < this.getNumVoices(); i++) {
+      voices.push({ idx: i, name: this.getVoiceName(i) });
+    }
+    return voices.length > 0 ? [{ name: 'Voices', voices }] : [];
+  }
+
   getVoiceName(index) {
     return CHANNEL_NAME[index];
   }
@@ -750,15 +752,19 @@ export default class GBAPlayer extends Player {
   }
 
   seekMs(positionMs) {
+    super.seekMs(positionMs);
     this.lib.seekPlaybackPosition(positionMs);
   }
 
   stop() {
-    this.suspend();
-    this.lib.teardown();
+    super.stop();
+    // The Sequencer stops a player again before the next song, right after a
+    // natural end already stopped it; tear the engine down only once.
+    if (!this.lib.isClosed()) {
+      this.lib.teardown();
+    }
 
     console.debug('GBAPlayer.stop()');
-    this.emit('playerStateUpdate', { isStopped: true });
   }
 
   // called from gsf_request_file (webGSF/emscripten/gsfplug.cpp, EM_JS) via core.gbaFileRequestCallback
@@ -782,13 +788,12 @@ export default class GBAPlayer extends Player {
         this.lib.registerFileData(path, filename, buffer);
         // Reload only while a load still waits on this file. Otherwise a later
         // init already succeeded (it clears lastLoadedFilename), or the song was
-        // replaced or stopped (suspend() drops pendingLoad): reloading would cut
+        // replaced or stopped (stop() drops pendingLoad): reloading would cut
         // off the playing song or start this player under another one.
         if (!this.lastLoadedFilename || !this.pendingLoad) {
           return;
         }
-        this.suspend();
-        const loadSignal = this.beginLoad();
+        const loadSignal = this.restartLoad(this.lastLoadedFilepath);
 
         this.resampleBuffer = this.allocResampleBuffer(0);
         this.numberOfSamplesToRender = 0;
@@ -808,14 +813,12 @@ export default class GBAPlayer extends Player {
         return this.muteAudioDuringCall(this.audioNode, () => {
           if (loadSignal.aborted) return;
           if (this.lib.loadMusicData(this.sampleRate, path, this.lastLoadedFilename) === 0) {
+            this.voiceMask = Array(this.getNumVoices()).fill(true);
             this.init();
 
             this.resume();
 
-            this.emit('playerStateUpdate', {
-              ...this.getBasePlayerState(),
-              isStopped: false,
-            });
+            this.emit('playerStateUpdate', this.getBasePlayerState());
           }
         });
       })
